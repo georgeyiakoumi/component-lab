@@ -1,36 +1,44 @@
+"use client"
+
+import * as React from "react"
+import { useParams } from "next/navigation"
+
 import { registry } from "@/lib/registry"
-import { notFound } from "next/navigation"
 import { PlaygroundToolbar } from "@/components/playground/toolbar"
+import { ComponentCanvas } from "@/components/playground/component-canvas"
 
-interface ComponentPageProps {
-  params: Promise<{ slug: string }>
-}
+export default function ComponentPage() {
+  const params = useParams<{ slug: string }>()
+  const slug = params.slug
 
-export default async function ComponentPage({ params }: ComponentPageProps) {
-  const { slug } = await params
+  const [theme, setTheme] = React.useState<"light" | "dark">("light")
+  const [breakpoint, setBreakpoint] = React.useState<"desktop" | "mobile">("desktop")
+
   const component = registry.find((c) => c.slug === slug)
 
   if (!component) {
-    notFound()
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Component not found</p>
+      </div>
+    )
   }
 
   return (
     <>
-      <PlaygroundToolbar componentName={component.name} />
-      <div className="flex flex-1 items-center justify-center bg-muted/30 p-8">
-        <div className="space-y-2 text-center">
-          <h2 className="text-lg font-medium">{component.name}</h2>
-          <p className="text-sm text-muted-foreground">
-            Component preview coming soon
-          </p>
-        </div>
-      </div>
+      <PlaygroundToolbar
+        componentName={component.name}
+        theme={theme}
+        onThemeChange={setTheme}
+        breakpoint={breakpoint}
+        onBreakpointChange={setBreakpoint}
+      />
+      <ComponentCanvas
+        slug={slug}
+        componentName={component.name}
+        theme={theme}
+        breakpoint={breakpoint}
+      />
     </>
   )
-}
-
-export function generateStaticParams() {
-  return registry.map((component) => ({
-    slug: component.slug,
-  }))
 }

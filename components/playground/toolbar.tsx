@@ -17,12 +17,23 @@ import {
 
 interface ToolbarProps {
   componentName?: string
+  theme?: "light" | "dark"
+  onThemeChange?: (theme: "light" | "dark") => void
+  breakpoint?: "desktop" | "mobile"
+  onBreakpointChange?: (breakpoint: "desktop" | "mobile") => void
   className?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
-export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
+export function PlaygroundToolbar({
+  componentName,
+  theme = "light",
+  onThemeChange,
+  breakpoint = "desktop",
+  onBreakpointChange,
+  className,
+}: ToolbarProps) {
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -47,17 +58,19 @@ export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
 
-        {/* ── View controls (placeholders) ───────────────────── */}
+        {/* ── View controls ──────────────────────────────────── */}
         <div className="flex items-center gap-1">
           <ToolbarButton
             icon={<Monitor className="size-4" />}
             label="Desktop view"
-            disabled
+            active={breakpoint === "desktop"}
+            onClick={() => onBreakpointChange?.("desktop")}
           />
           <ToolbarButton
             icon={<Smartphone className="size-4" />}
             label="Mobile view"
-            disabled
+            active={breakpoint === "mobile"}
+            onClick={() => onBreakpointChange?.("mobile")}
           />
 
           <Separator orientation="vertical" className="mx-1.5 h-6" />
@@ -65,12 +78,14 @@ export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
           <ToolbarButton
             icon={<Sun className="size-4" />}
             label="Light theme"
-            disabled
+            active={theme === "light"}
+            onClick={() => onThemeChange?.("light")}
           />
           <ToolbarButton
             icon={<Moon className="size-4" />}
             label="Dark theme"
-            disabled
+            active={theme === "dark"}
+            onClick={() => onThemeChange?.("dark")}
           />
         </div>
       </div>

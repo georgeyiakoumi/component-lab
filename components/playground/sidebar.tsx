@@ -58,7 +58,7 @@ export function PlaygroundSidebar({
   }, [])
 
   return (
-    <div className={cn("flex h-full flex-col border-r bg-background", className)}>
+    <div className={cn("flex h-full flex-col overflow-hidden border-r bg-background", className)}>
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <Layers className="h-4 w-4 text-muted-foreground" />
