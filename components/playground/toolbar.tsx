@@ -1,0 +1,115 @@
+"use client"
+
+import * as React from "react"
+import { Code2, Monitor, Moon, Sun, Smartphone } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+/* ── Types ──────────────────────────────────────────────────────── */
+
+interface ToolbarProps {
+  componentName?: string
+  className?: string
+}
+
+/* ── Component ──────────────────────────────────────────────────── */
+
+export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div
+        className={cn(
+          "flex h-12 shrink-0 items-center gap-1 border-b bg-background px-4",
+          className,
+        )}
+      >
+        {/* ── Component name ─────────────────────────────────── */}
+        <div className="flex items-center gap-2">
+          <Code2 className="h-4 w-4 text-blue-500" />
+          <span className="text-sm font-medium">
+            {componentName ?? "No component selected"}
+          </span>
+        </div>
+
+        {/* ── Spacer ─────────────────────────────────────────── */}
+        <div className="flex-1" />
+
+        {/* ── View controls (placeholders) ───────────────────── */}
+        <div className="flex items-center gap-0.5">
+          <ToolbarButton
+            icon={<Monitor className="h-3.5 w-3.5" />}
+            label="Desktop view"
+            disabled
+          />
+          <ToolbarButton
+            icon={<Smartphone className="h-3.5 w-3.5" />}
+            label="Mobile view"
+            disabled
+          />
+
+          <Separator orientation="vertical" className="mx-1.5 h-5" />
+
+          <ToolbarButton
+            icon={<Sun className="h-3.5 w-3.5" />}
+            label="Light theme"
+            disabled
+          />
+          <ToolbarButton
+            icon={<Moon className="h-3.5 w-3.5" />}
+            label="Dark theme"
+            disabled
+          />
+        </div>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+/* ── ToolbarButton ──────────────────────────────────────────────── */
+
+interface ToolbarButtonProps {
+  icon: React.ReactNode
+  label: string
+  active?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}
+
+function ToolbarButton({
+  icon,
+  label,
+  active,
+  disabled,
+  onClick,
+}: ToolbarButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-8 w-8 text-muted-foreground",
+            active && "bg-blue-500/10 text-blue-500",
+          )}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {icon}
+          <span className="sr-only">{label}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
