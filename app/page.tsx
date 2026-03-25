@@ -30,7 +30,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="flex w-full max-w-lg flex-col items-center gap-8">
+      <div className="flex w-full max-w-lg flex-col items-center gap-6">
         {/* ── Heading ──────────────────────────────────────────── */}
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -44,7 +44,8 @@ export default function Home() {
         </div>
 
         {/* ── Command palette ─────────────────────────────────── */}
-        <Command className="rounded-lg border shadow-md">
+        <p className="text-sm font-medium text-muted-foreground">Load component</p>
+        <Command className="rounded-lg border shadow-md [&_[cmdk-list]]:max-h-[300px]">
           <CommandInput placeholder="Search components..." />
           <CommandList>
             <CommandEmpty>No components found.</CommandEmpty>
@@ -62,10 +63,7 @@ export default function Home() {
                       }
                     >
                       <Code2 className="mr-2 size-4 text-muted-foreground" />
-                      <span>{component.name}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {component.description}
-                      </span>
+                      <span className="font-medium">{component.name}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -75,6 +73,7 @@ export default function Home() {
         </Command>
 
         {/* ── Action buttons ──────────────────────────────────── */}
+        <p className="text-sm font-medium text-muted-foreground">Create new</p>
         <div className="flex items-center gap-3">
           <Button asChild>
             <Link href="/playground">

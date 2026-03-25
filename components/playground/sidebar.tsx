@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import {
   categories,
   searchComponents,
@@ -59,9 +58,9 @@ export function PlaygroundSidebar({
   }, [])
 
   return (
-    <div className={cn("flex h-full flex-col bg-background", className)}>
+    <div className={cn("flex h-full flex-col border-r bg-background", className)}>
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex items-center gap-2 border-b px-4 py-3">
         <Layers className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-semibold tracking-tight">
           Components
@@ -71,7 +70,7 @@ export function PlaygroundSidebar({
         </Badge>
       </div>
 
-      <div className="px-3 pb-3">
+      <div className="border-b px-3 py-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -82,8 +81,6 @@ export function PlaygroundSidebar({
           />
         </div>
       </div>
-
-      <Separator />
 
       {/* ── Component list ─────────────────────────────────────── */}
       <ScrollArea className="flex-1">
@@ -121,7 +118,8 @@ export function PlaygroundSidebar({
                     type="button"
                     onClick={() => toggleCategory(category.name)}
                     className={cn(
-                      "flex w-full items-center gap-2 px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+                      "flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+                      isExpanded && "bg-muted/50",
                     )}
                   >
                     <ChevronRight
@@ -137,7 +135,7 @@ export function PlaygroundSidebar({
                   </button>
 
                   {isExpanded && (
-                    <div className="space-y-0.5 px-2 pb-1">
+                    <div className="space-y-0.5 pb-1">
                       {components.map((component) => (
                         <ComponentItem
                           key={component.slug}
@@ -178,7 +176,7 @@ function ComponentItem({
       type="button"
       onClick={() => onSelect?.(component)}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors",
+        "flex w-full items-center gap-2 rounded-md px-6 py-1.5 text-left text-sm transition-colors",
         isSelected
           ? "bg-accent text-accent-foreground"
           : "text-foreground/80 hover:bg-muted hover:text-foreground",

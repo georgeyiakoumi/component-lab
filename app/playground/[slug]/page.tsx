@@ -18,13 +18,10 @@ export default async function ComponentPage({ params }: ComponentPageProps) {
     <>
       <PlaygroundToolbar componentName={component.name} />
       <div className="flex flex-1 items-center justify-center bg-muted/30 p-8">
-        <div className="text-center space-y-2">
+        <div className="space-y-2 text-center">
           <h2 className="text-lg font-medium">{component.name}</h2>
           <p className="text-sm text-muted-foreground">
-            {component.description}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Component preview will render here.
+            Component preview coming soon
           </p>
         </div>
       </div>

@@ -34,7 +34,12 @@ export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
         {/* ── Component name ─────────────────────────────────── */}
         <div className="flex items-center gap-2">
           <Code2 className="h-4 w-4 text-blue-500" />
-          <span className="text-sm font-medium">
+          <span
+            className={cn(
+              "text-sm font-medium",
+              !componentName && "text-muted-foreground",
+            )}
+          >
             {componentName ?? "No component selected"}
           </span>
         </div>
@@ -43,27 +48,27 @@ export function PlaygroundToolbar({ componentName, className }: ToolbarProps) {
         <div className="flex-1" />
 
         {/* ── View controls (placeholders) ───────────────────── */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <ToolbarButton
-            icon={<Monitor className="h-3.5 w-3.5" />}
+            icon={<Monitor className="size-4" />}
             label="Desktop view"
             disabled
           />
           <ToolbarButton
-            icon={<Smartphone className="h-3.5 w-3.5" />}
+            icon={<Smartphone className="size-4" />}
             label="Mobile view"
             disabled
           />
 
-          <Separator orientation="vertical" className="mx-1.5 h-5" />
+          <Separator orientation="vertical" className="mx-1.5 h-6" />
 
           <ToolbarButton
-            icon={<Sun className="h-3.5 w-3.5" />}
+            icon={<Sun className="size-4" />}
             label="Light theme"
             disabled
           />
           <ToolbarButton
-            icon={<Moon className="h-3.5 w-3.5" />}
+            icon={<Moon className="size-4" />}
             label="Dark theme"
             disabled
           />
