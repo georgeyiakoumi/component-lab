@@ -13,6 +13,7 @@ interface ComponentCanvasProps {
   componentName: string
   theme?: "light" | "dark"
   breakpoint?: Breakpoint
+  variant?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -22,6 +23,7 @@ export function ComponentCanvas({
   componentName,
   theme = "light",
   breakpoint = "2xl",
+  variant,
 }: ComponentCanvasProps) {
   const PreviewComponent = componentPreviews[slug]
 
@@ -41,7 +43,7 @@ export function ComponentCanvas({
         }}
       >
         {PreviewComponent ? (
-          <PreviewComponent />
+          <PreviewComponent variant={variant} />
         ) : (
           <div className="space-y-2 text-center">
             <h2 className="text-lg font-medium">{componentName}</h2>

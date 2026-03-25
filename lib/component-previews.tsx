@@ -105,6 +105,12 @@ import {
   CreditCard,
 } from "lucide-react"
 
+// ── Types ───────────────────────────────────────────────────────────────────
+
+interface PreviewProps {
+  variant?: string
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Preview wrapper — adds consistent padding and max-width to every preview
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,26 +139,35 @@ function FallbackPreview({ name }: { name: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Button
+// 1. Button — variant-controlled
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ButtonPreview() {
+function ButtonPreview({ variant }: PreviewProps) {
+  const v = (variant ?? "default") as
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link"
+
   return (
     <PreviewContainer>
-      <div className="grid grid-cols-3 gap-3">
-        <Button variant="default">Default</Button>
-        <Button variant="destructive">Destructive</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="link">Link</Button>
+      <div className="flex items-center justify-center">
+        <Button variant={v} size="default">
+          <Mail className="mr-2 h-4 w-4" />
+          Button
+        </Button>
       </div>
-      <div className="flex items-center gap-3 pt-2">
-        <Button size="sm">Small</Button>
-        <Button size="default">Default</Button>
-        <Button size="lg">Large</Button>
-        <Button size="icon">
-          <Mail />
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <Button variant={v} size="sm">
+          Small
+        </Button>
+        <Button variant={v} size="default">
+          Default
+        </Button>
+        <Button variant={v} size="lg">
+          Large
         </Button>
       </div>
     </PreviewContainer>
@@ -163,7 +178,7 @@ function ButtonPreview() {
 // 2. Input
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InputPreview() {
+function InputPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-4">
@@ -192,7 +207,7 @@ function InputPreview() {
 // 3. Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CardPreview() {
+function CardPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <Card>
@@ -230,7 +245,7 @@ function CardPreview() {
 // 4. Dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DialogPreview() {
+function DialogPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <Dialog>
@@ -264,24 +279,26 @@ function DialogPreview() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Alert
+// 5. Alert — variant-controlled
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AlertPreview() {
+function AlertPreview({ variant }: PreviewProps) {
+  const v = (variant ?? "default") as "default" | "destructive"
+  const isDestructive = v === "destructive"
+
   return (
     <PreviewContainer>
-      <Alert>
-        <Terminal className="h-4 w-4" />
-        <AlertTitle>Heads up!</AlertTitle>
+      <Alert variant={v}>
+        {isDestructive ? (
+          <AlertCircle className="h-4 w-4" />
+        ) : (
+          <Terminal className="h-4 w-4" />
+        )}
+        <AlertTitle>{isDestructive ? "Error" : "Heads up!"}</AlertTitle>
         <AlertDescription>
-          You can add components to your project using the CLI.
-        </AlertDescription>
-      </Alert>
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>
-          Your session has expired. Please log in again to continue.
+          {isDestructive
+            ? "Your session has expired. Please log in again to continue."
+            : "You can add components to your project using the CLI."}
         </AlertDescription>
       </Alert>
     </PreviewContainer>
@@ -289,23 +306,29 @@ function AlertPreview() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. Badge
+// 6. Badge — variant-controlled
 // ─────────────────────────────────────────────────────────────────────────────
 
-function BadgePreview() {
+function BadgePreview({ variant }: PreviewProps) {
+  const v = (variant ?? "default") as
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "outline"
+
+  const labelMap: Record<string, string> = {
+    default: "New feature",
+    secondary: "In progress",
+    destructive: "Breaking",
+    outline: "v2.0.0",
+  }
+
   return (
     <PreviewContainer>
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="default">Default</Badge>
-        <Badge variant="secondary">Secondary</Badge>
-        <Badge variant="destructive">Destructive</Badge>
-        <Badge variant="outline">Outline</Badge>
-      </div>
-      <div className="flex flex-wrap gap-2 pt-2">
-        <Badge>New feature</Badge>
-        <Badge variant="secondary">In progress</Badge>
-        <Badge variant="destructive">Breaking</Badge>
-        <Badge variant="outline">v2.0.0</Badge>
+      <div className="flex flex-wrap items-center gap-3">
+        <Badge variant={v}>{labelMap[v] ?? v}</Badge>
+        <Badge variant={v}>Status</Badge>
+        <Badge variant={v}>Label</Badge>
       </div>
     </PreviewContainer>
   )
@@ -315,7 +338,7 @@ function BadgePreview() {
 // 7. Checkbox
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CheckboxPreview() {
+function CheckboxPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-4">
@@ -340,7 +363,7 @@ function CheckboxPreview() {
 // 8. Select
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SelectPreview() {
+function SelectPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-2">
@@ -366,7 +389,7 @@ function SelectPreview() {
 // 9. Tabs
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TabsPreview() {
+function TabsPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <Tabs defaultValue="account" className="w-full">
@@ -410,7 +433,7 @@ function TabsPreview() {
 // 10. Accordion
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AccordionPreview() {
+function AccordionPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <Accordion type="single" collapsible className="w-full">
@@ -444,7 +467,7 @@ function AccordionPreview() {
 // 11. Switch
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SwitchPreview() {
+function SwitchPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-4">
@@ -469,7 +492,7 @@ function SwitchPreview() {
 // 12. Slider
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SliderPreview() {
+function SliderPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-6">
@@ -490,7 +513,7 @@ function SliderPreview() {
 // 13. Textarea
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TextareaPreview() {
+function TextareaPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="space-y-2">
@@ -508,24 +531,26 @@ function TextareaPreview() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 14. Toggle
+// 14. Toggle — variant-controlled
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TogglePreview() {
+function TogglePreview({ variant }: PreviewProps) {
+  const v = (variant ?? "default") as "default" | "outline"
+
   return (
     <PreviewContainer>
       <div className="flex items-center gap-2">
-        <Toggle aria-label="Toggle bold">
+        <Toggle variant={v} aria-label="Toggle bold">
           <Bold className="h-4 w-4" />
         </Toggle>
-        <Toggle aria-label="Toggle italic">
+        <Toggle variant={v} aria-label="Toggle italic">
           <Italic className="h-4 w-4" />
         </Toggle>
-        <Toggle variant="outline" aria-label="Toggle info">
+        <Toggle variant={v} aria-label="Toggle info">
           <Info className="h-4 w-4" />
           Info
         </Toggle>
-        <Toggle disabled aria-label="Disabled toggle">
+        <Toggle variant={v} disabled aria-label="Disabled toggle">
           <Settings className="h-4 w-4" />
         </Toggle>
       </div>
@@ -537,7 +562,7 @@ function TogglePreview() {
 // 15. Avatar
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AvatarPreview() {
+function AvatarPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div className="flex items-center gap-4">
@@ -565,7 +590,7 @@ function AvatarPreview() {
 // 16. Separator
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SeparatorPreview() {
+function SeparatorPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <div>
@@ -592,7 +617,7 @@ function SeparatorPreview() {
 // 17. Tooltip
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TooltipPreview() {
+function TooltipPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <TooltipProvider>
@@ -625,7 +650,7 @@ function TooltipPreview() {
 // 18. Table
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TablePreview() {
+function TablePreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <Table>
@@ -672,7 +697,7 @@ function TablePreview() {
 // 19. AlertDialog
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AlertDialogPreview() {
+function AlertDialogPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <AlertDialog>
@@ -704,7 +729,7 @@ function AlertDialogPreview() {
 // 20. DropdownMenu
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DropdownMenuPreview() {
+function DropdownMenuPreview(_props: PreviewProps) {
   return (
     <PreviewContainer>
       <DropdownMenu>
@@ -745,7 +770,10 @@ function DropdownMenuPreview() {
 // Preview map — the main export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const componentPreviews: Record<string, React.ComponentType> = {
+export const componentPreviews: Record<
+  string,
+  React.ComponentType<{ variant?: string }>
+> = {
   button: ButtonPreview,
   input: InputPreview,
   card: CardPreview,
@@ -772,7 +800,9 @@ export const componentPreviews: Record<string, React.ComponentType> = {
 // Helper to get a preview component by slug, with fallback
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function getComponentPreview(slug: string): React.ComponentType {
+export function getComponentPreview(
+  slug: string
+): React.ComponentType<{ variant?: string }> {
   const Preview = componentPreviews[slug]
   if (Preview) return Preview
 
@@ -782,7 +812,7 @@ export function getComponentPreview(slug: string): React.ComponentType {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("")
 
-  function ComponentFallback() {
+  function ComponentFallback(_props: PreviewProps) {
     return <FallbackPreview name={name} />
   }
   ComponentFallback.displayName = `${name}Fallback`

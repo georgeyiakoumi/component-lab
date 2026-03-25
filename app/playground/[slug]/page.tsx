@@ -17,8 +17,18 @@ export default function ComponentPage() {
 
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")
+  const [variant, setVariant] = React.useState<string>("")
 
   const component = registry.find((c) => c.slug === slug)
+
+  // Reset variant when slug changes
+  React.useEffect(() => {
+    if (component && component.variants.length > 0) {
+      setVariant(component.variants[0])
+    } else {
+      setVariant("")
+    }
+  }, [slug, component])
 
   if (!component) {
     return (
@@ -40,6 +50,9 @@ export default function ComponentPage() {
         onThemeChange={setTheme}
         breakpoint={breakpoint}
         onBreakpointChange={setBreakpoint}
+        variants={component.variants}
+        variant={variant}
+        onVariantChange={setVariant}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* ── Left: Inspect panels ───────────────────────────── */}
@@ -64,6 +77,7 @@ export default function ComponentPage() {
           componentName={component.name}
           theme={theme}
           breakpoint={breakpoint}
+          variant={variant}
         />
       </div>
     </>

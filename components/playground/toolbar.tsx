@@ -14,6 +14,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -45,6 +52,9 @@ interface ToolbarProps {
   onThemeChange?: (theme: "light" | "dark") => void
   breakpoint?: Breakpoint
   onBreakpointChange?: (breakpoint: Breakpoint) => void
+  variants?: readonly string[]
+  variant?: string
+  onVariantChange?: (variant: string) => void
   className?: string
 }
 
@@ -56,8 +66,13 @@ export function PlaygroundToolbar({
   onThemeChange,
   breakpoint = "2xl",
   onBreakpointChange,
+  variants,
+  variant,
+  onVariantChange,
   className,
 }: ToolbarProps) {
+  const hasVariants = variants && variants.length > 0
+
   return (
     <TooltipProvider delayDuration={300}>
       <div
@@ -81,6 +96,26 @@ export function PlaygroundToolbar({
 
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
+
+        {/* ── Variant selector ─────────────────────────────────── */}
+        {hasVariants && (
+          <>
+            <Select value={variant} onValueChange={onVariantChange}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Variant" />
+              </SelectTrigger>
+              <SelectContent>
+                {variants.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Separator orientation="vertical" className="mx-1.5 h-6" />
+          </>
+        )}
 
         {/* ── Breakpoint controls ─────────────────────────────── */}
         <div className="flex items-center gap-0.5">
