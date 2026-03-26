@@ -14,6 +14,7 @@ import {
 import { ComponentCanvas } from "@/components/playground/component-canvas"
 import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
+import { TwPanel } from "@/components/playground/tw-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ComponentPage() {
@@ -83,12 +84,16 @@ export default function ComponentPage() {
             <TabsList className="mx-2 mt-2">
               <TabsTrigger value="structure">Structure</TabsTrigger>
               <TabsTrigger value="code">Code</TabsTrigger>
+              <TabsTrigger value="styles">Styles</TabsTrigger>
             </TabsList>
             <TabsContent value="structure" className="flex-1 overflow-auto">
               <StructurePanel slug={slug} />
             </TabsContent>
             <TabsContent value="code" className="flex-1 overflow-hidden">
               <CodePanel code={displaySource} />
+            </TabsContent>
+            <TabsContent value="styles" className="flex-1 overflow-hidden">
+              <TwPanel source={source} />
             </TabsContent>
           </Tabs>
         </div>
