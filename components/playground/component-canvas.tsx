@@ -27,10 +27,10 @@ export function ComponentCanvas({
   const maxWidth = bp?.width
 
   return (
-    <div className="flex flex-1 items-start justify-center overflow-auto bg-muted/30 p-8">
+    <div className="flex flex-1 justify-center overflow-auto bg-background">
       <div
         className={cn(
-          "w-full rounded-lg border border-border bg-background p-8 text-foreground shadow-sm transition-all duration-300",
+          "flex w-full items-center justify-center p-8 text-foreground transition-all duration-300",
           theme === "dark" && "dark",
         )}
         style={{

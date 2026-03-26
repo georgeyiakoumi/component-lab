@@ -119,7 +119,7 @@ interface RenderableComponent {
 /* ── Preview container ──────────────────────────────────────────── */
 
 function PreviewContainer({ children }: { children: React.ReactNode }) {
-  return <div className="w-full p-6 space-y-4">{children}</div>
+  return <>{children}</>
 }
 
 /* ── Renderable component map ──────────────────────────────────── */
@@ -139,20 +139,16 @@ const renderableComponents: Record<string, RenderableComponent> = {
       const s = (props.size ?? "default") as "default" | "sm" | "lg" | "icon"
 
       return (
-        <PreviewContainer>
-          <div className="flex items-center justify-center">
-            <Button variant={v} size={s}>
-              {s === "icon" ? (
-                <Mail className="h-4 w-4" />
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Button
-                </>
-              )}
-            </Button>
-          </div>
-        </PreviewContainer>
+        <Button variant={v} size={s}>
+          {s === "icon" ? (
+            <Mail className="h-4 w-4" />
+          ) : (
+            <>
+              <Mail className="mr-2 h-4 w-4" />
+              Button
+            </>
+          )}
+        </Button>
       )
     },
   },
