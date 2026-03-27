@@ -19,6 +19,7 @@ import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
+import { DragHandle } from "@/components/playground/drag-handle"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ComponentPage() {
@@ -31,6 +32,7 @@ export default function ComponentPage() {
   const [mode, setMode] = React.useState<PlaygroundMode>("inspect")
   const [selectedElement, setSelectedElement] =
     React.useState<ElementInfo | null>(null)
+  const [leftPanelWidth, setLeftPanelWidth] = React.useState(350)
 
   const component = registry.find((c) => c.slug === slug)
 
@@ -115,7 +117,10 @@ export default function ComponentPage() {
       {/* ── Main content area ────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
         {/* ── Left: Code + Structure (inspect views) ─────────── */}
-        <div className="flex w-[350px] shrink-0 flex-col border-r">
+        <div
+          className="flex shrink-0 flex-col border-r"
+          style={{ width: `${leftPanelWidth}px` }}
+        >
           <Tabs defaultValue="code" className="flex flex-1 flex-col">
             <TabsList className="mx-2 mt-2 shrink-0">
               <TabsTrigger value="code">Code</TabsTrigger>
@@ -131,6 +136,15 @@ export default function ComponentPage() {
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* ── Left panel resize handle ──────────────────────── */}
+        <DragHandle
+          width={leftPanelWidth}
+          minWidth={250}
+          maxWidth={600}
+          onWidthChange={setLeftPanelWidth}
+          side="left"
+        />
 
         {/* ── Centre: Component preview canvas ───────────────── */}
         <ComponentCanvas
