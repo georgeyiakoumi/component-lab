@@ -8,6 +8,13 @@ import { registry, type ComponentMeta } from "@/lib/registry"
 // Types
 // ---------------------------------------------------------------------------
 
+export interface CustomVariantDef {
+  name: string
+  type: "variant" | "boolean"
+  options: string[]
+  defaultValue: string
+}
+
 export interface ComponentEdit {
   slug: string
   /** Sub-components that are currently active (for compound components) */
@@ -16,6 +23,8 @@ export interface ComponentEdit {
   customClasses: Record<string, string[]>
   /** Custom variants added by the user, keyed by variant name */
   customVariants: Record<string, Record<string, string>>
+  /** Structured custom variant definitions created by the user */
+  customVariantDefs: CustomVariantDef[]
   /** Whether the component has been modified from its default state */
   isDirty: boolean
 }
@@ -62,6 +71,7 @@ export function createDefaultEdit(
     activeSubComponents: meta.isCompound ? [...meta.subComponents] : [],
     customClasses: {},
     customVariants: {},
+    customVariantDefs: [],
     isDirty: false,
   }
 }
@@ -88,6 +98,21 @@ interface ComponentEditContextValue {
   addCustomClass: (elementId: string, className: string) => void
   /** Remove a custom Tailwind class from an element */
   removeCustomClass: (elementId: string, className: string) => void
+  /** Add a custom variant definition */
+  addCustomVariant: (
+    name: string,
+    type: "variant" | "boolean",
+    options: string[],
+    defaultValue: string,
+  ) => void
+  /** Update an existing custom variant definition */
+  updateCustomVariant: (
+    name: string,
+    options: string[],
+    defaultValue: string,
+  ) => void
+  /** Remove a custom variant definition */
+  removeCustomVariant: (name: string) => void
   /** Reset all edits back to the original default state */
   resetToOriginal: () => void
 }
@@ -118,6 +143,7 @@ export function ComponentEditProvider({
           activeSubComponents: [],
           customClasses: {},
           customVariants: {},
+          customVariantDefs: [],
           isDirty: false,
         },
   )
@@ -133,6 +159,7 @@ export function ComponentEditProvider({
         activeSubComponents: [],
         customClasses: {},
         customVariants: {},
+        customVariantDefs: [],
         isDirty: false,
       })
     }
@@ -193,6 +220,51 @@ export function ComponentEditProvider({
     [],
   )
 
+  const addCustomVariant = React.useCallback(
+    (
+      name: string,
+      type: "variant" | "boolean",
+      options: string[],
+      defaultValue: string,
+    ) => {
+      setEdit((prev) => {
+        // Prevent duplicates
+        if (prev.customVariantDefs.some((v) => v.name === name)) return prev
+
+        return {
+          ...prev,
+          customVariantDefs: [
+            ...prev.customVariantDefs,
+            { name, type, options, defaultValue },
+          ],
+          isDirty: true,
+        }
+      })
+    },
+    [],
+  )
+
+  const updateCustomVariant = React.useCallback(
+    (name: string, options: string[], defaultValue: string) => {
+      setEdit((prev) => ({
+        ...prev,
+        customVariantDefs: prev.customVariantDefs.map((v) =>
+          v.name === name ? { ...v, options, defaultValue } : v,
+        ),
+        isDirty: true,
+      }))
+    },
+    [],
+  )
+
+  const removeCustomVariant = React.useCallback((name: string) => {
+    setEdit((prev) => ({
+      ...prev,
+      customVariantDefs: prev.customVariantDefs.filter((v) => v.name !== name),
+      isDirty: true,
+    }))
+  }, [])
+
   const resetToOriginal = React.useCallback(() => {
     const currentMeta = registry.find((c) => c.slug === slug)
     if (currentMeta) {
@@ -208,6 +280,9 @@ export function ComponentEditProvider({
       toggleSubComponent,
       addCustomClass,
       removeCustomClass,
+      addCustomVariant,
+      updateCustomVariant,
+      removeCustomVariant,
       resetToOriginal,
     }),
     [
@@ -217,6 +292,9 @@ export function ComponentEditProvider({
       toggleSubComponent,
       addCustomClass,
       removeCustomClass,
+      addCustomVariant,
+      updateCustomVariant,
+      removeCustomVariant,
       resetToOriginal,
     ],
   )

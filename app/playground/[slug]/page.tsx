@@ -20,6 +20,7 @@ import { TwEditorPanel } from "@/components/playground/tw-editor-panel"
 import { A11yPanel } from "@/components/playground/a11y-panel"
 import { SemanticPanel } from "@/components/playground/semantic-panel"
 import { SubComponentPanel } from "@/components/playground/sub-component-panel"
+import { VariantPanel } from "@/components/playground/variant-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ComponentPage() {
@@ -93,6 +94,7 @@ export default function ComponentPage() {
               <TabsTrigger value="classes">Classes</TabsTrigger>
               <TabsTrigger value="a11y">A11y</TabsTrigger>
               <TabsTrigger value="semantic">Semantic</TabsTrigger>
+              <TabsTrigger value="variants">Variants</TabsTrigger>
               {component.isCompound && (
                 <TabsTrigger value="sub-components">Parts</TabsTrigger>
               )}
@@ -116,6 +118,9 @@ export default function ComponentPage() {
             </TabsContent>
             <TabsContent value="semantic" className="flex-1 overflow-hidden">
               <SemanticPanel source={source} />
+            </TabsContent>
+            <TabsContent value="variants" className="flex-1 overflow-hidden">
+              <VariantPanel source={source} />
             </TabsContent>
             {component.isCompound && (
               <TabsContent value="sub-components" className="flex-1 overflow-hidden">
