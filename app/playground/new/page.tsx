@@ -30,13 +30,14 @@ import {
   type ComponentMeta,
 } from "@/lib/registry"
 import { componentSources } from "@/lib/component-source"
-import { toPascalCase } from "@/lib/code-generator"
+import { toPascalCase, generateFromTree } from "@/lib/code-generator"
 import {
   generateId,
   saveUserComponent,
   toSlug,
   type UserComponent,
 } from "@/lib/component-store"
+import { createComponentTree } from "@/lib/component-tree"
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -141,13 +142,15 @@ export default function NewComponentPage() {
     const now = new Date().toISOString()
 
     let source: string
+    let tree = undefined
 
     if (mode === "copy") {
       const originalSource = componentSources[selectedComponent] ?? ""
       source = renameComponentInSource(originalSource, selectedComponent, componentName)
     } else {
-      // Generate a minimal from-scratch component
-      source = generateMinimalComponent(componentName, baseElement)
+      // Generate a from-scratch component with a tree structure
+      tree = createComponentTree(componentName, baseElement)
+      source = generateFromTree(tree)
     }
 
     const component: UserComponent = {
@@ -155,6 +158,7 @@ export default function NewComponentPage() {
       name: componentName,
       slug,
       source,
+      tree,
       basedOn: mode === "copy" ? selectedComponent : undefined,
       createdAt: now,
       updatedAt: now,

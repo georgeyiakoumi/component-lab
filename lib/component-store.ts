@@ -1,6 +1,8 @@
 // Component Store — client-side persistence for user-created components
 // Uses localStorage until Supabase auth arrives in M4.
 
+import type { ComponentTree } from "@/lib/component-tree"
+
 /* ── Types ──────────────────────────────────────────────────────── */
 
 export interface UserComponent {
@@ -8,6 +10,7 @@ export interface UserComponent {
   name: string        // PascalCase, e.g. "MyCard"
   slug: string        // kebab-case, e.g. "my-card"
   source: string      // the .tsx source code
+  tree?: ComponentTree // only for from-scratch components
   basedOn?: string    // slug of the component it was forked from
   createdAt: string   // ISO date
   updatedAt: string   // ISO date

@@ -4,11 +4,13 @@ import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 
 import { parseCvaVariants } from "@/lib/cva-parser"
+import { generateFromTree } from "@/lib/code-generator"
 import { ComponentEditProvider } from "@/lib/component-state"
 import {
   getUserComponent,
   saveUserComponent,
 } from "@/lib/component-store"
+import type { ComponentTree } from "@/lib/component-tree"
 import type { ElementInfo } from "@/components/playground/element-selector"
 import {
   PlaygroundToolbar,
@@ -21,6 +23,7 @@ import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
+import { BuilderPanel } from "@/components/playground/builder-panel"
 import { DragHandle } from "@/components/playground/drag-handle"
 
 export default function CustomComponentPage() {
@@ -32,6 +35,9 @@ export default function CustomComponentPage() {
     getUserComponent(slug),
   )
   const [source, setSource] = React.useState(userComponent?.source ?? "")
+  const [componentTree, setComponentTree] = React.useState<
+    ComponentTree | undefined
+  >(userComponent?.tree)
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")
   const [propValues, setPropValues] = React.useState<Record<string, string>>({})
@@ -43,11 +49,14 @@ export default function CustomComponentPage() {
   const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
+  const hasTree = componentTree !== undefined
+
   // Reload from store when slug changes
   React.useEffect(() => {
     const uc = getUserComponent(slug)
     setUserComponent(uc)
     setSource(uc?.source ?? "")
+    setComponentTree(uc?.tree)
   }, [slug])
 
   // Parse cva variants from source
@@ -76,6 +85,7 @@ export default function CustomComponentPage() {
       const updated = {
         ...userComponent,
         source,
+        tree: componentTree,
         updatedAt: new Date().toISOString(),
       }
       saveUserComponent(updated)
@@ -83,7 +93,17 @@ export default function CustomComponentPage() {
     }, 1000)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source])
+  }, [source, componentTree])
+
+  // When the tree changes, regenerate source code
+  const handleTreeChange = React.useCallback(
+    (newTree: ComponentTree) => {
+      setComponentTree(newTree)
+      const newSource = generateFromTree(newTree)
+      setSource(newSource)
+    },
+    [],
+  )
 
   if (!userComponent) {
     return (
@@ -208,7 +228,7 @@ export default function CustomComponentPage() {
             (contentRef.current?.offsetWidth ?? 1200)
             - structurePanelWidth
             - 200
-            - (mode === "edit" ? 320 : 0)
+            - (hasTree || mode === "edit" ? 320 : 0)
           }
           onWidthChange={setCodePanelWidth}
           side="left"
@@ -226,15 +246,27 @@ export default function CustomComponentPage() {
           onElementHover={() => {}}
         />
 
-        {/* ── Right: Edit panels ────────────────────────────────── */}
-        <RightPanel
-          isOpen={mode === "edit"}
-          source={source}
-          isCompound={false}
-          selectedElement={selectedElement}
-          onClassChange={handleClassChange}
-          onDeselect={handleDeselect}
-        />
+        {/* ── Right panel: Builder (tree) or generic edit panel ── */}
+        {hasTree ? (
+          <div
+            className="flex shrink-0"
+            style={{ width: "320px" }}
+          >
+            <BuilderPanel
+              tree={componentTree}
+              onTreeChange={handleTreeChange}
+            />
+          </div>
+        ) : (
+          <RightPanel
+            isOpen={mode === "edit"}
+            source={source}
+            isCompound={false}
+            selectedElement={selectedElement}
+            onClassChange={handleClassChange}
+            onDeselect={handleDeselect}
+          />
+        )}
       </div>
 
       {/* ── Bottom: Status bar ──────────────────────────────────── */}
