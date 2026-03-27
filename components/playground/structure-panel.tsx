@@ -1,0 +1,110 @@
+"use client"
+
+import * as React from "react"
+import { Code2, ChevronRight } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { registry, type ComponentMeta } from "@/lib/registry"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+/* ── Types ──────────────────────────────────────────────────────── */
+
+interface StructurePanelProps {
+  slug: string
+  className?: string
+}
+
+/* ── Component ──────────────────────────────────────────────────── */
+
+export function StructurePanel({ slug, className }: StructurePanelProps) {
+  const component = registry.find((c) => c.slug === slug)
+
+  if (!component) {
+    return (
+      <div className={cn("flex items-center justify-center p-8", className)}>
+        <p className="text-sm text-muted-foreground">Component not found</p>
+      </div>
+    )
+  }
+
+  return (
+    <ScrollArea className={cn("h-full", className)}>
+      <div className="p-4">
+        <div className="space-y-1">
+          {/* ── Root node ──────────────────────────────────── */}
+          <TreeNode
+            name={component.name}
+            isRoot
+            isCompound={component.isCompound}
+          />
+
+          {/* ── Child nodes ────────────────────────────────── */}
+          {component.isCompound && component.subComponents.length > 0 && (
+            <div className="ml-3 border-l border-border pl-3 space-y-0.5">
+              {component.subComponents.map((sub) => (
+                <TreeNode key={sub} name={sub} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Metadata ──────────────────────────────────────── */}
+        {component.variants.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Variants
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {component.variants.map((variant) => (
+                <span
+                  key={variant}
+                  className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs text-muted-foreground"
+                >
+                  {variant}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </ScrollArea>
+  )
+}
+
+/* ── TreeNode ──────────────────────────────────────────────────── */
+
+interface TreeNodeProps {
+  name: string
+  isRoot?: boolean
+  isCompound?: boolean
+}
+
+function TreeNode({ name, isRoot, isCompound }: TreeNodeProps) {
+  const handleClick = React.useCallback(() => {
+    // eslint-disable-next-line no-console
+    console.log(`[StructurePanel] clicked: ${name}`)
+  }, [name])
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/50",
+        isRoot && "font-medium",
+      )}
+    >
+      {isRoot ? (
+        <Code2 className="size-4 shrink-0 text-blue-500" />
+      ) : (
+        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <span className={cn(isRoot ? "text-foreground" : "text-muted-foreground")}>
+        {name}
+      </span>
+      {isRoot && isCompound && (
+        <span className="ml-auto text-xs text-muted-foreground">compound</span>
+      )}
+    </button>
+  )
+}

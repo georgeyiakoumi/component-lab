@@ -46,8 +46,8 @@
     /* ── Font ─────────────────────────────────────────────────
        Set your chosen font family here and in tailwind.config.ts
     ───────────────────────────────────────────────────────── */
-    --font-sans: system-ui, sans-serif;
-    --font-mono: ui-monospace, monospace;
+    --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+    --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   }
 
   .dark {
