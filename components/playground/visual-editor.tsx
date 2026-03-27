@@ -451,9 +451,10 @@ function PositionGrid({
   onAlignChange: (v: string) => void
 }) {
   const isGrid = display === "grid"
+  const isBetween = justify === "justify-between"
+  const isStretch = align === "items-stretch"
 
   function getTooltip(j: string, a: string): string {
-    // Check if we can use place-items shorthand (grid only, matching axes)
     if (isGrid) {
       const shorthand = PLACE_ITEMS_MAP[j]?.[a]
       if (shorthand) return shorthand
@@ -467,7 +468,21 @@ function PositionGrid({
       <div className="inline-grid grid-cols-3 gap-0.5 rounded-md border p-0.5">
         {ALIGN_KEYS.map((a) =>
           JUSTIFY_KEYS.map((j) => {
-            const isActive = justify === j && align === a
+            // Determine active state considering between/stretch overrides
+            const justifyMatch = isBetween || justify === j
+            const alignMatch = isStretch || align === a
+            const isActive = justifyMatch && alignMatch && !isBetween && !isStretch
+            // When between is on, highlight the full row for the active align
+            const isRowHighlight = isBetween && !isStretch && align === a
+            // When stretch is on, highlight the full column for the active justify
+            const isColHighlight = isStretch && !isBetween && justify === j
+            // When both are on, all cells get a subtle highlight
+            const isBothHighlight = isBetween && isStretch
+            const highlighted = isActive || isRowHighlight || isColHighlight || isBothHighlight
+
+            // Grid cell is disabled when between/stretch override that axis
+            const isDisabled = (isBetween && !isStretch) || (isStretch && !isBetween)
+
             const tooltipText = getTooltip(j, a)
             return (
               <Tooltip key={`${j}-${a}`}>
@@ -476,21 +491,45 @@ function PositionGrid({
                     type="button"
                     className={cn(
                       "flex size-7 items-center justify-center rounded-sm transition-colors",
-                      isActive
-                        ? "bg-blue-500 text-white"
-                        : "hover:bg-muted text-muted-foreground",
+                      highlighted
+                        ? "bg-blue-500/15 text-blue-500"
+                        : "text-muted-foreground hover:bg-muted",
+                      isActive && "!bg-blue-500 !text-white",
                     )}
                     onClick={() => {
-                      onJustifyChange(j)
-                      onAlignChange(a)
+                      // When between is active, clicking a cell only sets align
+                      // When stretch is active, clicking a cell only sets justify
+                      if (isBetween) {
+                        onAlignChange(a)
+                      } else if (isStretch) {
+                        onJustifyChange(j)
+                      } else {
+                        onJustifyChange(j)
+                        onAlignChange(a)
+                      }
                     }}
                   >
-                    <div
-                      className={cn(
+                    {/* Dot shape changes based on between/stretch */}
+                    {isBetween && isStretch ? (
+                      // Both: show a stretched horizontal bar
+                      <div className="h-1 w-3 rounded-full bg-current" />
+                    ) : isBetween ? (
+                      // Between: show 3 small dots in a row (spread)
+                      <div className="flex w-3 items-center justify-between">
+                        <div className="size-1 rounded-full bg-current" />
+                        <div className="size-1 rounded-full bg-current" />
+                        <div className="size-1 rounded-full bg-current" />
+                      </div>
+                    ) : isStretch ? (
+                      // Stretch: show a vertical bar
+                      <div className="h-3 w-1 rounded-full bg-current" />
+                    ) : (
+                      // Normal: single dot
+                      <div className={cn(
                         "size-1.5 rounded-full",
                         isActive ? "bg-white" : "bg-current",
-                      )}
-                    />
+                      )} />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-[10px] font-mono">
@@ -502,7 +541,7 @@ function PositionGrid({
         )}
       </div>
 
-      {/* Extra options that don't fit the grid */}
+      {/* Between + Stretch toggles */}
       <div className="flex gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -510,11 +549,11 @@ function PositionGrid({
               type="button"
               className={cn(
                 "flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] transition-colors",
-                justify === "justify-between"
+                isBetween
                   ? "border-blue-500 bg-blue-500/10 text-blue-500"
                   : "text-muted-foreground hover:bg-muted",
               )}
-              onClick={() => onJustifyChange(justify === "justify-between" ? "" : "justify-between")}
+              onClick={() => onJustifyChange(isBetween ? "justify-start" : "justify-between")}
             >
               <StretchHorizontal className="size-3" />
               between
@@ -531,11 +570,11 @@ function PositionGrid({
               type="button"
               className={cn(
                 "flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] transition-colors",
-                align === "items-stretch"
+                isStretch
                   ? "border-blue-500 bg-blue-500/10 text-blue-500"
                   : "text-muted-foreground hover:bg-muted",
               )}
-              onClick={() => onAlignChange(align === "items-stretch" ? "" : "items-stretch")}
+              onClick={() => onAlignChange(isStretch ? "items-start" : "items-stretch")}
             >
               <StretchVertical className="size-3" />
               stretch
@@ -993,22 +1032,30 @@ export function VisualEditor({
             </ControlRow>
 
             <ControlRow label="Gap">
-              <Select
-                value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
-                onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
-              >
-                <SelectTrigger className="h-6 w-20 text-[10px]">
-                  <SelectValue placeholder="–" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">–</SelectItem>
-                  {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {v} ({SPACING_PX[v] ?? ""})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className={cn(state.justify === "justify-between" && "opacity-40 pointer-events-none")}>
+                <Select
+                  value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
+                  onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
+                  disabled={state.justify === "justify-between"}
+                >
+                  <SelectTrigger className="h-6 w-20 text-[10px]">
+                    <SelectValue placeholder="–" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v} ({SPACING_PX[v] ?? ""})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {state.justify === "justify-between" && (
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+                    Disabled — between handles spacing
+                  </p>
+                )}
+              </div>
             </ControlRow>
           </ControlSection>
 
