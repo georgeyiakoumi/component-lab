@@ -192,6 +192,54 @@ export function findNode(
   return undefined
 }
 
+/** Move a node to before, after, or inside another node. */
+export function moveNode(
+  root: ElementNode,
+  dragId: string,
+  targetId: string,
+  position: "before" | "after" | "inside",
+): ElementNode {
+  // Don't move a node into itself
+  if (dragId === targetId) return root
+
+  // First, find and extract the dragged node
+  const dragNode = findNode(root, dragId)
+  if (!dragNode) return root
+
+  // Remove the dragged node from its current position
+  const treeWithout = removeNode(root, dragId)
+
+  // Now insert it at the target position
+  if (position === "inside") {
+    return addChild(treeWithout, targetId, dragNode)
+  }
+
+  // For before/after, we need to insert as a sibling of the target
+  return insertSibling(treeWithout, targetId, dragNode, position)
+}
+
+/** Insert a node as a sibling of the target (before or after). */
+function insertSibling(
+  tree: ElementNode,
+  targetId: string,
+  newNode: ElementNode,
+  position: "before" | "after",
+): ElementNode {
+  const idx = tree.children.findIndex((c) => c.id === targetId)
+  if (idx !== -1) {
+    const insertIdx = position === "before" ? idx : idx + 1
+    const newChildren = [...tree.children]
+    newChildren.splice(insertIdx, 0, newNode)
+    return { ...tree, children: newChildren }
+  }
+  return {
+    ...tree,
+    children: tree.children.map((c) =>
+      insertSibling(c, targetId, newNode, position),
+    ),
+  }
+}
+
 /** Move a node up or down among its siblings. */
 export function reorderNode(
   tree: ElementNode,

@@ -56,6 +56,7 @@ import {
   removeNode,
   updateNodeClasses,
   updateNodeText,
+  moveNode,
 } from "@/lib/component-tree"
 import type { CustomVariantDef } from "@/lib/component-state"
 
@@ -264,6 +265,10 @@ export function BuilderPanel({
                     const newAssembly = updateNodeText(tree.assemblyTree, nodeId, text || undefined)
                     onTreeChange({ ...tree, assemblyTree: newAssembly })
                   }}
+                  onMoveNode={(dragId, targetId, position) => {
+                    const newAssembly = moveNode(tree.assemblyTree, dragId, targetId, position)
+                    onTreeChange({ ...tree, assemblyTree: newAssembly })
+                  }}
                 />
               </BuilderSection>
 
@@ -328,6 +333,10 @@ export function BuilderPanel({
                   }}
                   onUpdateText={(nodeId, text) => {
                     const newTree = updateNodeText(focusedTree, nodeId, text || undefined)
+                    handleTreeUpdate(newTree)
+                  }}
+                  onMoveNode={(dragId, targetId, position) => {
+                    const newTree = moveNode(focusedTree, dragId, targetId, position)
                     handleTreeUpdate(newTree)
                   }}
                 />
@@ -503,6 +512,8 @@ function BuilderSection({
 
 /* ── ElementTree ────────────────────────────────────────────────── */
 
+type DropPosition = "before" | "after" | "inside"
+
 interface ElementTreeProps {
   node: ElementNode
   depth: number
@@ -514,6 +525,7 @@ interface ElementTreeProps {
   onRemoveNode: (nodeId: string) => void
   onUpdateClasses: (nodeId: string, classes: string[]) => void
   onUpdateText: (nodeId: string, text: string) => void
+  onMoveNode?: (dragId: string, targetId: string, position: DropPosition) => void
 }
 
 function ElementTree({
@@ -527,20 +539,77 @@ function ElementTree({
   onRemoveNode,
   onUpdateClasses,
   onUpdateText,
+  onMoveNode,
 }: ElementTreeProps) {
   const [expanded, setExpanded] = React.useState(true)
+  const [dropPosition, setDropPosition] = React.useState<DropPosition | null>(null)
+  const rowRef = React.useRef<HTMLDivElement>(null)
   const isSelected = selectedNodeId === node.id
   const hasChildren = node.children.length > 0
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (isRoot) { e.preventDefault(); return }
+    e.dataTransfer.setData("text/plain", node.id)
+    e.dataTransfer.effectAllowed = "move"
+    e.stopPropagation()
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = rowRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const y = e.clientY - rect.top
+    const third = rect.height / 3
+    if (y < third) {
+      setDropPosition("before")
+    } else if (y > third * 2) {
+      setDropPosition("after")
+    } else {
+      setDropPosition("inside")
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation()
+    setDropPosition(null)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const dragId = e.dataTransfer.getData("text/plain")
+    if (dragId && dragId !== node.id && dropPosition && onMoveNode) {
+      onMoveNode(dragId, node.id, dropPosition)
+    }
+    setDropPosition(null)
+  }
+
   return (
     <div>
+      {/* Drop indicator: before */}
+      {dropPosition === "before" && (
+        <div
+          className="h-0.5 rounded-full bg-blue-500"
+          style={{ marginLeft: `${depth * 16 + 4}px`, marginRight: "4px" }}
+        />
+      )}
+
       {/* Node row */}
       <div
+        ref={rowRef}
+        draggable={!isRoot}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
           "group flex items-center gap-1 rounded-md py-1 pr-1 transition-colors",
           isSelected
             ? "bg-primary/10 text-primary"
             : "hover:bg-muted/40",
+          dropPosition === "inside" && "ring-2 ring-blue-500 ring-inset bg-blue-500/5",
+          !isRoot && "cursor-grab active:cursor-grabbing",
         )}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
       >
@@ -657,8 +726,17 @@ function ElementTree({
             onRemoveNode={onRemoveNode}
             onUpdateClasses={onUpdateClasses}
             onUpdateText={onUpdateText}
+            onMoveNode={onMoveNode}
           />
         ))}
+
+      {/* Drop indicator: after */}
+      {dropPosition === "after" && (
+        <div
+          className="h-0.5 rounded-full bg-blue-500"
+          style={{ marginLeft: `${depth * 16 + 4}px`, marginRight: "4px" }}
+        />
+      )}
     </div>
   )
 }
