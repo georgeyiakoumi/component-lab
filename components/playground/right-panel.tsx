@@ -1,14 +1,21 @@
 "use client"
 
+import * as React from "react"
+
 import { cn } from "@/lib/utils"
 import { TwPanel } from "@/components/playground/tw-panel"
 import { TwEditorPanel } from "@/components/playground/tw-editor-panel"
 import { VariantPanel } from "@/components/playground/variant-panel"
 import { SubComponentPanel } from "@/components/playground/sub-component-panel"
 import { VisualEditor } from "@/components/playground/visual-editor"
+import { DragHandle } from "@/components/playground/drag-handle"
 import type { ElementInfo } from "@/components/playground/element-selector"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+const MIN_WIDTH = 280
+const MAX_WIDTH = 550
+const DEFAULT_WIDTH = 320
 
 interface RightPanelProps {
   isOpen: boolean
@@ -28,15 +35,32 @@ export function RightPanel({
   onDeselect,
 }: RightPanelProps) {
   const showVisualEditor = selectedElement != null
+  const [width, setWidth] = React.useState(DEFAULT_WIDTH)
 
   return (
     <div
       className={cn(
-        "shrink-0 overflow-hidden border-l bg-background transition-all duration-300",
-        isOpen ? "w-[320px] opacity-100" : "w-0 border-l-0 opacity-0",
+        "flex shrink-0 overflow-hidden transition-all duration-300",
+        isOpen ? "opacity-100" : "w-0 opacity-0",
       )}
+      style={isOpen ? { width: `${width + 4}px` } : undefined}
     >
-      <div className="flex h-full w-[320px] flex-col">
+      {/* ── Drag handle (left edge) ──────────────────────── */}
+      {isOpen && (
+        <DragHandle
+          width={width}
+          minWidth={MIN_WIDTH}
+          maxWidth={MAX_WIDTH}
+          onWidthChange={setWidth}
+          side="right"
+        />
+      )}
+
+      {/* ── Panel content ────────────────────────────────── */}
+      <div
+        className="flex flex-1 flex-col border-l bg-background"
+        style={{ width: `${width}px` }}
+      >
         {showVisualEditor ? (
           <VisualEditor
             selectedElement={selectedElement}
