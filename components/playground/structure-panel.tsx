@@ -132,9 +132,6 @@ function TreeNode({ name, isRoot, isCompound, onClick }: TreeNodeProps) {
       <span className={cn(isRoot ? "text-foreground" : "text-muted-foreground")}>
         {name}
       </span>
-      {isRoot && isCompound && (
-        <span className="ml-auto text-xs text-muted-foreground">compound</span>
-      )}
     </button>
   )
 }
