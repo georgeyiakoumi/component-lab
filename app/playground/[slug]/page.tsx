@@ -10,17 +10,14 @@ import { ComponentEditProvider } from "@/lib/component-state"
 import {
   PlaygroundToolbar,
   type Breakpoint,
+  type PlaygroundMode,
   type PropSelector,
 } from "@/components/playground/toolbar"
 import { ComponentCanvas } from "@/components/playground/component-canvas"
 import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
-import { TwPanel } from "@/components/playground/tw-panel"
-import { TwEditorPanel } from "@/components/playground/tw-editor-panel"
-import { A11yPanel } from "@/components/playground/a11y-panel"
-import { SemanticPanel } from "@/components/playground/semantic-panel"
-import { SubComponentPanel } from "@/components/playground/sub-component-panel"
-import { VariantPanel } from "@/components/playground/variant-panel"
+import { StatusBar } from "@/components/playground/status-bar"
+import { RightPanel } from "@/components/playground/right-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ComponentPage() {
@@ -30,6 +27,7 @@ export default function ComponentPage() {
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")
   const [propValues, setPropValues] = React.useState<Record<string, string>>({})
+  const [mode, setMode] = React.useState<PlaygroundMode>("inspect")
 
   const component = registry.find((c) => c.slug === slug)
 
@@ -75,6 +73,7 @@ export default function ComponentPage() {
 
   return (
     <ComponentEditProvider slug={slug}>
+      {/* ── Toolbar ──────────────────────────────────────────── */}
       <PlaygroundToolbar
         componentName={component.name}
         slug={slug}
@@ -84,55 +83,31 @@ export default function ComponentPage() {
         breakpoint={breakpoint}
         onBreakpointChange={setBreakpoint}
         propSelectors={propSelectors}
+        mode={mode}
+        onModeChange={setMode}
       />
+
+      {/* ── Main content area ────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left: Inspect panels ───────────────────────────── */}
-        <div className="flex w-[400px] shrink-0 flex-col border-r">
+        {/* ── Left: Code + Structure (inspect views) ─────────── */}
+        <div className="flex w-[350px] shrink-0 flex-col border-r">
           <Tabs defaultValue="code" className="flex flex-1 flex-col">
-            <TabsList className="mx-2 mt-2">
-              <TabsTrigger value="structure">Structure</TabsTrigger>
+            <TabsList className="mx-2 mt-2 shrink-0">
               <TabsTrigger value="code">Code</TabsTrigger>
-              <TabsTrigger value="styles">Styles</TabsTrigger>
-              <TabsTrigger value="classes">Classes</TabsTrigger>
-              <TabsTrigger value="a11y">A11y</TabsTrigger>
-              <TabsTrigger value="semantic">Semantic</TabsTrigger>
-              <TabsTrigger value="variants">Variants</TabsTrigger>
-              {component.isCompound && (
-                <TabsTrigger value="sub-components">Parts</TabsTrigger>
-              )}
+              <TabsTrigger value="structure">Structure</TabsTrigger>
             </TabsList>
-            <TabsContent value="structure" className="flex-1 overflow-auto">
-              <StructurePanel slug={slug} />
-            </TabsContent>
             <TabsContent value="code" className="relative flex-1 overflow-hidden">
               <div className="absolute inset-0">
                 <CodePanel code={displaySource} />
               </div>
             </TabsContent>
-            <TabsContent value="styles" className="flex-1 overflow-hidden">
-              <TwPanel source={source} />
+            <TabsContent value="structure" className="flex-1 overflow-auto">
+              <StructurePanel slug={slug} />
             </TabsContent>
-            <TabsContent value="classes" className="flex-1 overflow-hidden">
-              <TwEditorPanel source={source} />
-            </TabsContent>
-            <TabsContent value="a11y" className="flex-1 overflow-hidden">
-              <A11yPanel source={source} />
-            </TabsContent>
-            <TabsContent value="semantic" className="flex-1 overflow-hidden">
-              <SemanticPanel source={source} />
-            </TabsContent>
-            <TabsContent value="variants" className="flex-1 overflow-hidden">
-              <VariantPanel source={source} />
-            </TabsContent>
-            {component.isCompound && (
-              <TabsContent value="sub-components" className="flex-1 overflow-hidden">
-                <SubComponentPanel />
-              </TabsContent>
-            )}
           </Tabs>
         </div>
 
-        {/* ── Right: Component preview ───────────────────────── */}
+        {/* ── Centre: Component preview canvas ───────────────── */}
         <ComponentCanvas
           slug={slug}
           componentName={component.name}
@@ -140,7 +115,17 @@ export default function ComponentPage() {
           breakpoint={breakpoint}
           previewProps={previewProps}
         />
+
+        {/* ── Right: Edit panels (slides in when edit mode) ──── */}
+        <RightPanel
+          isOpen={mode === "edit"}
+          source={source}
+          isCompound={component.isCompound}
+        />
       </div>
+
+      {/* ── Bottom: A11y + Semantic status bar ────────────────── */}
+      <StatusBar source={source} />
     </ComponentEditProvider>
   )
 }

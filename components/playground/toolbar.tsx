@@ -8,6 +8,8 @@ import {
   Smartphone,
   Moon,
   Sun,
+  Eye,
+  Pencil,
 } from "lucide-react"
 import { ExportDialog } from "@/components/playground/export-dialog"
 
@@ -47,6 +49,8 @@ export const breakpoints: {
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
+export type PlaygroundMode = "inspect" | "edit"
+
 export interface PropSelector {
   label: string
   options: readonly string[]
@@ -63,6 +67,8 @@ interface ToolbarProps {
   breakpoint?: Breakpoint
   onBreakpointChange?: (breakpoint: Breakpoint) => void
   propSelectors?: PropSelector[]
+  mode?: PlaygroundMode
+  onModeChange?: (mode: PlaygroundMode) => void
   className?: string
 }
 
@@ -77,6 +83,8 @@ export function PlaygroundToolbar({
   breakpoint = "2xl",
   onBreakpointChange,
   propSelectors,
+  mode = "inspect",
+  onModeChange,
   className,
 }: ToolbarProps) {
   const hasSelectors = propSelectors && propSelectors.length > 0
@@ -101,6 +109,33 @@ export function PlaygroundToolbar({
             {componentName ?? "No component selected"}
           </span>
         </div>
+
+        {/* ── Mode toggle ────────────────────────────────────── */}
+        {componentName && (
+          <>
+            <Separator orientation="vertical" className="mx-1.5 h-6" />
+            <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+              <Button
+                variant={mode === "inspect" ? "default" : "ghost"}
+                size="sm"
+                className="h-6 gap-1 px-2 text-xs"
+                onClick={() => onModeChange?.("inspect")}
+              >
+                <Eye className="size-3" />
+                Inspect
+              </Button>
+              <Button
+                variant={mode === "edit" ? "default" : "ghost"}
+                size="sm"
+                className="h-6 gap-1 px-2 text-xs"
+                onClick={() => onModeChange?.("edit")}
+              >
+                <Pencil className="size-3" />
+                Edit
+              </Button>
+            </div>
+          </>
+        )}
 
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
