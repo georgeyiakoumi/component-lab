@@ -41,6 +41,10 @@ export default function PlaygroundLayout({
     router.push(`/playground/${component.slug}` as `/playground/${string}`)
   }
 
+  function handleSelectCustomComponent(slug: string) {
+    router.push(`/playground/custom/${slug}`)
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       {/* ── Sidebar toggle (visible when collapsed) ────────── */}
@@ -75,6 +79,7 @@ export default function PlaygroundLayout({
           >
             <PlaygroundSidebar
               onSelectComponent={handleSelectComponent}
+              onSelectCustomComponent={handleSelectCustomComponent}
               onCollapse={() => setSidebarOpen(false)}
             />
           </div>

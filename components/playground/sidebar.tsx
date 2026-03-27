@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, ChevronRight, Layers, PanelLeftClose } from "lucide-react"
+import { Search, ChevronRight, Layers, PanelLeftClose, Plus, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -14,11 +14,17 @@ import {
   getComponentsByCategory,
   type ComponentMeta,
 } from "@/lib/registry"
+import {
+  getUserComponents,
+  deleteUserComponent,
+  type UserComponent,
+} from "@/lib/component-store"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 interface SidebarProps {
   onSelectComponent?: (component: ComponentMeta) => void
+  onSelectCustomComponent?: (slug: string) => void
   onCollapse?: () => void
   selectedSlug?: string
   className?: string
@@ -28,6 +34,7 @@ interface SidebarProps {
 
 export function PlaygroundSidebar({
   onSelectComponent,
+  onSelectCustomComponent,
   onCollapse,
   selectedSlug,
   className,
@@ -36,6 +43,25 @@ export function PlaygroundSidebar({
   const [expandedCategories, setExpandedCategories] = React.useState<
     Set<string>
   >(new Set())
+  const [customComponents, setCustomComponents] = React.useState<UserComponent[]>([])
+
+  // Load custom components on mount and when store changes
+  React.useEffect(() => {
+    setCustomComponents(getUserComponents())
+  }, [])
+
+  const refreshCustomComponents = React.useCallback(() => {
+    setCustomComponents(getUserComponents())
+  }, [])
+
+  const handleDeleteCustom = React.useCallback(
+    (e: React.MouseEvent, slug: string) => {
+      e.stopPropagation()
+      deleteUserComponent(slug)
+      refreshCustomComponents()
+    },
+    [refreshCustomComponents],
+  )
 
   const grouped = React.useMemo(() => getComponentsByCategory(), [])
 
@@ -98,6 +124,51 @@ export function PlaygroundSidebar({
       {/* ── Component list ─────────────────────────────────────── */}
       <ScrollArea className="flex-1">
         <div className="py-2">
+          {/* ── My Components ─────────────────────────────────── */}
+          {customComponents.length > 0 && !isSearching && (
+            <div className="mb-2">
+              <div className="flex items-center gap-2 px-4 py-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  My Components
+                </span>
+                <Badge variant="secondary" className="ml-auto text-[10px]">
+                  {customComponents.length}
+                </Badge>
+              </div>
+              <div className="space-y-0.5">
+                {customComponents.map((uc) => (
+                  <button
+                    key={uc.id}
+                    type="button"
+                    onClick={() => onSelectCustomComponent?.(uc.slug)}
+                    className={cn(
+                      "group flex w-full items-center gap-2 rounded-md px-6 py-1.5 text-left text-sm transition-colors",
+                      selectedSlug === `custom/${uc.slug}`
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground/80 hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <span className="truncate">{uc.name}</span>
+                    <Badge
+                      variant="outline"
+                      className="ml-auto h-4 shrink-0 px-1 text-[9px] font-normal"
+                    >
+                      custom
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteCustom(e, uc.slug)}
+                      className="shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+              <div className="mx-4 mt-2 border-b" />
+            </div>
+          )}
+
           {isSearching ? (
             /* ── Flat search results ──────────────────────────── */
             filteredComponents.length === 0 ? (

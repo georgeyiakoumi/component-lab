@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Plus, Code2 } from "lucide-react"
+import { Plus, Copy, Code2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -76,14 +76,14 @@ export default function Home() {
         <p className="text-sm font-medium text-muted-foreground">Create new</p>
         <div className="flex items-center gap-3">
           <Button asChild>
-            <Link href="/playground">
+            <Link href="/playground/new?mode=scratch">
               <Plus className="mr-2 size-4" />
               From Scratch
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/playground">
-              <Code2 className="mr-2 size-4" />
+            <Link href="/playground/new?mode=copy">
+              <Copy className="mr-2 size-4" />
               From Existing
             </Link>
           </Button>
