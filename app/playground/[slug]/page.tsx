@@ -33,6 +33,7 @@ export default function ComponentPage() {
     React.useState<ElementInfo | null>(null)
   const [structurePanelWidth, setStructurePanelWidth] = React.useState(200)
   const [codePanelWidth, setCodePanelWidth] = React.useState(350)
+  const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
   const component = registry.find((c) => c.slug === slug)
@@ -99,6 +100,27 @@ export default function ComponentPage() {
     setSelectedElement(null)
   }, [])
 
+  const handleOutlineNodeClick = React.useCallback(
+    (name: string) => {
+      // Find the line in source where this component is defined
+      const lines = displaySource.split("\n")
+      // Look for patterns like: const Name =, function Name, export const Name
+      const lineIndex = lines.findIndex(
+        (line) =>
+          line.includes(`const ${name}`) ||
+          line.includes(`function ${name}`) ||
+          line.includes(`"${name}"`) ||
+          line.includes(`${name} =`),
+      )
+      if (lineIndex !== -1) {
+        // Use a unique value each time to retrigger the effect even for the same line
+        setHighlightLine(null)
+        requestAnimationFrame(() => setHighlightLine(lineIndex + 1))
+      }
+    },
+    [displaySource],
+  )
+
   return (
     <ComponentEditProvider slug={slug}>
       {/* ── Toolbar ──────────────────────────────────────────── */}
@@ -126,7 +148,7 @@ export default function ComponentPage() {
             <span className="text-xs font-medium text-muted-foreground">Outline</span>
           </div>
           <div className="flex-1 overflow-auto">
-            <StructurePanel slug={slug} />
+            <StructurePanel slug={slug} onNodeClick={handleOutlineNodeClick} />
           </div>
         </div>
 
@@ -144,7 +166,7 @@ export default function ComponentPage() {
           className="relative flex shrink-0 flex-col border-r"
           style={{ width: `${codePanelWidth}px` }}
         >
-          <CodePanel code={displaySource} />
+          <CodePanel code={displaySource} highlightLine={highlightLine} />
         </div>
 
         {/* ── Code panel resize handle ──────────────────────── */}

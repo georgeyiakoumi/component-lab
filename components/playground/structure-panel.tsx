@@ -11,12 +11,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface StructurePanelProps {
   slug: string
+  onNodeClick?: (name: string) => void
   className?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
-export function StructurePanel({ slug, className }: StructurePanelProps) {
+export function StructurePanel({ slug, onNodeClick, className }: StructurePanelProps) {
   const component = registry.find((c) => c.slug === slug)
 
   if (!component) {
@@ -36,13 +37,14 @@ export function StructurePanel({ slug, className }: StructurePanelProps) {
             name={component.name}
             isRoot
             isCompound={component.isCompound}
+            onClick={onNodeClick}
           />
 
           {/* ── Child nodes ────────────────────────────────── */}
           {component.isCompound && component.subComponents.length > 0 && (
             <div className="ml-3 border-l border-border pl-3 space-y-0.5">
               {component.subComponents.map((sub) => (
-                <TreeNode key={sub} name={sub} />
+                <TreeNode key={sub} name={sub} onClick={onNodeClick} />
               ))}
             </div>
           )}
@@ -77,13 +79,13 @@ interface TreeNodeProps {
   name: string
   isRoot?: boolean
   isCompound?: boolean
+  onClick?: (name: string) => void
 }
 
-function TreeNode({ name, isRoot, isCompound }: TreeNodeProps) {
+function TreeNode({ name, isRoot, isCompound, onClick }: TreeNodeProps) {
   const handleClick = React.useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log(`[StructurePanel] clicked: ${name}`)
-  }, [name])
+    onClick?.(name)
+  }, [name, onClick])
 
   return (
     <button

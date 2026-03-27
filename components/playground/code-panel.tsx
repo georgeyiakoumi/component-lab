@@ -19,15 +19,39 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface CodePanelProps {
   code: string
   language?: string
+  /** Line number to scroll to and highlight (1-based) */
+  highlightLine?: number | null
   className?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
-export function CodePanel({ code, language = "tsx", className }: CodePanelProps) {
+export function CodePanel({ code, language = "tsx", highlightLine, className }: CodePanelProps) {
   const [highlightedHtml, setHighlightedHtml] = React.useState<string>("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [copied, setCopied] = React.useState(false)
+  const codeBodyRef = React.useRef<HTMLDivElement>(null)
+
+  // Scroll to and highlight the target line
+  React.useEffect(() => {
+    if (!highlightLine || !codeBodyRef.current) return
+
+    const lines = codeBodyRef.current.querySelectorAll(".line")
+    const targetLine = lines[highlightLine - 1] as HTMLElement | undefined
+    if (!targetLine) return
+
+    // Scroll into view
+    targetLine.scrollIntoView({ behavior: "smooth", block: "center" })
+
+    // Flash highlight
+    targetLine.style.backgroundColor = "rgba(59, 130, 246, 0.2)"
+    targetLine.style.transition = "background-color 0.3s"
+    const timer = setTimeout(() => {
+      targetLine.style.backgroundColor = ""
+    }, 2000)
+
+    return () => clearTimeout(timer)
+  }, [highlightLine])
 
   React.useEffect(() => {
     let cancelled = false
@@ -103,6 +127,7 @@ export function CodePanel({ code, language = "tsx", className }: CodePanelProps)
           </div>
         ) : (
           <div
+            ref={codeBodyRef}
             className="code-panel-shiki text-sm font-mono p-4 [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_code]:[counter-reset:line] [&_.line]:table-row [&_.line]:[counter-increment:line] [&_.line::before]:table-cell [&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]"
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
