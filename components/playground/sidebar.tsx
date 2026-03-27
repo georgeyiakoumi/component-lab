@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Search, ChevronRight, Layers } from "lucide-react"
+import { Search, ChevronRight, Layers, PanelLeftClose } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +19,7 @@ import {
 
 interface SidebarProps {
   onSelectComponent?: (component: ComponentMeta) => void
+  onCollapse?: () => void
   selectedSlug?: string
   className?: string
 }
@@ -26,6 +28,7 @@ interface SidebarProps {
 
 export function PlaygroundSidebar({
   onSelectComponent,
+  onCollapse,
   selectedSlug,
   className,
 }: SidebarProps) {
@@ -68,6 +71,16 @@ export function PlaygroundSidebar({
         <Badge variant="secondary" className="ml-auto text-[10px]">
           {filteredComponents.length}
         </Badge>
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0"
+            onClick={onCollapse}
+          >
+            <PanelLeftClose className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       <div className="border-b px-3 py-2">
