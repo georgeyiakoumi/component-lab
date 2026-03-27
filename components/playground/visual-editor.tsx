@@ -11,12 +11,27 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  StretchVertical,
+  AlignStartHorizontal,
+  AlignCenterHorizontal,
+  AlignEndHorizontal,
+  StretchHorizontal,
+  ArrowRight,
+  ArrowDown,
   Minus,
   Plus,
   X,
   ChevronDown,
   ChevronRight,
   ArrowLeft,
+  Columns3,
+  LayoutGrid,
+  EyeOff,
+  Minus as MinusIcon,
+  PanelTop,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -39,7 +54,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+// ToggleGroup no longer used — replaced with custom IconToggle/TextToggle
+// import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -233,11 +249,22 @@ function findColorMatch(
 }
 
 function classesToControlState(classes: string[]): ControlState {
+  // Parse place-items shorthand back into justify + align
+  const placeItems = classes.find((c) => c.startsWith("place-items-"))
+  let parsedJustify = findMatch(classes, JUSTIFY_OPTIONS)
+  let parsedAlign = findMatch(classes, ALIGN_OPTIONS)
+
+  if (placeItems && !parsedJustify && !parsedAlign) {
+    const axis = placeItems.replace("place-items-", "")
+    parsedJustify = `justify-${axis}`
+    parsedAlign = `items-${axis}`
+  }
+
   return {
     display: findMatch(classes, DISPLAY_OPTIONS),
     direction: findMatch(classes, DIRECTION_OPTIONS),
-    justify: findMatch(classes, JUSTIFY_OPTIONS),
-    align: findMatch(classes, ALIGN_OPTIONS),
+    justify: parsedJustify,
+    align: parsedAlign,
     gap: findMatch(classes, GAP_OPTIONS),
     padding: findMatch(classes, PADDING_SCALE),
     paddingTop: findMatch(classes, [...PADDING_SIDES.paddingTop]),
@@ -279,6 +306,10 @@ const MANAGED_PREFIXES = [
   ...BORDER_RADIUS_OPTIONS,
   ...BORDER_WIDTH_OPTIONS,
   ...SHADOW_OPTIONS,
+  "place-items-start",
+  "place-items-center",
+  "place-items-end",
+  "place-items-stretch",
 ]
 
 function controlStateToClasses(state: ControlState): string[] {
@@ -289,8 +320,19 @@ function controlStateToClasses(state: ControlState): string[] {
 
   push(state.display)
   push(state.direction)
-  push(state.justify)
-  push(state.align)
+
+  // Use place-items shorthand on grid when both axes match
+  const placeShorthand =
+    state.display === "grid"
+      ? PLACE_ITEMS_MAP[state.justify]?.[state.align]
+      : undefined
+
+  if (placeShorthand) {
+    push(placeShorthand)
+  } else {
+    push(state.justify)
+    push(state.align)
+  }
   push(state.gap)
   push(state.padding)
   push(state.paddingTop)
@@ -379,6 +421,208 @@ function ControlRow({
       </span>
       {children}
     </div>
+  )
+}
+
+/* ── Position grid (Figma-style justify × align) ─────────────────── */
+
+const JUSTIFY_KEYS = ["justify-start", "justify-center", "justify-end"] as const
+const ALIGN_KEYS = ["items-start", "items-center", "items-end"] as const
+
+/** Maps matching justify+align pairs to place-items shorthand (grid only) */
+const PLACE_ITEMS_MAP: Record<string, Record<string, string>> = {
+  "justify-start": { "items-start": "place-items-start" },
+  "justify-center": { "items-center": "place-items-center" },
+  "justify-end": { "items-end": "place-items-end" },
+  "justify-stretch": { "items-stretch": "place-items-stretch" },
+}
+
+function PositionGrid({
+  justify,
+  align,
+  display,
+  onJustifyChange,
+  onAlignChange,
+}: {
+  justify: string
+  align: string
+  display: string
+  onJustifyChange: (v: string) => void
+  onAlignChange: (v: string) => void
+}) {
+  const isGrid = display === "grid"
+
+  function getTooltip(j: string, a: string): string {
+    // Check if we can use place-items shorthand (grid only, matching axes)
+    if (isGrid) {
+      const shorthand = PLACE_ITEMS_MAP[j]?.[a]
+      if (shorthand) return shorthand
+    }
+    return `${j} ${a}`
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {/* 3×3 grid */}
+      <div className="inline-grid grid-cols-3 gap-0.5 rounded-md border p-0.5">
+        {ALIGN_KEYS.map((a) =>
+          JUSTIFY_KEYS.map((j) => {
+            const isActive = justify === j && align === a
+            const tooltipText = getTooltip(j, a)
+            return (
+              <Tooltip key={`${j}-${a}`}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-sm transition-colors",
+                      isActive
+                        ? "bg-blue-500 text-white"
+                        : "hover:bg-muted text-muted-foreground",
+                    )}
+                    onClick={() => {
+                      onJustifyChange(j)
+                      onAlignChange(a)
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        isActive ? "bg-white" : "bg-current",
+                      )}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-[10px] font-mono">
+                  {tooltipText}
+                </TooltipContent>
+              </Tooltip>
+            )
+          }),
+        )}
+      </div>
+
+      {/* Extra options that don't fit the grid */}
+      <div className="flex gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] transition-colors",
+                justify === "justify-between"
+                  ? "border-blue-500 bg-blue-500/10 text-blue-500"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+              onClick={() => onJustifyChange(justify === "justify-between" ? "" : "justify-between")}
+            >
+              <StretchHorizontal className="size-3" />
+              between
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] font-mono">
+            justify-between
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] transition-colors",
+                align === "items-stretch"
+                  ? "border-blue-500 bg-blue-500/10 text-blue-500"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+              onClick={() => onAlignChange(align === "items-stretch" ? "" : "items-stretch")}
+            >
+              <StretchVertical className="size-3" />
+              stretch
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-[10px] font-mono">
+            items-stretch
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  )
+}
+
+/* ── Icon toggle item with tooltip ────────────────────────────────── */
+
+function IconToggle({
+  value,
+  icon: Icon,
+  tooltip,
+  isActive,
+  onClick,
+}: {
+  value: string
+  icon: React.ElementType
+  tooltip: string
+  isActive?: boolean
+  onClick?: (value: string) => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+            isActive
+              ? "bg-blue-500/10 text-blue-500"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+          onClick={() => onClick?.(value)}
+        >
+          <Icon className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-[10px] font-mono">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/* ── Text toggle button (for text-label groups) ─────────────────── */
+
+function TextToggle({
+  value,
+  label,
+  tooltip,
+  isActive,
+  onClick,
+}: {
+  value: string
+  label: string
+  tooltip: string
+  isActive?: boolean
+  onClick?: (value: string) => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-6 items-center justify-center rounded-md px-2 text-[10px] font-medium transition-colors",
+            isActive
+              ? "bg-blue-500/10 text-blue-500"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+          onClick={() => onClick?.(value)}
+        >
+          {label}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-[10px] font-mono">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -714,104 +958,57 @@ export function VisualEditor({
 
       {/* ── Controls ─────────────────────────────────────── */}
       <ScrollArea className="flex-1">
+        <TooltipProvider delayDuration={200}>
         <div className="divide-y">
           {/* ── Layout ────────────────────────────────────── */}
           <ControlSection icon={Layout} title="Layout">
             <ControlRow label="Display">
-              <ToggleGroup
-                type="single"
-                value={state.display}
-                onValueChange={(v) => update("display", v)}
-                className="flex flex-wrap gap-1"
-              >
-                {DISPLAY_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <div className="flex gap-0.5">
+                <IconToggle value="" icon={MinusIcon} tooltip="default (inherit)" isActive={!state.display} onClick={() => update("display", "")} />
+                <IconToggle value="block" icon={PanelTop} tooltip="block" isActive={state.display === "block"} onClick={(v) => update("display", v)} />
+                <IconToggle value="flex" icon={Columns3} tooltip="flex" isActive={state.display === "flex"} onClick={(v) => update("display", v)} />
+                <IconToggle value="grid" icon={LayoutGrid} tooltip="grid" isActive={state.display === "grid"} onClick={(v) => update("display", v)} />
+                <IconToggle value="inline-flex" icon={Columns3} tooltip="inline-flex" isActive={state.display === "inline-flex"} onClick={(v) => update("display", v)} />
+                <IconToggle value="hidden" icon={EyeOff} tooltip="hidden" isActive={state.display === "hidden"} onClick={(v) => update("display", v)} />
+              </div>
             </ControlRow>
 
             {isFlex && (
               <ControlRow label="Direction">
-                <ToggleGroup
-                  type="single"
-                  value={state.direction}
-                  onValueChange={(v) => update("direction", v)}
-                  className="flex flex-wrap gap-1"
-                >
-                  {DIRECTION_OPTIONS.map((opt) => (
-                    <ToggleGroupItem
-                      key={opt}
-                      value={opt}
-                      className="h-6 px-2 text-[10px]"
-                    >
-                      {opt.replace("flex-", "")}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
+                <div className="flex gap-0.5">
+                  <IconToggle value="flex-row" icon={ArrowRight} tooltip="flex-row" isActive={state.direction === "flex-row"} onClick={(v) => update("direction", v)} />
+                  <IconToggle value="flex-col" icon={ArrowDown} tooltip="flex-col" isActive={state.direction === "flex-col"} onClick={(v) => update("direction", v)} />
+                </div>
               </ControlRow>
             )}
 
-            <ControlRow label="Justify">
-              <ToggleGroup
-                type="single"
-                value={state.justify}
-                onValueChange={(v) => update("justify", v)}
-                className="flex flex-wrap gap-1"
-              >
-                {JUSTIFY_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("justify-", "")}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </ControlRow>
-
-            <ControlRow label="Align">
-              <ToggleGroup
-                type="single"
-                value={state.align}
-                onValueChange={(v) => update("align", v)}
-                className="flex flex-wrap gap-1"
-              >
-                {ALIGN_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("items-", "")}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+            <ControlRow label="Position">
+              <PositionGrid
+                justify={state.justify}
+                align={state.align}
+                display={state.display}
+                onJustifyChange={(v) => update("justify", v)}
+                onAlignChange={(v) => update("align", v)}
+              />
             </ControlRow>
 
             <ControlRow label="Gap">
-              <ToggleGroup
-                type="single"
-                value={state.gap}
-                onValueChange={(v) => update("gap", v)}
-                className="flex flex-wrap gap-1"
+              <Select
+                value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
+                onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
               >
-                {GAP_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("gap-", "")}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+                <SelectTrigger className="h-6 w-20 text-[10px]">
+                  <SelectValue placeholder="–" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v} ({SPACING_PX[v] ?? ""})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </ControlRow>
           </ControlSection>
 
@@ -857,60 +1054,27 @@ export function VisualEditor({
           {/* ── Typography ───────────────────────────────── */}
           <ControlSection icon={Type} title="Typography">
             <ControlRow label="Size">
-              <ToggleGroup
-                type="single"
-                value={state.fontSize}
-                onValueChange={(v) => update("fontSize", v)}
-                className="flex flex-wrap gap-1"
-              >
+              <div className="flex flex-wrap gap-0.5">
                 {FONT_SIZE_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("text-", "")}
-                  </ToggleGroupItem>
+                  <TextToggle key={opt} value={opt} label={opt.replace("text-", "")} tooltip={opt} isActive={state.fontSize === opt} onClick={(v) => update("fontSize", v)} />
                 ))}
-              </ToggleGroup>
+              </div>
             </ControlRow>
 
             <ControlRow label="Weight">
-              <ToggleGroup
-                type="single"
-                value={state.fontWeight}
-                onValueChange={(v) => update("fontWeight", v)}
-                className="flex flex-wrap gap-1"
-              >
+              <div className="flex flex-wrap gap-0.5">
                 {FONT_WEIGHT_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("font-", "")}
-                  </ToggleGroupItem>
+                  <TextToggle key={opt} value={opt} label={opt.replace("font-", "")} tooltip={opt} isActive={state.fontWeight === opt} onClick={(v) => update("fontWeight", v)} />
                 ))}
-              </ToggleGroup>
+              </div>
             </ControlRow>
 
             <ControlRow label="Align">
-              <ToggleGroup
-                type="single"
-                value={state.textAlign}
-                onValueChange={(v) => update("textAlign", v)}
-                className="flex gap-1"
-              >
-                <ToggleGroupItem value="text-left" className="h-6 px-2">
-                  <AlignLeft className="size-3" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="text-center" className="h-6 px-2">
-                  <AlignCenter className="size-3" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="text-right" className="h-6 px-2">
-                  <AlignRight className="size-3" />
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <div className="flex gap-0.5">
+                <IconToggle value="text-left" icon={AlignLeft} tooltip="text-left" isActive={state.textAlign === "text-left"} onClick={(v) => update("textAlign", v)} />
+                <IconToggle value="text-center" icon={AlignCenter} tooltip="text-center" isActive={state.textAlign === "text-center"} onClick={(v) => update("textAlign", v)} />
+                <IconToggle value="text-right" icon={AlignRight} tooltip="text-right" isActive={state.textAlign === "text-right"} onClick={(v) => update("textAlign", v)} />
+              </div>
             </ControlRow>
           </ControlSection>
 
@@ -956,48 +1120,26 @@ export function VisualEditor({
             </ControlRow>
 
             <ControlRow label="Width">
-              <ToggleGroup
-                type="single"
-                value={state.borderWidth}
-                onValueChange={(v) => update("borderWidth", v)}
-                className="flex flex-wrap gap-1"
-              >
+              <div className="flex flex-wrap gap-0.5">
                 {BORDER_WIDTH_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt === "border" ? "1" : opt.replace("border-", "")}
-                  </ToggleGroupItem>
+                  <TextToggle key={opt} value={opt} label={opt === "border" ? "1" : opt.replace("border-", "")} tooltip={opt} isActive={state.borderWidth === opt} onClick={(v) => update("borderWidth", v)} />
                 ))}
-              </ToggleGroup>
+              </div>
             </ControlRow>
           </ControlSection>
 
           {/* ── Effects ──────────────────────────────────── */}
           <ControlSection icon={Sparkles} title="Effects">
             <ControlRow label="Shadow">
-              <ToggleGroup
-                type="single"
-                value={state.shadow}
-                onValueChange={(v) => update("shadow", v)}
-                className="flex flex-wrap gap-1"
-              >
+              <div className="flex flex-wrap gap-0.5">
                 {SHADOW_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt}
-                    value={opt}
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    {opt.replace("shadow-", "")}
-                  </ToggleGroupItem>
+                  <TextToggle key={opt} value={opt} label={opt.replace("shadow-", "")} tooltip={opt} isActive={state.shadow === opt} onClick={(v) => update("shadow", v)} />
                 ))}
-              </ToggleGroup>
+              </div>
             </ControlRow>
           </ControlSection>
         </div>
-
+        </TooltipProvider>
       </ScrollArea>
 
       {/* ── Applied classes (pinned to bottom, collapsible) ── */}
