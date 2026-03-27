@@ -33,6 +33,7 @@ export default function ComponentPage() {
   const [selectedElement, setSelectedElement] =
     React.useState<ElementInfo | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(350)
+  const contentRef = React.useRef<HTMLDivElement>(null)
 
   const component = registry.find((c) => c.slug === slug)
 
@@ -115,7 +116,7 @@ export default function ComponentPage() {
       />
 
       {/* ── Main content area ────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={contentRef} className="flex flex-1 overflow-hidden">
         {/* ── Left: Code + Structure (inspect views) ─────────── */}
         <div
           className="flex shrink-0 flex-col border-r"
@@ -141,7 +142,11 @@ export default function ComponentPage() {
         <DragHandle
           width={leftPanelWidth}
           minWidth={250}
-          maxWidth={9999}
+          maxWidth={
+            (contentRef.current?.offsetWidth ?? 1200)
+            - 200  // min canvas gap
+            - (mode === "edit" ? 320 : 0) // right panel
+          }
           onWidthChange={setLeftPanelWidth}
           side="left"
         />
