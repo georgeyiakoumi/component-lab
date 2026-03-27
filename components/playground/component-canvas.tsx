@@ -48,7 +48,7 @@ export function ComponentCanvas({
   return (
     <div
       className={cn(
-        "flex flex-1 justify-center overflow-auto bg-background text-foreground transition-colors duration-300",
+        "flex min-w-[100px] flex-1 justify-center overflow-auto bg-background text-foreground transition-colors duration-300",
         theme === "dark" && "dark",
       )}
       style={{ colorScheme: theme === "dark" ? "dark" : "light" }}

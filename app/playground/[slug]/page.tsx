@@ -141,7 +141,7 @@ export default function ComponentPage() {
         <DragHandle
           width={leftPanelWidth}
           minWidth={250}
-          maxWidth={600}
+          maxWidth={9999}
           onWidthChange={setLeftPanelWidth}
           side="left"
         />
