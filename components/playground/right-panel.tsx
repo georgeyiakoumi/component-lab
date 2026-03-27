@@ -40,8 +40,8 @@ export function RightPanel({
   return (
     <div
       className={cn(
-        "flex shrink-0 overflow-hidden transition-all duration-300",
-        isOpen ? "opacity-100" : "w-0 opacity-0",
+        "flex shrink-0 overflow-hidden",
+        !isOpen && "w-0",
       )}
       style={isOpen ? { width: `${width + 4}px` } : undefined}
     >
