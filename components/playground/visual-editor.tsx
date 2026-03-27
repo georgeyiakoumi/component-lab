@@ -679,7 +679,7 @@ export function VisualEditor({
   const allClasses = mergeClasses(originalClasses.current, state)
 
   return (
-    <div className="flex h-full w-[320px] flex-col">
+    <div className="flex h-full w-full flex-col">
       {/* ── Header ───────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Button
