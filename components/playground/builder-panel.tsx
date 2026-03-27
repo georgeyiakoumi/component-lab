@@ -217,14 +217,49 @@ export function BuilderPanel({
             <>
               <div className="px-3 py-2">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Component structure
+                  Usage preview (not exported)
                 </p>
-                <AssemblyTree
-                  tree={tree}
-                  onFocusComponent={setFocusedId}
-                />
+                <p className="text-[10px] text-muted-foreground/70 mb-3">
+                  Build how your components compose together. This is the canvas preview — it does not affect the exported .tsx file.
+                </p>
               </div>
+
+              <BuilderSection
+                icon={<Layers className="size-3.5" />}
+                title="Assembly"
+                badge={countNodes(tree.assemblyTree)}
+                open={structureOpen}
+                onOpenChange={setStructureOpen}
+              >
+                <ElementTree
+                  node={tree.assemblyTree}
+                  depth={0}
+                  isRoot
+                  selectedNodeId={selectedNodeId}
+                  subComponents={tree.subComponents}
+                  onSelectNode={setSelectedNodeId}
+                  onAddChild={(parentId, tag) => {
+                    const child = createElementNode(tag)
+                    const newAssembly = addChild(tree.assemblyTree, parentId, child)
+                    onTreeChange({ ...tree, assemblyTree: newAssembly })
+                  }}
+                  onRemoveNode={(nodeId) => {
+                    const newAssembly = removeNode(tree.assemblyTree, nodeId)
+                    onTreeChange({ ...tree, assemblyTree: newAssembly })
+                  }}
+                  onUpdateClasses={(nodeId, classes) => {
+                    const newAssembly = updateNodeClasses(tree.assemblyTree, nodeId, classes)
+                    onTreeChange({ ...tree, assemblyTree: newAssembly })
+                  }}
+                  onUpdateText={(nodeId, text) => {
+                    const newAssembly = updateNodeText(tree.assemblyTree, nodeId, text || undefined)
+                    onTreeChange({ ...tree, assemblyTree: newAssembly })
+                  }}
+                />
+              </BuilderSection>
+
               <Separator />
+
               <BuilderSection
                 icon={<Component className="size-3.5" />}
                 title="Sub-components"
@@ -248,7 +283,10 @@ export function BuilderPanel({
             <>
               <div className="px-3 py-2">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Editing: {focusedName}
+                  {focusedName} — definition
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  This is the component&apos;s internal structure. Changes here are exported to .tsx.
                 </p>
               </div>
 

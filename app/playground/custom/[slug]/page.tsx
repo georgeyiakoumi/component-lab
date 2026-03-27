@@ -195,7 +195,7 @@ export default function CustomComponentPage() {
   )
 
   const customPreview = componentTree
-    ? renderTreePreview(componentTree.tree)
+    ? renderTreePreview(componentTree.assemblyTree)
     : null
 
   if (!userComponent) {

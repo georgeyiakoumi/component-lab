@@ -34,7 +34,14 @@ export interface SubComponentDef {
 export interface ComponentTree {
   name: string
   baseElement: string
+  /** Component definition — the internal structure of the component itself.
+   *  This is what gets exported as .tsx code.
+   *  Typically simple: just the root element with className + {children} pass-through. */
   tree: ElementNode
+  /** Assembly / usage example — how this component and its sub-components compose
+   *  together for the canvas preview. This is NOT part of the exported .tsx file.
+   *  Think of it like a Storybook story or a docs example. */
+  assemblyTree: ElementNode
   props: ComponentProp[]
   variants: CustomVariantDef[]
   subComponents: SubComponentDef[]
@@ -68,6 +75,7 @@ export function createComponentTree(
     name,
     baseElement,
     tree: createElementNode(baseElement),
+    assemblyTree: createElementNode(baseElement),
     props: [],
     variants: [],
     subComponents: [],
