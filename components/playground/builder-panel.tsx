@@ -247,6 +247,8 @@ export function BuilderPanel({
                   isRoot
                   selectedNodeId={selectedNodeId}
                   subComponents={tree.subComponents}
+                  readOnly
+                  labelOverrides={{ [tree.assemblyTree.id]: tree.name }}
                   onSelectNode={setSelectedNodeId}
                   onAddChild={(parentId, tag) => {
                     const child = createElementNode(tag)
@@ -317,6 +319,7 @@ export function BuilderPanel({
                   isRoot
                   selectedNodeId={selectedNodeId}
                   subComponents={focusedId === "main" ? tree.subComponents : []}
+                  hideTextEditor
                   onSelectNode={setSelectedNodeId}
                   onAddChild={(parentId, tag) => {
                     const child = createElementNode(tag)
@@ -520,6 +523,12 @@ interface ElementTreeProps {
   isRoot: boolean
   selectedNodeId: string | null
   subComponents?: SubComponentDef[]
+  /** When true, clicking a node won't show the class/text inline editor */
+  readOnly?: boolean
+  /** Override display labels for specific node IDs (e.g. root → "MyCard") */
+  labelOverrides?: Record<string, string>
+  /** When true, hide text field in inline editor (root elements pass {children}) */
+  hideTextEditor?: boolean
   onSelectNode: (id: string | null) => void
   onAddChild: (parentId: string, tag: string) => void
   onRemoveNode: (nodeId: string) => void
@@ -534,6 +543,9 @@ function ElementTree({
   isRoot,
   selectedNodeId,
   subComponents,
+  readOnly,
+  labelOverrides,
+  hideTextEditor,
   onSelectNode,
   onAddChild,
   onRemoveNode,
@@ -638,7 +650,7 @@ function ElementTree({
           onClick={() => onSelectNode(isSelected ? null : node.id)}
         >
           <code className="text-xs font-semibold">
-            &lt;{node.tag}&gt;
+            &lt;{labelOverrides?.[node.id] ?? node.tag}&gt;
           </code>
           {node.classes.length > 0 && (
             <span className="truncate text-[10px] text-muted-foreground">
@@ -673,7 +685,7 @@ function ElementTree({
       </div>
 
       {/* Inline editor when selected */}
-      {isSelected && (
+      {isSelected && !readOnly && (
         <div
           className="space-y-2 rounded-md border bg-muted/20 p-2"
           style={{ marginLeft: `${depth * 16 + 4}px`, marginRight: "4px" }}
@@ -696,6 +708,7 @@ function ElementTree({
               }
             />
           </div>
+          {!hideTextEditor && !isRoot && (
           <div className="space-y-1">
             <Label className="text-[10px] text-muted-foreground">
               Text content
@@ -707,6 +720,7 @@ function ElementTree({
               onChange={(e) => onUpdateText(node.id, e.target.value)}
             />
           </div>
+          )}
         </div>
       )}
 
@@ -721,6 +735,9 @@ function ElementTree({
             isRoot={false}
             selectedNodeId={selectedNodeId}
             subComponents={subComponents}
+            readOnly={readOnly}
+            labelOverrides={labelOverrides}
+            hideTextEditor={hideTextEditor}
             onSelectNode={onSelectNode}
             onAddChild={onAddChild}
             onRemoveNode={onRemoveNode}
