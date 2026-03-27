@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { registry } from "@/lib/registry"
 import { componentSources } from "@/lib/component-source"
 import { parseCvaVariants } from "@/lib/cva-parser"
+import { ComponentEditProvider } from "@/lib/component-state"
 import {
   PlaygroundToolbar,
   type Breakpoint,
@@ -15,8 +16,11 @@ import { ComponentCanvas } from "@/components/playground/component-canvas"
 import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
 import { TwPanel } from "@/components/playground/tw-panel"
+import { TwEditorPanel } from "@/components/playground/tw-editor-panel"
 import { A11yPanel } from "@/components/playground/a11y-panel"
 import { SemanticPanel } from "@/components/playground/semantic-panel"
+import { SubComponentPanel } from "@/components/playground/sub-component-panel"
+import { VariantPanel } from "@/components/playground/variant-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ComponentPage() {
@@ -70,9 +74,11 @@ export default function ComponentPage() {
     Object.keys(propValues).length > 0 ? propValues : undefined
 
   return (
-    <>
+    <ComponentEditProvider slug={slug}>
       <PlaygroundToolbar
         componentName={component.name}
+        slug={slug}
+        source={source}
         theme={theme}
         onThemeChange={setTheme}
         breakpoint={breakpoint}
@@ -87,8 +93,13 @@ export default function ComponentPage() {
               <TabsTrigger value="structure">Structure</TabsTrigger>
               <TabsTrigger value="code">Code</TabsTrigger>
               <TabsTrigger value="styles">Styles</TabsTrigger>
+              <TabsTrigger value="classes">Classes</TabsTrigger>
               <TabsTrigger value="a11y">A11y</TabsTrigger>
               <TabsTrigger value="semantic">Semantic</TabsTrigger>
+              <TabsTrigger value="variants">Variants</TabsTrigger>
+              {component.isCompound && (
+                <TabsTrigger value="sub-components">Parts</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="structure" className="flex-1 overflow-auto">
               <StructurePanel slug={slug} />
@@ -101,12 +112,23 @@ export default function ComponentPage() {
             <TabsContent value="styles" className="flex-1 overflow-hidden">
               <TwPanel source={source} />
             </TabsContent>
+            <TabsContent value="classes" className="flex-1 overflow-hidden">
+              <TwEditorPanel source={source} />
+            </TabsContent>
             <TabsContent value="a11y" className="flex-1 overflow-hidden">
               <A11yPanel source={source} />
             </TabsContent>
             <TabsContent value="semantic" className="flex-1 overflow-hidden">
               <SemanticPanel source={source} />
             </TabsContent>
+            <TabsContent value="variants" className="flex-1 overflow-hidden">
+              <VariantPanel source={source} />
+            </TabsContent>
+            {component.isCompound && (
+              <TabsContent value="sub-components" className="flex-1 overflow-hidden">
+                <SubComponentPanel />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
@@ -119,6 +141,6 @@ export default function ComponentPage() {
           previewProps={previewProps}
         />
       </div>
-    </>
+    </ComponentEditProvider>
   )
 }
