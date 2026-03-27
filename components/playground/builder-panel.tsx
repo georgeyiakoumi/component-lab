@@ -136,6 +136,7 @@ export function BuilderPanel({
               depth={0}
               isRoot
               selectedNodeId={selectedNodeId}
+              subComponents={tree.subComponents}
               onSelectNode={setSelectedNodeId}
               onAddChild={(parentId, tag) => {
                 const child = createElementNode(tag)
@@ -275,6 +276,7 @@ interface ElementTreeProps {
   depth: number
   isRoot: boolean
   selectedNodeId: string | null
+  subComponents?: SubComponentDef[]
   onSelectNode: (id: string | null) => void
   onAddChild: (parentId: string, tag: string) => void
   onRemoveNode: (nodeId: string) => void
@@ -287,6 +289,7 @@ function ElementTree({
   depth,
   isRoot,
   selectedNodeId,
+  subComponents,
   onSelectNode,
   onAddChild,
   onRemoveNode,
@@ -353,6 +356,7 @@ function ElementTree({
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <AddElementPopover
             onSelect={(tag) => onAddChild(node.id, tag)}
+            subComponents={subComponents}
           />
           {!isRoot && (
             <Button
@@ -415,6 +419,7 @@ function ElementTree({
             depth={depth + 1}
             isRoot={false}
             selectedNodeId={selectedNodeId}
+            subComponents={subComponents}
             onSelectNode={onSelectNode}
             onAddChild={onAddChild}
             onRemoveNode={onRemoveNode}
@@ -430,9 +435,10 @@ function ElementTree({
 
 interface AddElementPopoverProps {
   onSelect: (tag: string) => void
+  subComponents?: SubComponentDef[]
 }
 
-function AddElementPopover({ onSelect }: AddElementPopoverProps) {
+function AddElementPopover({ onSelect, subComponents }: AddElementPopoverProps) {
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -478,6 +484,28 @@ function AddElementPopover({ onSelect }: AddElementPopoverProps) {
               </div>
             </div>
           ))}
+          {subComponents && subComponents.length > 0 && (
+            <div>
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-blue-500/60">
+                Sub-components
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {subComponents.map((sc) => (
+                  <button
+                    key={sc.name}
+                    type="button"
+                    className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                    onClick={() => {
+                      onSelect(sc.name)
+                      setOpen(false)
+                    }}
+                  >
+                    {sc.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

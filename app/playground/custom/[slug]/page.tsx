@@ -10,7 +10,7 @@ import {
   getUserComponent,
   saveUserComponent,
 } from "@/lib/component-store"
-import type { ComponentTree } from "@/lib/component-tree"
+import type { ComponentTree, ElementNode } from "@/lib/component-tree"
 import type { ElementInfo } from "@/components/playground/element-selector"
 import {
   PlaygroundToolbar,
@@ -104,6 +104,25 @@ export default function CustomComponentPage() {
     },
     [],
   )
+
+  // Render the component tree as live JSX for the canvas preview
+  const renderTreePreview = React.useCallback(
+    (node: ElementNode): React.ReactNode => {
+      const Tag = node.tag as keyof React.JSX.IntrinsicElements
+      const className = node.classes.length > 0 ? node.classes.join(" ") : undefined
+      return React.createElement(
+        Tag,
+        { key: node.id, className },
+        node.text || null,
+        ...node.children.map(renderTreePreview),
+      )
+    },
+    [],
+  )
+
+  const customPreview = componentTree
+    ? renderTreePreview(componentTree.tree)
+    : null
 
   if (!userComponent) {
     return (
@@ -241,6 +260,7 @@ export default function CustomComponentPage() {
           theme={theme}
           breakpoint={breakpoint}
           previewProps={previewProps}
+          customPreview={customPreview}
           mode={mode}
           onElementSelect={setSelectedElement}
           onElementHover={() => {}}

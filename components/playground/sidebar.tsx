@@ -137,12 +137,14 @@ export function PlaygroundSidebar({
               </div>
               <div className="space-y-0.5">
                 {customComponents.map((uc) => (
-                  <button
+                  <div
                     key={uc.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelectCustomComponent?.(uc.slug)}
+                    onKeyDown={(e) => { if (e.key === "Enter") onSelectCustomComponent?.(uc.slug) }}
                     className={cn(
-                      "group flex w-full items-center gap-2 rounded-md px-6 py-1.5 text-left text-sm transition-colors",
+                      "group flex w-full cursor-pointer items-center gap-2 rounded-md px-6 py-1.5 text-left text-sm transition-colors",
                       selectedSlug === `custom/${uc.slug}`
                         ? "bg-accent text-accent-foreground"
                         : "text-foreground/80 hover:bg-muted hover:text-foreground",
@@ -162,7 +164,7 @@ export function PlaygroundSidebar({
                     >
                       <Trash2 className="size-3" />
                     </button>
-                  </button>
+                  </div>
                 ))}
               </div>
               <div className="mx-4 mt-2 border-b" />

@@ -17,6 +17,8 @@ interface ComponentCanvasProps {
   theme?: "light" | "dark"
   breakpoint?: Breakpoint
   previewProps?: Record<string, string>
+  /** Custom preview content — used for user-created components */
+  customPreview?: React.ReactNode
   mode?: PlaygroundMode
   onElementSelect?: (element: ElementInfo) => void
   onElementHover?: (element: ElementInfo | null) => void
@@ -30,6 +32,7 @@ export function ComponentCanvas({
   theme = "light",
   breakpoint = "2xl",
   previewProps,
+  customPreview,
   mode = "inspect",
   onElementSelect,
   onElementHover,
@@ -62,7 +65,7 @@ export function ComponentCanvas({
           onSelect={handleSelect}
           onHover={handleHover}
         >
-          {renderComponent(slug, previewProps ?? {})}
+          {customPreview ?? renderComponent(slug, previewProps ?? {})}
         </ElementSelector>
       </div>
     </div>
