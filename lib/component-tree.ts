@@ -192,6 +192,19 @@ export function findNode(
   return undefined
 }
 
+/** Find a node by tag name (first match). */
+export function findNodeByTag(
+  tree: ElementNode,
+  tag: string,
+): ElementNode | undefined {
+  if (tree.tag === tag) return tree
+  for (const child of tree.children) {
+    const found = findNodeByTag(child, tag)
+    if (found) return found
+  }
+  return undefined
+}
+
 /** Move a node to before, after, or inside another node. */
 export function moveNode(
   root: ElementNode,

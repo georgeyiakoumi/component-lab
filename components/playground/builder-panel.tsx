@@ -57,6 +57,7 @@ import {
   updateNodeClasses,
   updateNodeText,
   moveNode,
+  findNodeByTag,
 } from "@/lib/component-tree"
 import type { CustomVariantDef } from "@/lib/component-state"
 
@@ -286,9 +287,28 @@ export function BuilderPanel({
                 <SubComponentsEditor
                   subComponents={tree.subComponents}
                   parentName={tree.name}
-                  onSubComponentsChange={(subComponents) =>
-                    onTreeChange({ ...tree, subComponents })
-                  }
+                  onSubComponentsChange={(subComponents) => {
+                    // Auto-add new sub-components to assembly tree
+                    const existingNames = new Set(tree.subComponents.map((sc) => sc.name))
+                    const newScs = subComponents.filter((sc) => !existingNames.has(sc.name))
+                    let newAssembly = tree.assemblyTree
+                    for (const sc of newScs) {
+                      const scNode = createElementNode(sc.name)
+                      newAssembly = addChild(newAssembly, newAssembly.id, scNode)
+                    }
+                    // Remove deleted sub-components from assembly tree
+                    const newNames = new Set(subComponents.map((sc) => sc.name))
+                    const removedNames = tree.subComponents
+                      .filter((sc) => !newNames.has(sc.name))
+                      .map((sc) => sc.name)
+                    for (const name of removedNames) {
+                      const node = findNodeByTag(newAssembly, name)
+                      if (node) {
+                        newAssembly = removeNode(newAssembly, node.id)
+                      }
+                    }
+                    onTreeChange({ ...tree, subComponents, assemblyTree: newAssembly })
+                  }}
                 />
               </BuilderSection>
             </>
@@ -390,9 +410,26 @@ export function BuilderPanel({
                     <SubComponentsEditor
                       subComponents={tree.subComponents}
                       parentName={tree.name}
-                      onSubComponentsChange={(subComponents) =>
-                        onTreeChange({ ...tree, subComponents })
-                      }
+                      onSubComponentsChange={(subComponents) => {
+                        const existingNames = new Set(tree.subComponents.map((sc) => sc.name))
+                        const newScs = subComponents.filter((sc) => !existingNames.has(sc.name))
+                        let newAssembly = tree.assemblyTree
+                        for (const sc of newScs) {
+                          const scNode = createElementNode(sc.name)
+                          newAssembly = addChild(newAssembly, newAssembly.id, scNode)
+                        }
+                        const newNames = new Set(subComponents.map((sc) => sc.name))
+                        const removedNames = tree.subComponents
+                          .filter((sc) => !newNames.has(sc.name))
+                          .map((sc) => sc.name)
+                        for (const name of removedNames) {
+                          const node = findNodeByTag(newAssembly, name)
+                          if (node) {
+                            newAssembly = removeNode(newAssembly, node.id)
+                          }
+                        }
+                        onTreeChange({ ...tree, subComponents, assemblyTree: newAssembly })
+                      }}
                     />
                   </BuilderSection>
                 </>

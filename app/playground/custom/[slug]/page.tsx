@@ -25,7 +25,9 @@ import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
 import { BuilderPanel } from "@/components/playground/builder-panel"
+import { VisualEditor } from "@/components/playground/visual-editor"
 import { DragHandle } from "@/components/playground/drag-handle"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function CustomComponentPage() {
   const params = useParams<{ slug: string }>()
@@ -418,7 +420,7 @@ export default function CustomComponentPage() {
               onElementHover={() => {}}
             />
 
-            {/* Right panel: styling per component/sub-component */}
+            {/* Right panel: visual styling per component/sub-component */}
             <div className="flex w-[320px] shrink-0 flex-col border-l bg-background">
               <div className="flex items-center gap-1.5 border-b px-3 py-2">
                 <span className="text-xs font-medium text-muted-foreground">Style</span>
@@ -455,46 +457,43 @@ export default function CustomComponentPage() {
                 ))}
               </div>
 
-              {/* Classes editor for selected component */}
-              <div className="flex-1 overflow-auto p-3">
+              {/* Visual editor for selected component */}
+              <ScrollArea className="flex-1">
                 {styledComponentId ? (
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {styledComponentId === "main"
+                  <VisualEditor
+                    selectedElement={{
+                      tagName: styledComponentId === "main"
+                        ? componentTree.baseElement
+                        : componentTree.subComponents.find(
+                            (sc) => sc.id === styledComponentId,
+                          )?.baseElement ?? "div",
+                      textContent: styledComponentId === "main"
                         ? componentTree.name
                         : componentTree.subComponents.find(
                             (sc) => sc.id === styledComponentId,
-                          )?.name ?? ""}{" "}
-                      classes
-                    </p>
-                    <textarea
-                      className="w-full rounded-md border bg-muted/20 px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      rows={4}
-                      placeholder="Enter Tailwind classes..."
-                      value={
-                        styledComponentId === "main"
-                          ? componentTree.tree.classes.join(" ")
-                          : componentTree.subComponents
-                              .find((sc) => sc.id === styledComponentId)
-                              ?.tree.classes.join(" ") ?? ""
-                      }
-                      onChange={(e) => {
-                        const classes = e.target.value
-                          .split(/\s+/)
-                          .filter(Boolean)
-                        handleTreeClassChange(styledComponentId, classes)
-                      }}
-                    />
-                    <p className="text-[10px] text-muted-foreground">
-                      Classes are applied to the component&apos;s root element and exported to .tsx
+                          )?.name ?? "",
+                      currentClasses: styledComponentId === "main"
+                        ? componentTree.tree.classes
+                        : componentTree.subComponents.find(
+                            (sc) => sc.id === styledComponentId,
+                          )?.tree.classes ?? [],
+                      elementPath: "",
+                      rect: new DOMRect(),
+                      domElement: document.createElement("div"),
+                    }}
+                    onClassChange={(classes) => {
+                      handleTreeClassChange(styledComponentId, classes)
+                    }}
+                    onDeselect={() => setStyledComponentId(null)}
+                  />
+                ) : (
+                  <div className="flex flex-1 items-center justify-center p-8">
+                    <p className="text-xs text-muted-foreground text-center">
+                      Select a component above to edit its styles.
                     </p>
                   </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Select a component above to edit its styles.
-                  </p>
                 )}
-              </div>
+              </ScrollArea>
             </div>
           </>
         )}
