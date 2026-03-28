@@ -1460,13 +1460,11 @@ function SubComponentsEditor({
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null)
   const [subName, setSubName] = React.useState("")
   const [baseElement, setBaseElement] = React.useState("div")
-  const [classes, setClasses] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
 
   function resetForm() {
     setSubName("")
     setBaseElement("div")
-    setClasses("")
     setError(null)
     setEditingIndex(null)
   }
@@ -1506,9 +1504,7 @@ function SubComponentsEditor({
       baseElement,
       dataSlot: toDataSlot(fullName),
       tree: createElementNode(baseElement),
-      classes: classes
-        .split(/\s+/)
-        .filter(Boolean),
+      classes: [],
       props: [],
       variants: [],
     }
@@ -1529,7 +1525,6 @@ function SubComponentsEditor({
     const sub = subComponents[index]
     setSubName(sub.name)
     setBaseElement(sub.baseElement)
-    setClasses(sub.classes.join(" "))
     setEditingIndex(index)
     setError(null)
     setPopoverOpen(true)
@@ -1669,28 +1664,44 @@ function SubComponentsEditor({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tailwind classes</Label>
-              <Input
-                placeholder="e.g. flex flex-col gap-2 p-4"
-                value={classes}
-                onChange={(e) => setClasses(e.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
-
             {error && (
               <p className="text-xs text-destructive">{error}</p>
             )}
 
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={handleCreate}
-              type="button"
-            >
-              {editingIndex !== null ? "Save" : "Create"}
-            </Button>
+            {editingIndex !== null ? (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={handleCreate}
+                type="button"
+              >
+                Save
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleCreate}
+                  type="button"
+                >
+                  Add
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    handleCreate()
+                    // Reopen after a tick so the form clears
+                    setTimeout(() => setPopoverOpen(true), 50)
+                  }}
+                  type="button"
+                >
+                  Add more
+                </Button>
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>
