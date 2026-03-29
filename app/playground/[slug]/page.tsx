@@ -182,10 +182,6 @@ export default function ComponentPage() {
         {/* ── Centre: Canvas with toolbar ──────────────────────── */}
         <div className="flex min-w-[100px] flex-1 flex-col">
           <CanvasToolbar
-            theme={theme}
-            onThemeChange={setTheme}
-            breakpoint={breakpoint}
-            onBreakpointChange={setBreakpoint}
             propSelectors={propSelectors}
           />
           <ComponentCanvas
@@ -212,7 +208,13 @@ export default function ComponentPage() {
       </div>
 
       {/* ── Bottom: A11y + Semantic status bar ────────────────── */}
-      <StatusBar source={source} />
+      <StatusBar
+        source={source}
+        theme={theme}
+        onThemeChange={setTheme}
+        breakpoint={breakpoint}
+        onBreakpointChange={setBreakpoint}
+      />
     </ComponentEditProvider>
   )
 }

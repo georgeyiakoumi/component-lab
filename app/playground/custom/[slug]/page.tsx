@@ -436,10 +436,6 @@ export default function CustomComponentPage() {
             <div className="flex min-w-[200px] flex-1 flex-col">
               {/* Canvas toolbar */}
               <CanvasToolbar
-                theme={theme}
-                onThemeChange={setTheme}
-                breakpoint={breakpoint}
-                onBreakpointChange={setBreakpoint}
                 propSelectors={propSelectors}
               />
 
@@ -476,8 +472,14 @@ export default function CustomComponentPage() {
                 </div>
               </div>
 
-              {/* Status bar (bottom of canvas section) */}
-              <StatusBar source={source} />
+              {/* Status bar with breakpoints + theme (bottom of canvas section) */}
+              <StatusBar
+                source={source}
+                theme={theme}
+                onThemeChange={setTheme}
+                breakpoint={breakpoint}
+                onBreakpointChange={setBreakpoint}
+              />
             </div>
 
             {/* Right panel: visual styling per component/sub-component */}
