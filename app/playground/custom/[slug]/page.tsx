@@ -89,6 +89,13 @@ export default function CustomComponentPage() {
     setPropValues(defaults)
   }, [slug, variantDefs])
 
+  // Check if any component has styles applied (show Export only then)
+  const hasAnyStyles = React.useMemo(() => {
+    if (!componentTree) return false
+    if (componentTree.tree.classes.length > 0) return true
+    return componentTree.subComponents.some((sc) => sc.tree.classes.length > 0)
+  }, [componentTree])
+
   // Clear selection when leaving edit mode
   React.useEffect(() => {
     if (mode !== "edit") {
@@ -410,13 +417,8 @@ export default function CustomComponentPage() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <PlaygroundToolbar
         componentName={componentTree?.name ?? userComponent.name}
-        slug={mode !== "define" ? slug : undefined}
-        source={mode !== "define" ? source : undefined}
-        theme={mode !== "define" ? theme : undefined}
-        onThemeChange={mode !== "define" ? setTheme : undefined}
-        breakpoint={mode !== "define" ? breakpoint : undefined}
-        onBreakpointChange={mode !== "define" ? setBreakpoint : undefined}
-        propSelectors={mode !== "define" ? propSelectors : undefined}
+        slug={hasAnyStyles ? slug : undefined}
+        source={hasAnyStyles ? source : undefined}
         mode={mode}
         onModeChange={setMode}
         isCustom={hasTree}

@@ -170,23 +170,13 @@ export function PlaygroundToolbar({
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
 
-        {/* ── Export (always show if component loaded, disabled in define) ── */}
-        {componentName && (
-          <>
-            <Separator orientation="vertical" className="mx-1.5 h-6" />
-            {slug && source ? (
-              <ExportDialog
-                slug={slug}
-                source={source}
-                componentName={componentName}
-              />
-            ) : (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" disabled>
-                <Download className="size-3.5" />
-                Export
-              </Button>
-            )}
-          </>
+        {/* ── Export (only when slug + source provided) ────────── */}
+        {componentName && slug && source && (
+          <ExportDialog
+            slug={slug}
+            source={source}
+            componentName={componentName}
+          />
         )}
       </div>
     </TooltipProvider>

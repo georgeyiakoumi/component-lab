@@ -93,14 +93,14 @@ interface DefineViewProps {
 export function DefineView({ tree, onTreeChange }: DefineViewProps) {
   function handleDeleteComponent() {
     deleteUserComponent(toSlug(tree.name))
-    window.location.href = "/playground"
+    window.location.href = "/"
   }
 
   return (
     <ScrollArea className="flex-1">
       <div className="w-full max-w-2xl space-y-8 p-8">
         {/* ── Main component ───────────────────────────────── */}
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-lg bg-muted p-5">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold">{tree.name}</h1>
             <div className="flex items-center gap-1.5">
@@ -133,7 +133,7 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
               />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" >
+                  <Button variant="ghost" size="sm">
                     <Trash2 />
                     Delete
                   </Button>
@@ -159,38 +159,34 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
             </div>
           </div>
 
-          {/* Props — stacked rows */}
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Props
-            </p>
-            {tree.props.length === 0 ? (
-              <p className="text-xs text-muted-foreground/60">None defined</p>
-            ) : (
-              <div className="space-y-1">
+          {/* Props */}
+          {tree.props.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Props
+              </p>
+              <div className="divide-y">
                 {tree.props.map((p) => (
-                  <div key={p.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                    <Badge variant="outline" className="h-5 text-xs">{p.type}</Badge>
+                  <div key={p.name} className="flex items-center gap-2 px-1 py-2">
+                    <Badge variant="outline">{p.type}</Badge>
                     <code className="text-xs font-medium">{p.name}</code>
-                    {p.required && <Badge variant="secondary" className="h-4 px-1.5 text-xs">req</Badge>}
+                    {p.required && <Badge variant="secondary">req</Badge>}
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Variants — stacked rows */}
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Variants
-            </p>
-            {tree.variants.length === 0 ? (
-              <p className="text-xs text-muted-foreground/60">None defined</p>
-            ) : (
-              <div className="space-y-1">
+          {/* Variants */}
+          {tree.variants.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Variants
+              </p>
+              <div className="divide-y">
                 {tree.variants.map((v) => (
-                  <div key={v.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                    <Badge variant="outline" className="h-5 text-xs">{v.type}</Badge>
+                  <div key={v.name} className="flex items-center gap-2 px-1 py-2">
+                    <Badge variant="outline">{v.type}</Badge>
                     <code className="text-xs font-medium">{v.name}</code>
                     {v.type === "variant" && (
                       <span className="text-xs text-muted-foreground">{v.options.join(", ")}</span>
@@ -198,8 +194,15 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Empty state for compound */}
+          {tree.props.length === 0 && tree.variants.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No props or variants defined. Use Edit to add some.
+            </p>
+          )}
         </div>
 
         {/* ── Sub-components ───────────────────────────────── */}
@@ -287,9 +290,10 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                       >
                         <Trash2 />
+                        Delete
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -332,12 +336,12 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Props
                   </p>
-                  <div className="space-y-1">
+                  <div className="divide-y">
                     {sc.props.map((p) => (
-                      <div key={p.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                        <Badge variant="outline" className="h-5 text-xs">{p.type}</Badge>
+                      <div key={p.name} className="flex items-center gap-2 px-1 py-2">
+                        <Badge variant="outline">{p.type}</Badge>
                         <code className="text-xs font-medium">{p.name}</code>
-                        {p.required && <Badge variant="secondary" className="h-4 px-1.5 text-xs">req</Badge>}
+                        {p.required && <Badge variant="secondary">req</Badge>}
                       </div>
                     ))}
                   </div>
@@ -350,10 +354,10 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Variants
                   </p>
-                  <div className="space-y-1">
+                  <div className="divide-y">
                     {sc.variants.map((v) => (
-                      <div key={v.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                        <Badge variant="outline" className="h-5 text-xs">{v.type}</Badge>
+                      <div key={v.name} className="flex items-center gap-2 px-1 py-2">
+                        <Badge variant="outline">{v.type}</Badge>
                         <code className="text-xs font-medium">{v.name}</code>
                         {v.type === "variant" && (
                           <span className="text-xs text-muted-foreground">{v.options.join(", ")}</span>
@@ -484,11 +488,12 @@ function SubComponentCard({
           />
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             
             onClick={onDelete}
           >
             <Trash2 />
+            Delete
           </Button>
         </div>
       </div>
