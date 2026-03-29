@@ -35,19 +35,19 @@ export default function CustomComponentPage() {
   const router = useRouter()
   const slug = params.slug
 
-  const [userComponent, setUserComponent] = React.useState(() =>
-    getUserComponent(slug),
-  )
-  const [source, setSource] = React.useState(userComponent?.source ?? "")
+  // Defer localStorage read to client only to avoid hydration mismatch
+  const [mounted, setMounted] = React.useState(false)
+  const [userComponent, setUserComponent] = React.useState<
+    ReturnType<typeof getUserComponent>
+  >(undefined)
+  const [source, setSource] = React.useState("")
   const [componentTree, setComponentTree] = React.useState<
     ComponentTree | undefined
-  >(userComponent?.tree)
+  >(undefined)
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")
   const [propValues, setPropValues] = React.useState<Record<string, string>>({})
-  const [mode, setMode] = React.useState<PlaygroundMode>(
-    userComponent?.tree ? "define" : "inspect",
-  )
+  const [mode, setMode] = React.useState<PlaygroundMode>("define")
   const [selectedElement, setSelectedElement] =
     React.useState<ElementInfo | null>(null)
   const [structurePanelWidth, setStructurePanelWidth] = React.useState(200)
@@ -57,8 +57,19 @@ export default function CustomComponentPage() {
 
   const hasTree = componentTree !== undefined
 
+  // Load from localStorage on mount (client only)
+  React.useEffect(() => {
+    const uc = getUserComponent(slug)
+    setUserComponent(uc)
+    setSource(uc?.source ?? "")
+    setComponentTree(uc?.tree)
+    setMode(uc?.tree ? "define" : "inspect")
+    setMounted(true)
+  }, [slug])
+
   // Reload from store when slug changes
   React.useEffect(() => {
+    if (!mounted) return
     const uc = getUserComponent(slug)
     setUserComponent(uc)
     setSource(uc?.source ?? "")
@@ -290,6 +301,15 @@ export default function CustomComponentPage() {
     }
     return renderTreePreview(assemblyWithClasses)
   }, [componentTree, renderTreePreview])
+
+  // Show nothing until client-side mount to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
 
   if (!userComponent) {
     return (
