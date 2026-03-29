@@ -11,6 +11,7 @@ import {
   Eye,
   Pencil,
   Layers,
+  Download,
 } from "lucide-react"
 import { ExportDialog } from "@/components/playground/export-dialog"
 
@@ -169,75 +170,22 @@ export function PlaygroundToolbar({
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
 
-        {/* ── Prop selectors ──────────────────────────────────── */}
-        {hasSelectors && (
+        {/* ── Export (always show if component loaded, disabled in define) ── */}
+        {componentName && (
           <>
-            {propSelectors.map((selector) => (
-              <Select
-                key={selector.label}
-                value={selector.value}
-                onValueChange={selector.onChange}
-              >
-                <SelectTrigger className="h-8 w-[130px] text-xs">
-                  <SelectValue placeholder={selector.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  {selector.options.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
-
             <Separator orientation="vertical" className="mx-1.5 h-6" />
-          </>
-        )}
-
-        {/* ── Breakpoint controls ─────────────────────────────── */}
-        <div className="flex items-center gap-0.5">
-          {breakpoints.map((bp) => {
-            const Icon = bp.icon
-            return (
-              <ToolbarButton
-                key={bp.key}
-                icon={<Icon className="size-4" />}
-                label={bp.label}
-                active={breakpoint === bp.key}
-                onClick={() => onBreakpointChange?.(bp.key)}
+            {slug && source ? (
+              <ExportDialog
+                slug={slug}
+                source={source}
+                componentName={componentName}
               />
-            )
-          })}
-        </div>
-
-        <Separator orientation="vertical" className="mx-1.5 h-6" />
-
-        {/* ── Theme controls ──────────────────────────────────── */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            icon={<Sun className="size-4" />}
-            label="Light theme"
-            active={theme === "light"}
-            onClick={() => onThemeChange?.("light")}
-          />
-          <ToolbarButton
-            icon={<Moon className="size-4" />}
-            label="Dark theme"
-            active={theme === "dark"}
-            onClick={() => onThemeChange?.("dark")}
-          />
-        </div>
-
-        {/* ── Export ──────────────────────────────────────────── */}
-        {componentName && slug && source && (
-          <>
-            <Separator orientation="vertical" className="mx-1.5 h-6" />
-            <ExportDialog
-              slug={slug}
-              source={source}
-              componentName={componentName}
-            />
+            ) : (
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" disabled>
+                <Download className="size-3.5" />
+                Export
+              </Button>
+            )}
           </>
         )}
       </div>

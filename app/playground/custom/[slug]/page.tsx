@@ -25,6 +25,8 @@ import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
 import { BuilderPanel } from "@/components/playground/builder-panel"
+import { DefineView } from "@/components/playground/define-view"
+import { CanvasToolbar } from "@/components/playground/canvas-toolbar"
 import { VisualEditor } from "@/components/playground/visual-editor"
 import { DragHandle } from "@/components/playground/drag-handle"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -388,13 +390,13 @@ export default function CustomComponentPage() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <PlaygroundToolbar
         componentName={userComponent.name}
-        slug={slug}
-        source={source}
-        theme={theme}
-        onThemeChange={setTheme}
-        breakpoint={breakpoint}
-        onBreakpointChange={setBreakpoint}
-        propSelectors={propSelectors}
+        slug={mode !== "define" ? slug : undefined}
+        source={mode !== "define" ? source : undefined}
+        theme={mode !== "define" ? theme : undefined}
+        onThemeChange={mode !== "define" ? setTheme : undefined}
+        breakpoint={mode !== "define" ? breakpoint : undefined}
+        onBreakpointChange={mode !== "define" ? setBreakpoint : undefined}
+        propSelectors={mode !== "define" ? propSelectors : undefined}
         mode={mode}
         onModeChange={setMode}
         isCustom={hasTree}
@@ -405,13 +407,10 @@ export default function CustomComponentPage() {
 
         {/* ═══════════ DEFINE MODE ═══════════════════════════════ */}
         {mode === "define" && hasTree && (
-          <div className="flex flex-1">
-            <BuilderPanel
-              tree={componentTree}
-              onTreeChange={handleTreeChange}
-              hideAssembly
-            />
-          </div>
+          <DefineView
+            tree={componentTree}
+            onTreeChange={handleTreeChange}
+          />
         )}
 
         {/* ═══════════ PREVIEW MODE ═════════════════════════════ */}
@@ -471,18 +470,27 @@ export default function CustomComponentPage() {
               side="left"
             />
 
-            {/* Canvas */}
-            <ComponentCanvas
-              slug={slug}
-              componentName={userComponent.name}
-              theme={theme}
-              breakpoint={breakpoint}
-              previewProps={previewProps}
-              customPreview={customPreview}
-              mode="edit"
-              onElementSelect={setSelectedElement}
-              onElementHover={() => {}}
-            />
+            {/* Canvas with toolbar */}
+            <div className="flex min-w-[100px] flex-1 flex-col">
+              <CanvasToolbar
+                theme={theme}
+                onThemeChange={setTheme}
+                breakpoint={breakpoint}
+                onBreakpointChange={setBreakpoint}
+                propSelectors={propSelectors}
+              />
+              <ComponentCanvas
+                slug={slug}
+                componentName={userComponent.name}
+                theme={theme}
+                breakpoint={breakpoint}
+                previewProps={previewProps}
+                customPreview={customPreview}
+                mode="edit"
+                onElementSelect={setSelectedElement}
+                onElementHover={() => {}}
+              />
+            </div>
 
             {/* Right panel: visual styling per component/sub-component */}
             <div className="flex w-[320px] shrink-0 flex-col border-l bg-background">
@@ -623,8 +631,8 @@ export default function CustomComponentPage() {
         )}
       </div>
 
-      {/* ── Bottom: Status bar ──────────────────────────────────── */}
-      <StatusBar source={source} />
+      {/* ── Bottom: Status bar (not in Define mode) ──────────────── */}
+      {mode !== "define" && <StatusBar source={source} />}
     </ComponentEditProvider>
   )
 }

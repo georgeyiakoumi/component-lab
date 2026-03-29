@@ -20,6 +20,7 @@ import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
 import { DragHandle } from "@/components/playground/drag-handle"
+import { CanvasToolbar } from "@/components/playground/canvas-toolbar"
 
 export default function ComponentPage() {
   const params = useParams<{ slug: string }>()
@@ -128,11 +129,6 @@ export default function ComponentPage() {
         componentName={component.name}
         slug={slug}
         source={source}
-        theme={theme}
-        onThemeChange={setTheme}
-        breakpoint={breakpoint}
-        onBreakpointChange={setBreakpoint}
-        propSelectors={propSelectors}
         mode={mode}
         onModeChange={setMode}
       />
@@ -183,17 +179,26 @@ export default function ComponentPage() {
           side="left"
         />
 
-        {/* ── Centre: Component preview canvas ───────────────── */}
-        <ComponentCanvas
-          slug={slug}
-          componentName={component.name}
-          theme={theme}
-          breakpoint={breakpoint}
-          previewProps={previewProps}
-          mode={mode}
-          onElementSelect={setSelectedElement}
-          onElementHover={() => {}}
-        />
+        {/* ── Centre: Canvas with toolbar ──────────────────────── */}
+        <div className="flex min-w-[100px] flex-1 flex-col">
+          <CanvasToolbar
+            theme={theme}
+            onThemeChange={setTheme}
+            breakpoint={breakpoint}
+            onBreakpointChange={setBreakpoint}
+            propSelectors={propSelectors}
+          />
+          <ComponentCanvas
+            slug={slug}
+            componentName={component.name}
+            theme={theme}
+            breakpoint={breakpoint}
+            previewProps={previewProps}
+            mode={mode}
+            onElementSelect={setSelectedElement}
+            onElementHover={() => {}}
+          />
+        </div>
 
         {/* ── Right: Edit panels (slides in when edit mode) ──── */}
         <RightPanel
