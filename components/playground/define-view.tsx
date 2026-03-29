@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Plus, Pencil, Trash2, X } from "lucide-react"
+import { deleteUserComponent, toSlug } from "@/lib/component-store"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -89,45 +91,149 @@ interface DefineViewProps {
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function DefineView({ tree, onTreeChange }: DefineViewProps) {
+  // Drag and drop state for sub-component reordering
+  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
+  const [dropIndex, setDropIndex] = React.useState<number | null>(null)
+
+  function handleDragStart(index: number) {
+    setDragIndex(index)
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    setDropIndex(index)
+  }
+
+  function handleDrop(index: number) {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDropIndex(null)
+      return
+    }
+    const newSubs = [...tree.subComponents]
+    const [moved] = newSubs.splice(dragIndex, 1)
+    newSubs.splice(index, 0, moved)
+    onTreeChange({ ...tree, subComponents: newSubs })
+    setDragIndex(null)
+    setDropIndex(null)
+  }
+
+  function handleDeleteComponent() {
+    deleteUserComponent(toSlug(tree.name))
+    window.location.href = "/playground"
+  }
+
   return (
     <ScrollArea className="flex-1">
       <div className="w-full max-w-2xl space-y-8 p-8">
-        {/* ── Main component card ──────────────────────────── */}
-        <ComponentCard
-          name={tree.name}
-          props={tree.props}
-          variants={tree.variants}
-          onUpdate={(newName, props, variants) => {
-            const oldName = tree.name
-            // If name changed, cascade to sub-components
-            const updatedSubComponents = newName !== oldName
-              ? tree.subComponents.map((sc) => ({
-                  ...sc,
-                  name: sc.name.replace(oldName, newName),
-                  dataSlot: toDataSlot(sc.name.replace(oldName, newName)),
-                }))
-              : tree.subComponents
-            // Also update assembly tree tags that reference sub-component names
-            const updatedAssembly = newName !== oldName
-              ? renameTagsInTree(tree.assemblyTree, oldName, newName)
-              : tree.assemblyTree
-            onTreeChange({
-              ...tree,
-              name: newName,
-              dataSlot: toDataSlot(newName),
-              props,
-              variants,
-              subComponents: updatedSubComponents,
-              assemblyTree: updatedAssembly,
-            })
-          }}
-        />
+        {/* ── Main component ───────────────────────────────── */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold">{tree.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <EditComponentDialog
+                name={tree.name}
+                props={tree.props}
+                variants={tree.variants}
+                onSave={(newName, props, variants) => {
+                  const oldName = tree.name
+                  const updatedSubComponents = newName !== oldName
+                    ? tree.subComponents.map((sc) => ({
+                        ...sc,
+                        name: sc.name.replace(oldName, newName),
+                        dataSlot: toDataSlot(sc.name.replace(oldName, newName)),
+                      }))
+                    : tree.subComponents
+                  const updatedAssembly = newName !== oldName
+                    ? renameTagsInTree(tree.assemblyTree, oldName, newName)
+                    : tree.assemblyTree
+                  onTreeChange({
+                    ...tree,
+                    name: newName,
+                    dataSlot: toDataSlot(newName),
+                    props,
+                    variants,
+                    subComponents: updatedSubComponents,
+                    assemblyTree: updatedAssembly,
+                  })
+                }}
+              />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-destructive">
+                    <Trash2 className="size-3" />
+                    Delete component
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {tree.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this component and all its sub-components. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleDeleteComponent}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+
+          {/* Props — stacked rows */}
+          <div>
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Props
+            </p>
+            {tree.props.length === 0 ? (
+              <p className="text-xs text-muted-foreground/60">None defined</p>
+            ) : (
+              <div className="space-y-1">
+                {tree.props.map((p) => (
+                  <div key={p.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                    <Badge variant="outline" className="h-5 text-[10px]">{p.type}</Badge>
+                    <code className="text-xs font-medium">{p.name}</code>
+                    {p.required && <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">req</Badge>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Variants — stacked rows */}
+          <div>
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Variants
+            </p>
+            {tree.variants.length === 0 ? (
+              <p className="text-xs text-muted-foreground/60">None defined</p>
+            ) : (
+              <div className="space-y-1">
+                {tree.variants.map((v) => (
+                  <div key={v.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                    <Badge variant="outline" className="h-5 text-[10px]">{v.type}</Badge>
+                    <code className="text-xs font-medium">{v.name}</code>
+                    {v.type === "variant" && (
+                      <span className="text-[10px] text-muted-foreground">{v.options.join(", ")}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* ── Sub-components ───────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium">Sub-components</h3>
+              <h2 className="text-base font-semibold">Sub-components</h2>
               {tree.subComponents.length > 0 && (
                 <Badge variant="secondary" className="text-[10px]">
                   {tree.subComponents.length}
@@ -138,7 +244,6 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
               parentName={tree.name}
               existingNames={tree.subComponents.map((sc) => sc.name)}
               onAdd={(sc) => {
-                // Add to subComponents and assembly tree
                 const scNode = createElementNode(sc.name)
                 const newAssembly = {
                   ...tree.assemblyTree,
@@ -160,31 +265,119 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           )}
 
           {tree.subComponents.map((sc, i) => (
-            <SubComponentCard
+            <div
               key={sc.id}
-              sc={sc}
-              parentName={tree.name}
-              onUpdate={(updated) => {
-                const newSubs = [...tree.subComponents]
-                newSubs[i] = updated
-                onTreeChange({ ...tree, subComponents: newSubs })
-              }}
-              onDelete={() => {
-                const newSubs = tree.subComponents.filter((_, idx) => idx !== i)
-                // Also remove from assembly tree
-                const removeFromAssembly = (node: typeof tree.assemblyTree): typeof tree.assemblyTree => ({
-                  ...node,
-                  children: node.children
-                    .filter((c) => c.tag !== sc.name)
-                    .map(removeFromAssembly),
-                })
-                onTreeChange({
-                  ...tree,
-                  subComponents: newSubs,
-                  assemblyTree: removeFromAssembly(tree.assemblyTree),
-                })
-              }}
-            />
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={() => handleDrop(i)}
+              onDragEnd={() => { setDragIndex(null); setDropIndex(null) }}
+              className={cn(
+                "rounded-lg border bg-background p-4 transition-all",
+                dragIndex === i && "opacity-50",
+                dropIndex === i && dragIndex !== i && "border-blue-500 border-t-2",
+              )}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground">⠿</span>
+                  <h3 className="text-sm font-semibold">{sc.name}</h3>
+                  <Badge variant="secondary" className="text-[10px]">
+                    &lt;{sc.baseElement}&gt;
+                  </Badge>
+                  {(sc.usecases ?? []).map((uc) => (
+                    <Badge key={uc} variant="outline" className="text-[9px]">
+                      {uc}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1">
+                  <EditComponentDialog
+                    name={sc.name}
+                    props={sc.props}
+                    variants={sc.variants}
+                    baseElement={sc.baseElement}
+                    usecases={sc.usecases}
+                    onSave={(newName, props, variants, newBaseElement, newUsecases) => {
+                      const newSubs = [...tree.subComponents]
+                      newSubs[i] = {
+                        ...sc,
+                        name: newName,
+                        props,
+                        variants,
+                        baseElement: newBaseElement ?? sc.baseElement,
+                        usecases: newUsecases ?? sc.usecases,
+                      }
+                      onTreeChange({ ...tree, subComponents: newSubs })
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      const newSubs = tree.subComponents.filter((_, idx) => idx !== i)
+                      const removeFromAssembly = (node: typeof tree.assemblyTree): typeof tree.assemblyTree => ({
+                        ...node,
+                        children: node.children
+                          .filter((c) => c.tag !== sc.name)
+                          .map(removeFromAssembly),
+                      })
+                      onTreeChange({
+                        ...tree,
+                        subComponents: newSubs,
+                        assemblyTree: removeFromAssembly(tree.assemblyTree),
+                      })
+                    }}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Props — stacked rows */}
+              <div className="mt-3">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Props
+                </p>
+                {sc.props.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">None</p>
+                ) : (
+                  <div className="space-y-1">
+                    {sc.props.map((p) => (
+                      <div key={p.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                        <Badge variant="outline" className="h-5 text-[10px]">{p.type}</Badge>
+                        <code className="text-xs font-medium">{p.name}</code>
+                        {p.required && <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">req</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Variants — stacked rows */}
+              <div className="mt-3">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Variants
+                </p>
+                {sc.variants.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">None</p>
+                ) : (
+                  <div className="space-y-1">
+                    {sc.variants.map((v) => (
+                      <div key={v.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                        <Badge variant="outline" className="h-5 text-[10px]">{v.type}</Badge>
+                        <code className="text-xs font-medium">{v.name}</code>
+                        {v.type === "variant" && (
+                          <span className="text-[10px] text-muted-foreground">{v.options.join(", ")}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -192,9 +385,10 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
   )
 }
 
-/* ── ComponentCard — main component ────────────────────────────── */
+/* ── (ComponentCard removed — main component is now inline) ────── */
+/* ── (SubComponentCard removed — sub-components are now inline) ── */
 
-function ComponentCard({
+function _unused_ComponentCard({
   name,
   props,
   variants,
@@ -365,17 +559,32 @@ function EditComponentDialog({
   name: initialName,
   props: initialProps,
   variants: initialVariants,
+  baseElement: initialBaseElement,
+  usecases: initialUsecases,
   onSave,
 }: {
   name: string
   props: ComponentProp[]
   variants: CustomVariantDef[]
-  onSave: (name: string, props: ComponentProp[], variants: CustomVariantDef[]) => void
+  baseElement?: string
+  usecases?: SubComponentUsecase[]
+  onSave: (name: string, props: ComponentProp[], variants: CustomVariantDef[], baseElement?: string, usecases?: SubComponentUsecase[]) => void
 }) {
   const [open, setOpen] = React.useState(false)
   const [editName, setEditName] = React.useState(initialName)
   const [props, setProps] = React.useState<ComponentProp[]>(initialProps)
   const [variants, setVariants] = React.useState<CustomVariantDef[]>(initialVariants)
+  const [baseElement, setBaseElement] = React.useState(initialBaseElement ?? "div")
+  const [usecases, setUsecases] = React.useState<SubComponentUsecase[]>(initialUsecases ?? [])
+  const isSubComponent = initialBaseElement !== undefined
+
+  function toggleUsecase(uc: SubComponentUsecase) {
+    setUsecases((prev) => {
+      if (uc === "wrapper") return prev.includes("wrapper") ? [] : ["wrapper"]
+      const without = prev.filter((u) => u !== "wrapper" && u !== uc)
+      return prev.includes(uc) ? without : [...without, uc]
+    })
+  }
 
   // Sync when dialog opens
   React.useEffect(() => {
@@ -383,8 +592,10 @@ function EditComponentDialog({
       setEditName(initialName)
       setProps(initialProps)
       setVariants(initialVariants)
+      setBaseElement(initialBaseElement ?? "div")
+      setUsecases(initialUsecases ?? [])
     }
-  }, [open, initialName, initialProps, initialVariants])
+  }, [open, initialName, initialProps, initialVariants, initialBaseElement, initialUsecases])
 
   const pascalName = React.useMemo(() => {
     if (!editName.trim()) return ""
@@ -399,84 +610,155 @@ function EditComponentDialog({
           Edit
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="max-w-lg">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Edit component</AlertDialogTitle>
-          <AlertDialogDescription>
-            Update name, props and variants.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Name</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="h-8 flex-1 text-xs"
-                placeholder="Component name"
-              />
-              {pascalName && pascalName !== editName && (
-                <code className="shrink-0 rounded bg-muted px-2 py-1 text-xs font-semibold">
-                  {pascalName}
-                </code>
-              )}
-            </div>
-          </div>
-
-          {/* Props */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Props</Label>
-            {props.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
-                <code className="font-medium">{p.name}</code>
-                {p.required && <Badge variant="secondary" className="text-[9px]">req</Badge>}
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() => setProps(props.filter((_, idx) => idx !== i))}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-            <DialogPropAdder onAdd={(p) => setProps([...props, p])} />
-          </div>
-
-          {/* Variants */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Variants</Label>
-            {variants.map((v, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="text-[10px]">{v.type}</Badge>
-                <code className="font-medium">{v.name}</code>
-                {v.type === "variant" && (
-                  <span className="text-[9px] text-muted-foreground">{v.options.join(", ")}</span>
-                )}
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
-            <DialogVariantAdder onAdd={(v) => setVariants([...variants, v])} />
-          </div>
+      <AlertDialogContent className="flex max-w-lg flex-col min-h-[420px] max-h-[80vh] p-0">
+        {/* Fixed header + tabs */}
+        <div className="shrink-0 px-6 pt-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isSubComponent ? "Edit sub-component" : "Edit component"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Update name, props and variants.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
         </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onSave(pascalName || initialName, props, variants)} disabled={!pascalName}>
-            Save changes
-          </AlertDialogAction>
-        </AlertDialogFooter>
+        <Tabs defaultValue="general" className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 px-6">
+            <TabsList className="w-full">
+              <TabsTrigger value="general" className="flex-1 text-xs">
+                General
+              </TabsTrigger>
+              <TabsTrigger value="props" className="flex-1 gap-1 text-xs">
+                Props
+                {props.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-[9px]">
+                    {props.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="variants" className="flex-1 gap-1 text-xs">
+                Variants
+                {variants.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-[9px]">
+                    {variants.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* ── General tab ─────────────────────────────────── */}
+          <TabsContent value="general" className="flex-1 overflow-auto px-6 py-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Name</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="h-8 flex-1 text-xs"
+                  placeholder="Component name"
+                />
+                {pascalName && pascalName !== editName && (
+                  <code className="shrink-0 rounded bg-muted px-2 py-1 text-xs font-semibold">
+                    {pascalName}
+                  </code>
+                )}
+              </div>
+            </div>
+
+            {isSubComponent && (
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Base element</Label>
+                <Select value={baseElement} onValueChange={setBaseElement}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BASE_ELEMENTS.map((el) => (
+                      <SelectItem key={el} value={el} className="text-xs">
+                        &lt;{el}&gt;
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {isSubComponent && (
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Content type</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {USECASE_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => toggleUsecase(value)}
+                      className={cn(
+                        "rounded-md border px-2 py-1 text-[10px] font-medium transition-colors",
+                        usecases.includes(value)
+                          ? "border-blue-500 bg-blue-500/10 text-blue-500"
+                          : "border-border text-muted-foreground hover:bg-muted/50",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── Props tab ───────────────────────────────────── */}
+          <TabsContent value="props" className="flex-1 overflow-auto px-6 py-4 space-y-2">
+            {props.map((p, i) => (
+              <EditablePropRow
+                key={i}
+                prop={p}
+                onUpdate={(updated) => {
+                  const newProps = [...props]
+                  newProps[i] = updated
+                  setProps(newProps)
+                }}
+                onDelete={() => setProps(props.filter((_, idx) => idx !== i))}
+              />
+            ))}
+            {props.length === 0 && (
+              <p className="text-xs text-muted-foreground/60 py-2">No props defined yet.</p>
+            )}
+            <DialogPropAdder onAdd={(p) => setProps([...props, p])} />
+          </TabsContent>
+
+          {/* ── Variants tab ────────────────────────────────── */}
+          <TabsContent value="variants" className="flex-1 overflow-auto px-6 py-4 space-y-2">
+            {variants.map((v, i) => (
+              <EditableVariantRow
+                key={i}
+                variant={v}
+                onUpdate={(updated) => {
+                  const newVariants = [...variants]
+                  newVariants[i] = updated
+                  setVariants(newVariants)
+                }}
+                onDelete={() => setVariants(variants.filter((_, idx) => idx !== i))}
+              />
+            ))}
+            {variants.length === 0 && (
+              <p className="text-xs text-muted-foreground/60 py-2">No variants defined yet.</p>
+            )}
+            <DialogVariantAdder onAdd={(v) => setVariants([...variants, v])} />
+          </TabsContent>
+        </Tabs>
+
+        {/* Fixed footer */}
+        <div className="shrink-0 border-t px-6 py-4">
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onSave(pascalName || initialName, props, variants, isSubComponent ? baseElement : undefined, isSubComponent ? usecases : undefined)} disabled={!pascalName}>
+              Save changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </div>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -676,6 +958,257 @@ function AddSubComponentDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+/* ── DialogPropAdder — compact prop adder for dialogs ──────────── */
+
+/* ── EditablePropRow — view/edit toggle for a single prop ──────── */
+
+function EditablePropRow({
+  prop,
+  onUpdate,
+  onDelete,
+}: {
+  prop: ComponentProp
+  onUpdate: (prop: ComponentProp) => void
+  onDelete: () => void
+}) {
+  const [editing, setEditing] = React.useState(false)
+  const [editName, setEditName] = React.useState(prop.name)
+  const [editType, setEditType] = React.useState<ComponentProp["type"]>(prop.type)
+  const [editRequired, setEditRequired] = React.useState(prop.required)
+
+  function handleSave() {
+    if (!editName.trim()) return
+    onUpdate({ name: editName.trim(), type: editType, required: editRequired })
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 rounded-md border bg-muted/20 p-2">
+        <div className="flex items-center gap-2">
+          <Select value={editType} onValueChange={(v) => setEditType(v as ComponentProp["type"])}>
+            <SelectTrigger className="h-7 w-20 text-[10px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROP_TYPES.map((t) => (
+                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="h-7 flex-1 text-[10px]"
+            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+          />
+          <div className="flex items-center gap-1">
+            <Switch checked={editRequired} onCheckedChange={setEditRequired} className="scale-[0.6]" />
+            <span className="text-[9px] text-muted-foreground">Req</span>
+          </div>
+        </div>
+        <div className="flex justify-end gap-1">
+          <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" className="h-6 text-[10px]" onClick={handleSave} disabled={!editName.trim()}>
+            Save
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs">
+      <Badge variant="outline" className="h-5 text-[10px]">{prop.type}</Badge>
+      <code className="font-medium">{prop.name}</code>
+      {prop.required && <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">req</Badge>}
+      <div className="flex-1" />
+      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={() => {
+            setEditName(prop.name)
+            setEditType(prop.type)
+            setEditRequired(prop.required)
+            setEditing(true)
+          }}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="size-3" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ── EditableVariantRow — view/edit toggle for a single variant ── */
+
+function EditableVariantRow({
+  variant,
+  onUpdate,
+  onDelete,
+}: {
+  variant: CustomVariantDef
+  onUpdate: (variant: CustomVariantDef) => void
+  onDelete: () => void
+}) {
+  const [editing, setEditing] = React.useState(false)
+  const [editName, setEditName] = React.useState(variant.name)
+  const [editType, setEditType] = React.useState<"variant" | "boolean">(variant.type)
+  const [editOptions, setEditOptions] = React.useState<string[]>(variant.options)
+  const [editDefault, setEditDefault] = React.useState(variant.defaultValue)
+  const [optionInput, setOptionInput] = React.useState("")
+
+  function handleAddOptions() {
+    const newOpts = optionInput
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !editOptions.includes(s))
+    if (newOpts.length === 0) return
+    const updated = [...editOptions, ...newOpts]
+    setEditOptions(updated)
+    setOptionInput("")
+    if (!editDefault && updated.length >= 1) setEditDefault(updated[0])
+  }
+
+  function handleSave() {
+    if (!editName.trim()) return
+    if (editType === "variant" && editOptions.length < 2) return
+    onUpdate({
+      name: editName.trim(),
+      type: editType,
+      options: editType === "boolean" ? ["true", "false"] : editOptions,
+      defaultValue: editType === "boolean" ? (editDefault || "false") : (editDefault || editOptions[0] || ""),
+    })
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 rounded-md border bg-muted/20 p-2">
+        <div className="flex items-center gap-2">
+          <Select value={editType} onValueChange={(v) => setEditType(v as "variant" | "boolean")}>
+            <SelectTrigger className="h-7 w-20 text-[10px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="variant" className="text-xs">Variant</SelectItem>
+              <SelectItem value="boolean" className="text-xs">Boolean</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="h-7 w-24 shrink-0 text-[10px]"
+            placeholder="Name"
+          />
+          {editType === "variant" && (
+            <div
+              className="flex h-7 min-w-0 flex-1 cursor-text items-center gap-1 overflow-x-auto rounded-md border px-1.5"
+              onClick={() => document.getElementById("edit-variant-opts")?.focus()}
+            >
+              {editOptions.map((opt) => (
+                <Badge
+                  key={opt}
+                  variant={opt === editDefault ? "default" : "secondary"}
+                  className="shrink-0 cursor-pointer gap-0.5 text-[9px] h-4"
+                  onClick={(e) => { e.stopPropagation(); setEditDefault(opt) }}
+                >
+                  {opt}
+                  <button
+                    type="button"
+                    className="hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); setEditOptions(editOptions.filter((o) => o !== opt)) }}
+                  >
+                    <X className="size-2" />
+                  </button>
+                </Badge>
+              ))}
+              <input
+                id="edit-variant-opts"
+                placeholder={editOptions.length === 0 ? "Options (comma)" : ""}
+                value={optionInput}
+                onChange={(e) => setOptionInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); handleAddOptions() }
+                  if (e.key === "Backspace" && optionInput === "" && editOptions.length > 0) {
+                    setEditOptions(editOptions.slice(0, -1))
+                  }
+                }}
+                onBlur={handleAddOptions}
+                className="h-full min-w-[40px] flex-1 bg-transparent text-[10px] outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
+          {editType === "boolean" && (
+            <div className="flex items-center gap-1">
+              <Switch
+                checked={editDefault === "true"}
+                onCheckedChange={(c) => setEditDefault(c ? "true" : "false")}
+                className="scale-[0.6]"
+              />
+              <span className="text-[9px] text-muted-foreground">
+                {editDefault === "true" ? "true" : "false"}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-1">
+          <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" className="h-6 text-[10px]" onClick={handleSave} disabled={!editName.trim() || (editType === "variant" && editOptions.length < 2)}>
+            Save
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs">
+      <Badge variant="outline" className="h-5 text-[10px]">{variant.type}</Badge>
+      <code className="font-medium">{variant.name}</code>
+      {variant.type === "variant" && (
+        <span className="text-[10px] text-muted-foreground">{variant.options.join(", ")}</span>
+      )}
+      <div className="flex-1" />
+      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={() => {
+            setEditName(variant.name)
+            setEditType(variant.type)
+            setEditOptions(variant.options)
+            setEditDefault(variant.defaultValue)
+            setOptionInput("")
+            setEditing(true)
+          }}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="size-3" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    </div>
   )
 }
 
