@@ -24,7 +24,6 @@ import { CodePanel } from "@/components/playground/code-panel"
 import { StructurePanel } from "@/components/playground/structure-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
-import { BuilderPanel } from "@/components/playground/builder-panel"
 import { DefineView } from "@/components/playground/define-view"
 import { CanvasToolbar } from "@/components/playground/canvas-toolbar"
 import { VisualEditor } from "@/components/playground/visual-editor"
@@ -440,7 +439,7 @@ export default function CustomComponentPage() {
               />
 
               {/* Canvas + floating assembly panel */}
-              <div className="relative flex-1">
+              <div className="relative flex flex-1 flex-col">
                 <ComponentCanvas
                   slug={slug}
                   componentName={userComponent.name}
