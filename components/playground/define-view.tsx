@@ -76,8 +76,8 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           name={tree.name}
           props={tree.props}
           variants={tree.variants}
-          onUpdate={(props, variants) =>
-            onTreeChange({ ...tree, props, variants })
+          onUpdate={(newName, props, variants) =>
+            onTreeChange({ ...tree, name: newName, props, variants })
           }
         />
 
@@ -161,7 +161,7 @@ function ComponentCard({
   name: string
   props: ComponentProp[]
   variants: CustomVariantDef[]
-  onUpdate: (props: ComponentProp[], variants: CustomVariantDef[]) => void
+  onUpdate: (name: string, props: ComponentProp[], variants: CustomVariantDef[]) => void
 }) {
   return (
     <div className="rounded-lg border bg-background p-4">
@@ -256,8 +256,8 @@ function SubComponentCard({
             name={sc.name}
             props={sc.props}
             variants={sc.variants}
-            onSave={(props, variants) =>
-              onUpdate({ ...sc, props, variants })
+            onSave={(newName, props, variants) =>
+              onUpdate({ ...sc, name: newName, props, variants })
             }
           />
           <Button
@@ -320,7 +320,7 @@ function SubComponentCard({
 /* ── EditComponentDialog ───────────────────────────────────────── */
 
 function EditComponentDialog({
-  name,
+  name: initialName,
   props: initialProps,
   variants: initialVariants,
   onSave,
@@ -328,19 +328,26 @@ function EditComponentDialog({
   name: string
   props: ComponentProp[]
   variants: CustomVariantDef[]
-  onSave: (props: ComponentProp[], variants: CustomVariantDef[]) => void
+  onSave: (name: string, props: ComponentProp[], variants: CustomVariantDef[]) => void
 }) {
   const [open, setOpen] = React.useState(false)
+  const [editName, setEditName] = React.useState(initialName)
   const [props, setProps] = React.useState<ComponentProp[]>(initialProps)
   const [variants, setVariants] = React.useState<CustomVariantDef[]>(initialVariants)
 
   // Sync when dialog opens
   React.useEffect(() => {
     if (open) {
+      setEditName(initialName)
       setProps(initialProps)
       setVariants(initialVariants)
     }
-  }, [open, initialProps, initialVariants])
+  }, [open, initialName, initialProps, initialVariants])
+
+  const pascalName = React.useMemo(() => {
+    if (!editName.trim()) return ""
+    return toPascalCase(editName.trim())
+  }, [editName])
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -352,13 +359,31 @@ function EditComponentDialog({
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle>Edit {name}</AlertDialogTitle>
+          <AlertDialogTitle>Edit component</AlertDialogTitle>
           <AlertDialogDescription>
-            Update props and variants for this component.
+            Update name, props and variants.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Name */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Name</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-8 flex-1 text-xs"
+                placeholder="Component name"
+              />
+              {pascalName && pascalName !== editName && (
+                <code className="shrink-0 rounded bg-muted px-2 py-1 text-xs font-semibold">
+                  {pascalName}
+                </code>
+              )}
+            </div>
+          </div>
+
           {/* Props */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Props</Label>
@@ -406,7 +431,7 @@ function EditComponentDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onSave(props, variants)}>
+          <AlertDialogAction onClick={() => onSave(pascalName || initialName, props, variants)} disabled={!pascalName}>
             Save changes
           </AlertDialogAction>
         </AlertDialogFooter>
