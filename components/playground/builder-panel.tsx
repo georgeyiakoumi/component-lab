@@ -49,6 +49,7 @@ import type {
   ElementNode,
   ComponentProp,
   SubComponentDef,
+  SubComponentUsecase,
 } from "@/lib/component-tree"
 import {
   createElementNode,
@@ -1460,13 +1461,30 @@ function SubComponentsEditor({
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null)
   const [subName, setSubName] = React.useState("")
   const [baseElement, setBaseElement] = React.useState("div")
+  const [usecases, setUsecases] = React.useState<SubComponentUsecase[]>([])
   const [error, setError] = React.useState<string | null>(null)
 
   function resetForm() {
     setSubName("")
     setBaseElement("div")
+    setUsecases([])
     setError(null)
     setEditingIndex(null)
+  }
+
+  function toggleUsecase(uc: SubComponentUsecase) {
+    setUsecases((prev) => {
+      // wrapper is exclusive — if selecting wrapper, clear others
+      if (uc === "wrapper") {
+        return prev.includes("wrapper") ? [] : ["wrapper"]
+      }
+      // if selecting something else, remove wrapper
+      const without = prev.filter((u) => u !== "wrapper" && u !== uc)
+      if (prev.includes(uc)) {
+        return without
+      }
+      return [...without, uc]
+    })
   }
 
   function handleOpenChange(open: boolean) {
@@ -1503,6 +1521,7 @@ function SubComponentsEditor({
       name: fullName,
       baseElement,
       dataSlot: toDataSlot(fullName),
+      usecases,
       tree: createElementNode(baseElement),
       classes: [],
       props: [],
@@ -1525,6 +1544,7 @@ function SubComponentsEditor({
     const sub = subComponents[index]
     setSubName(sub.name)
     setBaseElement(sub.baseElement)
+    setUsecases(sub.usecases ?? [])
     setEditingIndex(index)
     setError(null)
     setPopoverOpen(true)
@@ -1662,6 +1682,48 @@ function SubComponentsEditor({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* ── Usecase chips ─────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Content type</Label>
+              <p className="text-[10px] text-muted-foreground">
+                What goes inside this component? Used for canvas preview only.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { value: "plain-text", label: "Text", icon: "T" },
+                    { value: "heading", label: "Heading", icon: "H" },
+                    { value: "button", label: "Button", icon: "B" },
+                    { value: "image", label: "Image", icon: "I" },
+                    { value: "input", label: "Input", icon: "⌨" },
+                    { value: "list", label: "List", icon: "≡" },
+                    { value: "icon", label: "Icon", icon: "★" },
+                    { value: "wrapper", label: "Wrapper", icon: "◻" },
+                  ] as const
+                ).map(({ value, label, icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleUsecase(value)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors",
+                      usecases.includes(value)
+                        ? "border-blue-500 bg-blue-500/10 text-blue-500"
+                        : "border-border text-muted-foreground hover:bg-muted/50",
+                    )}
+                  >
+                    <span className="text-[10px]">{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {usecases.includes("wrapper") && (
+                <p className="text-[10px] text-muted-foreground/70">
+                  Wrapper: renders {"{children}"} with a dashed border preview.
+                </p>
+              )}
             </div>
 
             {error && (

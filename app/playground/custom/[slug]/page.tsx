@@ -181,18 +181,94 @@ export default function CustomComponentPage() {
         children.unshift(sc.tree.text)
       }
 
-      // Empty sub-component placeholder
+      // Generate usecase-based placeholder content (canvas-only, not exported)
       if (children.length === 0) {
-        children.push(
-          React.createElement(
-            "span",
-            {
-              key: "__sc_empty__",
-              className: "text-[10px] text-muted-foreground/40 select-none",
-            },
-            `<${sc.name}>`,
-          ),
-        )
+        const ucs = sc.usecases ?? []
+        if (ucs.length === 0) {
+          // No usecases defined — show generic placeholder
+          children.push(
+            React.createElement(
+              "span",
+              {
+                key: "__sc_empty__",
+                className: "text-[10px] text-muted-foreground/40 select-none",
+              },
+              `<${sc.name}>`,
+            ),
+          )
+        } else {
+          // Render placeholder content based on usecases
+          ucs.forEach((uc, i) => {
+            const placeholderKey = `__uc_${i}__`
+            switch (uc) {
+              case "plain-text":
+                children.push(
+                  React.createElement("span", { key: placeholderKey }, "Sample text content"),
+                )
+                break
+              case "heading":
+                children.push(
+                  React.createElement("h3", { key: placeholderKey, className: "text-lg font-semibold" }, "Heading"),
+                )
+                break
+              case "button":
+                children.push(
+                  React.createElement("button", {
+                    key: placeholderKey,
+                    className: "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground",
+                  }, "Click me"),
+                )
+                break
+              case "image":
+                children.push(
+                  React.createElement("div", {
+                    key: placeholderKey,
+                    className: "flex h-32 w-full items-center justify-center rounded-md bg-muted text-xs text-muted-foreground",
+                  }, "Image placeholder"),
+                )
+                break
+              case "input":
+                children.push(
+                  React.createElement("input", {
+                    key: placeholderKey,
+                    className: "h-9 w-full rounded-md border bg-transparent px-3 text-sm",
+                    placeholder: "Type here...",
+                    readOnly: true,
+                  }),
+                )
+                break
+              case "list":
+                children.push(
+                  React.createElement("ul", { key: placeholderKey, className: "list-disc pl-5 text-sm space-y-1" },
+                    React.createElement("li", { key: "1" }, "Item one"),
+                    React.createElement("li", { key: "2" }, "Item two"),
+                    React.createElement("li", { key: "3" }, "Item three"),
+                  ),
+                )
+                break
+              case "icon":
+                children.push(
+                  React.createElement("div", {
+                    key: placeholderKey,
+                    className: "flex size-8 items-center justify-center rounded bg-muted text-muted-foreground",
+                  }, "★"),
+                )
+                break
+              case "wrapper":
+                children.push(
+                  React.createElement("div", {
+                    key: placeholderKey,
+                    className: "min-h-[40px] rounded border border-dashed border-muted-foreground/30 p-2",
+                  },
+                    React.createElement("span", {
+                      className: "text-[10px] text-muted-foreground/40 select-none",
+                    }, "{children}"),
+                  ),
+                )
+                break
+            }
+          })
+        }
       }
 
       return React.createElement(tag, { key, className }, ...children)
