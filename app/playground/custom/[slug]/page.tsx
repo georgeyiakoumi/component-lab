@@ -55,6 +55,7 @@ export default function CustomComponentPage() {
   const [codePanelWidth, setCodePanelWidth] = React.useState(350)
   const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const [styledComponentId, setStyledComponentId] = React.useState<string | null>(null)
+  const [hiddenIds, setHiddenIds] = React.useState<Set<string>>(new Set())
   const contentRef = React.useRef<HTMLDivElement>(null)
 
   const hasTree = componentTree !== undefined
@@ -143,6 +144,9 @@ export default function CustomComponentPage() {
   // Render the component tree as live JSX for the canvas preview
   const renderTreePreview = React.useCallback(
     (node: ElementNode): React.ReactNode => {
+      // Skip hidden nodes
+      if (hiddenIds.has(node.id)) return null
+
       const subComponent = subComponentMap.get(node.tag)
 
       // If this node is a sub-component, render its actual tree content
@@ -179,7 +183,7 @@ export default function CustomComponentPage() {
 
       return React.createElement(tag, { key: node.id, className }, ...children)
     },
-    [subComponentMap],
+    [subComponentMap, hiddenIds],
   )
 
   // Render a sub-component using its own tree
@@ -483,6 +487,8 @@ export default function CustomComponentPage() {
                     onTreeChange={handleTreeChange}
                     onSelectComponent={setStyledComponentId}
                     selectedId={styledComponentId}
+                    hiddenIds={hiddenIds}
+                    onHiddenChange={setHiddenIds}
                   />
                 </div>
               </div>

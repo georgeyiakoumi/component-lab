@@ -27,6 +27,9 @@ interface AssemblyPanelProps {
   onTreeChange: (tree: ComponentTree) => void
   onSelectComponent?: (id: string) => void
   selectedId?: string | null
+  /** Set of node IDs that are hidden in the canvas */
+  hiddenIds: Set<string>
+  onHiddenChange: (hiddenIds: Set<string>) => void
 }
 
 type DropPosition = "before" | "after" | "inside"
@@ -44,19 +47,17 @@ export function AssemblyPanel({
   onTreeChange,
   onSelectComponent,
   selectedId,
+  hiddenIds,
+  onHiddenChange,
 }: AssemblyPanelProps) {
-  const [hiddenIds, setHiddenIds] = React.useState<Set<string>>(new Set())
-
   function toggleHidden(nodeId: string) {
-    setHiddenIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
-      return next
-    })
+    const next = new Set(hiddenIds)
+    if (next.has(nodeId)) {
+      next.delete(nodeId)
+    } else {
+      next.add(nodeId)
+    }
+    onHiddenChange(next)
   }
 
   function handleRemoveNode(nodeId: string) {
@@ -89,6 +90,7 @@ export function AssemblyPanel({
               node={tree.assemblyTree}
               depth={0}
               isRoot
+              rootName={tree.name}
               subComponents={tree.subComponents}
               hiddenIds={hiddenIds}
               selectedId={selectedId}
@@ -111,6 +113,7 @@ interface AssemblyNodeProps {
   node: ElementNode
   depth: number
   isRoot: boolean
+  rootName?: string
   subComponents: ComponentTree["subComponents"]
   hiddenIds: Set<string>
   selectedId?: string | null
@@ -125,6 +128,7 @@ function AssemblyNode({
   node,
   depth,
   isRoot,
+  rootName,
   subComponents,
   hiddenIds,
   selectedId,
@@ -144,10 +148,8 @@ function AssemblyNode({
   const isSubComponent = !!subComponent
   const isSelected = subComponent ? selectedId === subComponent.id : selectedId === "main" && isRoot
 
-  // Display name
-  const displayName = isRoot
-    ? node.tag // Will show as the component name from the assembly root
-    : node.tag
+  // Display name — root shows component name, sub-components show their name
+  const displayName = isRoot && rootName ? rootName : node.tag
 
   // Drag handlers
   const handleDragStart = (e: React.DragEvent) => {
