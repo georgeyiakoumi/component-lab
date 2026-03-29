@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Pencil, Trash2, X } from "lucide-react"
+import { Plus, Pencil, Trash2, X, ArrowUpDown } from "lucide-react"
 import { deleteUserComponent, toSlug } from "@/lib/component-store"
 
 import { cn } from "@/lib/utils"
@@ -91,33 +91,6 @@ interface DefineViewProps {
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function DefineView({ tree, onTreeChange }: DefineViewProps) {
-  // Drag and drop state for sub-component reordering
-  const [dragIndex, setDragIndex] = React.useState<number | null>(null)
-  const [dropIndex, setDropIndex] = React.useState<number | null>(null)
-
-  function handleDragStart(index: number) {
-    setDragIndex(index)
-  }
-
-  function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault()
-    setDropIndex(index)
-  }
-
-  function handleDrop(index: number) {
-    if (dragIndex === null || dragIndex === index) {
-      setDragIndex(null)
-      setDropIndex(null)
-      return
-    }
-    const newSubs = [...tree.subComponents]
-    const [moved] = newSubs.splice(dragIndex, 1)
-    newSubs.splice(index, 0, moved)
-    onTreeChange({ ...tree, subComponents: newSubs })
-    setDragIndex(null)
-    setDropIndex(null)
-  }
-
   function handleDeleteComponent() {
     deleteUserComponent(toSlug(tree.name))
     window.location.href = "/playground"
@@ -160,9 +133,9 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
               />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-destructive">
-                    <Trash2 className="size-3" />
-                    Delete component
+                  <Button variant="ghost" size="sm" >
+                    <Trash2 />
+                    Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -240,11 +213,18 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                 </Badge>
               )}
             </div>
-            <AddSubComponentDialog
-              parentName={tree.name}
-              existingNames={tree.subComponents.map((sc) => sc.name)}
-              onAdd={(sc) => {
-                const scNode = createElementNode(sc.name)
+            <div className="flex items-center gap-1.5">
+              {tree.subComponents.length > 1 && (
+                <ReorderDialog
+                  subComponents={tree.subComponents}
+                  onReorder={(reordered) => onTreeChange({ ...tree, subComponents: reordered })}
+                />
+              )}
+              <AddSubComponentDialog
+                parentName={tree.name}
+                existingNames={tree.subComponents.map((sc) => sc.name)}
+                onAdd={(sc) => {
+                  const scNode = createElementNode(sc.name)
                 const newAssembly = {
                   ...tree.assemblyTree,
                   children: [...tree.assemblyTree.children, scNode],
@@ -255,7 +235,8 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   assemblyTree: newAssembly,
                 })
               }}
-            />
+              />
+            </div>
           </div>
 
           {tree.subComponents.length === 0 && (
@@ -267,21 +248,11 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           {tree.subComponents.map((sc, i) => (
             <div
               key={sc.id}
-              draggable
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={(e) => handleDragOver(e, i)}
-              onDrop={() => handleDrop(i)}
-              onDragEnd={() => { setDragIndex(null); setDropIndex(null) }}
-              className={cn(
-                "rounded-lg border bg-background p-4 transition-all",
-                dragIndex === i && "opacity-50",
-                dropIndex === i && dragIndex !== i && "border-blue-500 border-t-2",
-              )}
+              className="group rounded-lg border bg-background p-4 transition-colors hover:border-muted-foreground/30 hover:bg-muted/20"
             >
               {/* Header */}
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground">⠿</span>
                   <h3 className="text-sm font-semibold">{sc.name}</h3>
                   <Badge variant="secondary" className="text-xs">
                     &lt;{sc.baseElement}&gt;
@@ -292,7 +263,7 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                     </Badge>
                   ))}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <EditComponentDialog
                     name={sc.name}
                     props={sc.props}
@@ -312,38 +283,55 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                       onTreeChange({ ...tree, subComponents: newSubs })
                     }}
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => {
-                      const newSubs = tree.subComponents.filter((_, idx) => idx !== i)
-                      const removeFromAssembly = (node: typeof tree.assemblyTree): typeof tree.assemblyTree => ({
-                        ...node,
-                        children: node.children
-                          .filter((c) => c.tag !== sc.name)
-                          .map(removeFromAssembly),
-                      })
-                      onTreeChange({
-                        ...tree,
-                        subComponents: newSubs,
-                        assemblyTree: removeFromAssembly(tree.assemblyTree),
-                      })
-                    }}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {sc.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove this sub-component. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => {
+                            const newSubs = tree.subComponents.filter((_, idx) => idx !== i)
+                            const removeFromAssembly = (node: typeof tree.assemblyTree): typeof tree.assemblyTree => ({
+                              ...node,
+                              children: node.children
+                                .filter((c) => c.tag !== sc.name)
+                                .map(removeFromAssembly),
+                            })
+                            onTreeChange({
+                              ...tree,
+                              subComponents: newSubs,
+                              assemblyTree: removeFromAssembly(tree.assemblyTree),
+                            })
+                          }}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
 
-              {/* Props — stacked rows */}
-              <div className="mt-3">
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Props
-                </p>
-                {sc.props.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60">None</p>
-                ) : (
+              {/* Props — only show if there are any */}
+              {sc.props.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Props
+                  </p>
                   <div className="space-y-1">
                     {sc.props.map((p) => (
                       <div key={p.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
@@ -353,17 +341,15 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Variants — stacked rows */}
-              <div className="mt-3">
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Variants
-                </p>
-                {sc.variants.length === 0 ? (
-                  <p className="text-xs text-muted-foreground/60">None</p>
-                ) : (
+              {/* Variants — only show if there are any */}
+              {sc.variants.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Variants
+                  </p>
                   <div className="space-y-1">
                     {sc.variants.map((v) => (
                       <div key={v.name} className="flex items-center gap-2 rounded-md border px-3 py-1.5">
@@ -375,8 +361,8 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -499,10 +485,10 @@ function SubComponentCard({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-muted-foreground hover:text-destructive"
+            
             onClick={onDelete}
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 />
           </Button>
         </div>
       </div>
@@ -605,8 +591,8 @@ function EditComponentDialog({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
-          <Pencil className="size-3" />
+        <Button variant="ghost" size="sm" >
+          <Pencil />
           Edit
         </Button>
       </AlertDialogTrigger>
@@ -764,6 +750,90 @@ function EditComponentDialog({
   )
 }
 
+/* ── ReorderDialog — drag-and-drop reordering in a dialog ──────── */
+
+function ReorderDialog({
+  subComponents,
+  onReorder,
+}: {
+  subComponents: SubComponentDef[]
+  onReorder: (reordered: SubComponentDef[]) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [items, setItems] = React.useState(subComponents)
+  const [dragIdx, setDragIdx] = React.useState<number | null>(null)
+  const [dropIdx, setDropIdx] = React.useState<number | null>(null)
+
+  React.useEffect(() => {
+    if (open) setItems(subComponents)
+  }, [open, subComponents])
+
+  function handleDrop(targetIdx: number) {
+    if (dragIdx === null || dragIdx === targetIdx) {
+      setDragIdx(null)
+      setDropIdx(null)
+      return
+    }
+    const newItems = [...items]
+    const [moved] = newItems.splice(dragIdx, 1)
+    newItems.splice(targetIdx, 0, moved)
+    setItems(newItems)
+    setDragIdx(null)
+    setDropIdx(null)
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm" >
+          <ArrowUpDown />
+          Reorder
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reorder sub-components</AlertDialogTitle>
+          <AlertDialogDescription>
+            Drag to reorder. This changes the order in the exported code.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-1 py-2">
+          {items.map((sc, i) => (
+            <div key={sc.id} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center text-xs font-medium text-muted-foreground">
+                {i + 1}
+              </span>
+              <div
+                draggable
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => { e.preventDefault(); setDropIdx(i) }}
+                onDrop={() => handleDrop(i)}
+                onDragEnd={() => { setDragIdx(null); setDropIdx(null) }}
+                className={cn(
+                  "flex flex-1 items-center gap-3 rounded-md border px-3 py-2 transition-all cursor-grab active:cursor-grabbing",
+                  dragIdx === i && "opacity-50",
+                  dropIdx === i && dragIdx !== i && "border-blue-500 border-t-2",
+                )}
+              >
+                <span className="text-muted-foreground/40">⠿</span>
+                <span className="text-sm font-medium">{sc.name}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => onReorder(items)}>
+            Apply order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 /* ── AddSubComponentDialog ─────────────────────────────────────── */
 
 function AddSubComponentDialog({
@@ -836,8 +906,8 @@ function AddSubComponentDialog({
   return (
     <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
-          <Plus className="size-3" />
+        <Button variant="outline" size="sm" >
+          <Plus />
           Add
         </Button>
       </AlertDialogTrigger>
@@ -918,9 +988,9 @@ function AddSubComponentDialog({
                 <button
                   type="button"
                   onClick={() => setProps(props.filter((_, idx) => idx !== i))}
-                  className="text-muted-foreground hover:text-destructive"
+                  
                 >
-                  <X className="size-3" />
+                  <X />
                 </button>
               </div>
             ))}
@@ -938,9 +1008,9 @@ function AddSubComponentDialog({
                 <button
                   type="button"
                   onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}
-                  className="text-muted-foreground hover:text-destructive"
+                  
                 >
-                  <X className="size-3" />
+                  <X />
                 </button>
               </div>
             ))}
@@ -1011,10 +1081,10 @@ function EditablePropRow({
           </div>
         </div>
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(false)}>
+          <Button size="sm" variant="ghost"  onClick={() => setEditing(false)}>
             Cancel
           </Button>
-          <Button size="sm" className="h-6 text-xs" onClick={handleSave} disabled={!editName.trim()}>
+          <Button size="sm"  onClick={handleSave} disabled={!editName.trim()}>
             Save
           </Button>
         </div>
@@ -1039,14 +1109,14 @@ function EditablePropRow({
           }}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground"
         >
-          <Pencil className="size-3" />
+          <Pencil />
         </button>
         <button
           type="button"
           onClick={onDelete}
           className="rounded p-0.5 text-muted-foreground hover:text-destructive"
         >
-          <X className="size-3" />
+          <X />
         </button>
       </div>
     </div>
@@ -1132,7 +1202,7 @@ function EditableVariantRow({
                     className="hover:text-destructive"
                     onClick={(e) => { e.stopPropagation(); setEditOptions(editOptions.filter((o) => o !== opt)) }}
                   >
-                    <X className="size-2" />
+                    <X />
                   </button>
                 </Badge>
               ))}
@@ -1166,10 +1236,10 @@ function EditableVariantRow({
           )}
         </div>
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(false)}>
+          <Button size="sm" variant="ghost"  onClick={() => setEditing(false)}>
             Cancel
           </Button>
-          <Button size="sm" className="h-6 text-xs" onClick={handleSave} disabled={!editName.trim() || (editType === "variant" && editOptions.length < 2)}>
+          <Button size="sm"  onClick={handleSave} disabled={!editName.trim() || (editType === "variant" && editOptions.length < 2)}>
             Save
           </Button>
         </div>
@@ -1198,14 +1268,14 @@ function EditableVariantRow({
           }}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground"
         >
-          <Pencil className="size-3" />
+          <Pencil />
         </button>
         <button
           type="button"
           onClick={onDelete}
           className="rounded p-0.5 text-muted-foreground hover:text-destructive"
         >
-          <X className="size-3" />
+          <X />
         </button>
       </div>
     </div>
@@ -1254,7 +1324,7 @@ function DialogPropAdder({ onAdd }: { onAdd: (prop: ComponentProp) => void }) {
           onClick={handleAdd}
           disabled={!name.trim()}
         >
-          <Plus className="size-2.5" />
+          <Plus />
         </Button>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -1339,7 +1409,7 @@ function DialogVariantAdder({ onAdd }: { onAdd: (v: CustomVariantDef) => void })
                     className="hover:text-destructive"
                     onClick={(e) => { e.stopPropagation(); setOptions(options.filter((o) => o !== opt)) }}
                   >
-                    <X className="size-2" />
+                    <X />
                   </button>
                 </Badge>
               ))}
@@ -1366,7 +1436,7 @@ function DialogVariantAdder({ onAdd }: { onAdd: (v: CustomVariantDef) => void })
             onClick={handleAdd}
             disabled={!variantName.trim() || (variantType === "variant" && options.length < 2)}
           >
-            <Plus className="size-2.5" />
+            <Plus />
           </Button>
         </div>
         {variantType === "boolean" && (
