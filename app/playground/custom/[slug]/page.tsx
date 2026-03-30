@@ -481,7 +481,7 @@ export default function CustomComponentPage() {
                 />
 
                 {/* Floating assembly panel (bottom-left) */}
-                <div className="absolute bottom-3 left-3 z-10 w-64 rounded-lg border bg-background/95 shadow-lg backdrop-blur-sm">
+                <div className="absolute bottom-3 left-3 z-10 w-72 rounded-lg border bg-background/95 shadow-lg backdrop-blur-sm">
                   <AssemblyPanel
                     tree={componentTree}
                     onTreeChange={handleTreeChange}

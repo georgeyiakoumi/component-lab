@@ -251,29 +251,28 @@ function AssemblyNode({
         </button>
 
         {/* Hover actions */}
-        {!isRoot && (
-          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-            {/* Add inside */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-5"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // For now, add a placeholder div — will be replaced with picker
-                    onAddChild(node.id, "div")
-                    setExpanded(true)
-                  }}
-                >
-                  <Plus className="size-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Add inside</TooltipContent>
-            </Tooltip>
+        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          {/* Add inside — available on all nodes including root */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAddChild(node.id, "div")
+                  setExpanded(true)
+                }}
+              >
+                <Plus className="size-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">Add inside</TooltipContent>
+          </Tooltip>
 
-            {/* Toggle visibility */}
+          {/* Toggle visibility — not on root */}
+          {!isRoot && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -293,7 +292,10 @@ function AssemblyNode({
               </TooltipContent>
             </Tooltip>
 
-            {/* Remove from demo */}
+          )}
+
+          {/* Remove from demo — not on root */}
+          {!isRoot && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -310,8 +312,8 @@ function AssemblyNode({
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">Remove</TooltipContent>
             </Tooltip>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Children */}
