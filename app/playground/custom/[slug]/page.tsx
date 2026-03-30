@@ -57,6 +57,8 @@ export default function CustomComponentPage() {
   const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const [styledComponentId, setStyledComponentId] = React.useState<string | null>(null)
   const [hiddenIds, setHiddenIds] = React.useState<Set<string>>(new Set())
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle")
+  const [isDirty, setIsDirty] = React.useState(false)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
   const hasTree = componentTree !== undefined
@@ -106,13 +108,18 @@ export default function CustomComponentPage() {
     }
   }, [mode])
 
+  // Track dirty state
+  React.useEffect(() => {
+    if (mounted && userComponent) setIsDirty(true)
+  }, [source, componentTree])
+
   // Auto-save source changes back to the store (debounced)
   React.useEffect(() => {
-    if (!userComponent) return
+    if (!userComponent || !isDirty) return
+    setSaveState("saving")
     const timer = setTimeout(() => {
       const updated = {
         ...userComponent,
-        // Sync name from tree if it changed
         name: componentTree?.name ?? userComponent.name,
         source,
         tree: componentTree,
@@ -120,13 +127,32 @@ export default function CustomComponentPage() {
       }
       saveUserComponent(updated)
       setUserComponent(updated)
-      toast.success("Session saved", {
-        duration: 1500,
-      })
+      setIsDirty(false)
+      setSaveState("saved")
+      setTimeout(() => setSaveState("idle"), 1500)
     }, 1000)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, componentTree])
+
+  // Manual save (triggered by Save button)
+  const handleManualSave = React.useCallback(() => {
+    if (!userComponent) return
+    setSaveState("saving")
+    const updated = {
+      ...userComponent,
+      name: componentTree?.name ?? userComponent.name,
+      source,
+      tree: componentTree,
+      updatedAt: new Date().toISOString(),
+    }
+    saveUserComponent(updated)
+    setUserComponent(updated)
+    setIsDirty(false)
+    setSaveState("saved")
+    toast.success("Session saved")
+    setTimeout(() => setSaveState("idle"), 1500)
+  }, [userComponent, componentTree, source])
 
   // When the tree changes, regenerate source code
   const handleTreeChange = React.useCallback(
@@ -431,6 +457,8 @@ export default function CustomComponentPage() {
         mode={mode}
         onModeChange={setMode}
         isCustom={hasTree}
+        saveState={saveState}
+        onSave={handleManualSave}
       />
 
       {/* ── Main content area ────────────────────────────────── */}

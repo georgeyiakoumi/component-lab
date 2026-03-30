@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
   categories,
+  registry,
   searchComponents,
   getComponentsByCategory,
   type ComponentMeta,
@@ -94,9 +95,7 @@ export function PlaygroundSidebar({
         <span className="text-sm font-semibold tracking-tight">
           Components
         </span>
-        <Badge variant="secondary" className="ml-auto text-xs">
-          {filteredComponents.length}
-        </Badge>
+        
         {onCollapse && (
           <Button
             variant="ghost"
@@ -125,15 +124,24 @@ export function PlaygroundSidebar({
       <ScrollArea className="flex-1">
         <div className="py-2">
           {/* ── My Components ─────────────────────────────────── */}
-          {customComponents.length > 0 && !isSearching && (
+          {!isSearching && (
             <div className="mb-2">
               <div className="flex items-center gap-2 px-4 py-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   My Components
                 </span>
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {customComponents.length}
-                </Badge>
+                {customComponents.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {customComponents.length}
+                  </Badge>
+                )}
+                <a
+                  href="/playground/new"
+                  className="ml-auto rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Create new component"
+                >
+                  <Plus className="size-3.5" />
+                </a>
               </div>
               <div className="space-y-0.5">
                 {customComponents.map((uc) => (
@@ -153,7 +161,7 @@ export function PlaygroundSidebar({
                     <span className="truncate">{uc.name}</span>
                     <Badge
                       variant="outline"
-                      className="ml-auto h-4 shrink-0 px-1 text-xs font-normal"
+                      className="h-4 shrink-0 px-1 text-xs font-normal"
                     >
                       custom
                     </Badge>
@@ -192,7 +200,16 @@ export function PlaygroundSidebar({
             )
           ) : (
             /* ── Grouped categories ──────────────────────────── */
-            categories.map((category) => {
+            <>
+            <div className="flex items-center gap-2 px-4 py-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                shadcn Components
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {registry.length}
+              </Badge>
+            </div>
+            {categories.map((category) => {
               const components = grouped.get(category.name) ?? []
               if (components.length === 0) return null
 
@@ -234,7 +251,8 @@ export function PlaygroundSidebar({
                   )}
                 </div>
               )
-            })
+            })}
+            </>
           )}
         </div>
       </ScrollArea>

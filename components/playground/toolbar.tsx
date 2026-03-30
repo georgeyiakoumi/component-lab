@@ -12,6 +12,9 @@ import {
   Pencil,
   Layers,
   Download,
+  Save,
+  Loader2,
+  Check,
 } from "lucide-react"
 import { ExportDialog } from "@/components/playground/export-dialog"
 
@@ -73,6 +76,10 @@ interface ToolbarProps {
   onModeChange?: (mode: PlaygroundMode) => void
   /** When true, shows Define/Preview toggle instead of Inspect/Edit */
   isCustom?: boolean
+  /** Save state for custom components */
+  saveState?: "idle" | "saving" | "saved"
+  /** Manual save handler */
+  onSave?: () => void
   className?: string
 }
 
@@ -90,6 +97,8 @@ export function PlaygroundToolbar({
   mode = "inspect",
   onModeChange,
   isCustom,
+  saveState,
+  onSave,
   className,
 }: ToolbarProps) {
   const hasSelectors = propSelectors && propSelectors.length > 0
@@ -170,13 +179,57 @@ export function PlaygroundToolbar({
         {/* ── Spacer ─────────────────────────────────────────── */}
         <div className="flex-1" />
 
-        {/* ── Export (only when slug + source provided) ────────── */}
-        {componentName && slug && source && (
-          <ExportDialog
-            slug={slug}
-            source={source}
-            componentName={componentName}
-          />
+        {/* ── Save (custom components only) ──────────────────── */}
+        {onSave && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSave}
+            disabled={saveState === "saving"}
+            className="gap-1.5"
+          >
+            {saveState === "saving" ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : saveState === "saved" ? (
+              <>
+                <Check className="size-3.5" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="size-3.5" />
+                Save
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* ── Export ─────────────────────────────────────────── */}
+        {componentName && (
+          slug && source ? (
+            <ExportDialog
+              slug={slug}
+              source={source}
+              componentName={componentName}
+            />
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button variant="outline" size="sm" disabled className="gap-1.5 pointer-events-none">
+                    <Download className="size-3.5" />
+                    Export
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Design your component first to enable export</p>
+              </TooltipContent>
+            </Tooltip>
+          )
         )}
       </div>
     </TooltipProvider>
