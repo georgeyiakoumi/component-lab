@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { parseCvaVariants } from "@/lib/cva-parser"
@@ -119,6 +120,9 @@ export default function CustomComponentPage() {
       }
       saveUserComponent(updated)
       setUserComponent(updated)
+      toast.success("Session saved", {
+        duration: 1500,
+      })
     }, 1000)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
