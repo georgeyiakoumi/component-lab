@@ -11,6 +11,23 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardAction,
+} from "@/components/ui/card"
+import {
+  Item,
+  ItemContent,
+  ItemTitle,
+  ItemDescription,
+  ItemActions,
+} from "@/components/ui/item"
 import {
   Popover,
   PopoverTrigger,
@@ -235,15 +252,11 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
     <ScrollArea className="flex-1">
       <div className="w-full max-w-2xl space-y-8 p-8">
         {/* ── Main component ───────────────────────────────── */}
-        <div className="space-y-3 rounded-lg bg-muted p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold">{tree.name}</h1>
-              <Badge variant="secondary" className="text-xs">
-                &lt;{tree.baseElement}&gt;
-              </Badge>
-            </div>
-            <div className="flex items-center gap-1.5">
+        <Card className="group/compound">
+          <CardHeader>
+            <CardTitle className="text-lg">{tree.name}</CardTitle>
+            <CardDescription>&lt;{tree.baseElement}&gt;</CardDescription>
+            <CardAction className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover/compound:opacity-100">
               <EditSettingsDialog
                 name={tree.name}
                 baseElement={tree.baseElement}
@@ -299,25 +312,36 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
-          </div>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InlinePropsSection
+              props={tree.props}
+              onUpdate={handleUpdateCompoundProp}
+              onDelete={handleDeleteCompoundProp}
+              onAdd={handleAddCompoundProp}
+            />
+            <InlineVariantsSection
+              variants={tree.variants}
+              onUpdate={handleUpdateCompoundVariant}
+              onDelete={handleDeleteCompoundVariant}
+              onAdd={handleAddCompoundVariant}
+            />
+          </CardContent>
+          {tree.variants.length > 0 && (
+            <CardFooter className="text-xs text-muted-foreground">
+              <span className="font-semibold">Defaults:</span>&nbsp;
+              {tree.variants.map((v, i) => (
+                <React.Fragment key={v.name}>
+                  {i > 0 && ", "}
+                  {v.name}: <em>{v.defaultValue}</em>
+                </React.Fragment>
+              ))}
+            </CardFooter>
+          )}
+        </Card>
 
-          {/* Inline props */}
-          <InlinePropsSection
-            props={tree.props}
-            onUpdate={handleUpdateCompoundProp}
-            onDelete={handleDeleteCompoundProp}
-            onAdd={handleAddCompoundProp}
-          />
-
-          {/* Inline variants */}
-          <InlineVariantsSection
-            variants={tree.variants}
-            onUpdate={handleUpdateCompoundVariant}
-            onDelete={handleDeleteCompoundVariant}
-            onAdd={handleAddCompoundVariant}
-          />
-        </div>
+        <Separator />
 
         {/* ── Sub-components ───────────────────────────────── */}
         <div className="space-y-4">
@@ -364,15 +388,11 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           )}
 
           {tree.subComponents.map((sc, i) => (
-            <div
-              key={sc.id}
-              className="group/card rounded-lg border bg-background p-4 transition-colors hover:border-muted-foreground/30 hover:bg-muted/20"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold">{sc.name}</h3>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <Card key={sc.id} className="group/card">
+              <CardHeader>
+                <CardTitle className="text-sm">{sc.name}</CardTitle>
+                <CardDescription>
+                  <span className="flex flex-wrap items-center gap-1.5">
                     <span>&lt;{sc.baseElement}&gt;</span>
                     {(sc.usecases ?? []).length > 0 && (
                       <>
@@ -386,9 +406,9 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                         <span>nests inside {sc.nestInside}</span>
                       </>
                     )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
+                  </span>
+                </CardDescription>
+                <CardAction className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
                   <EditSettingsDialog
                     name={sc.name}
                     baseElement={sc.baseElement}
@@ -459,29 +479,34 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </div>
-              </div>
-
-              {/* Inline props */}
-              <div className="mt-3">
+                </CardAction>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <InlinePropsSection
                   props={sc.props}
                   onUpdate={(idx, updated) => handleUpdateSubProp(i, idx, updated)}
                   onDelete={(idx) => handleDeleteSubProp(i, idx)}
                   onAdd={(prop) => handleAddSubProp(i, prop)}
                 />
-              </div>
-
-              {/* Inline variants */}
-              <div className="mt-3">
                 <InlineVariantsSection
                   variants={sc.variants}
                   onUpdate={(idx, updated) => handleUpdateSubVariant(i, idx, updated)}
                   onDelete={(idx) => handleDeleteSubVariant(i, idx)}
                   onAdd={(variant) => handleAddSubVariant(i, variant)}
                 />
-              </div>
-            </div>
+              </CardContent>
+              {sc.variants.length > 0 && (
+                <CardFooter className="text-xs text-muted-foreground">
+                  <span className="font-semibold">Defaults:</span>&nbsp;
+                  {sc.variants.map((v, vi) => (
+                    <React.Fragment key={v.name}>
+                      {vi > 0 && ", "}
+                      {v.name}: <em>{v.defaultValue}</em>
+                    </React.Fragment>
+                  ))}
+                </CardFooter>
+              )}
+            </Card>
           ))}
         </div>
       </div>
@@ -505,15 +530,13 @@ function InlinePropsSection({
   return (
     <div>
       <div className="flex items-center justify-between pb-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Props
-        </p>
+        <h4 className="text-sm font-medium">Props</h4>
         <AddPropPopover onAdd={onAdd} />
       </div>
       {props.length === 0 ? (
         <p className="py-1 text-xs text-muted-foreground/60">No props defined.</p>
       ) : (
-        <div className="divide-y">
+        <div className="space-y-1">
           {props.map((p, i) => (
             <PropRow
               key={`${p.name}-${i}`}
@@ -548,15 +571,18 @@ function PropRow({
 }) {
   const Icon = PROP_ICONS[prop.type] ?? Type
   return (
-    <div className="group/row flex items-center gap-2 px-1 py-1.5 text-xs">
+    <Item variant="muted" size="sm" className="group/row py-1.5">
       <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="font-medium">{prop.name}</span>
-      {prop.required && (
-        <span className="text-destructive" title="Required">*</span>
-      )}
-      <span className="truncate text-muted-foreground">{prop.type}</span>
-      <div className="flex-1" />
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+      <ItemContent className="flex-row items-center gap-2">
+        <ItemTitle className="text-xs">
+          {prop.name}
+          {prop.required && (
+            <span className="text-destructive" title="Required">*</span>
+          )}
+        </ItemTitle>
+        <ItemDescription className="truncate text-xs">{prop.type}</ItemDescription>
+      </ItemContent>
+      <ItemActions className="opacity-0 transition-opacity group-hover/row:opacity-100">
         <EditPropPopover prop={prop} onSave={onUpdate} />
         <button
           type="button"
@@ -565,8 +591,8 @@ function PropRow({
         >
           <X className="size-3.5" />
         </button>
-      </div>
-    </div>
+      </ItemActions>
+    </Item>
   )
 }
 
@@ -734,15 +760,13 @@ function InlineVariantsSection({
   return (
     <div>
       <div className="flex items-center justify-between pb-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Variants
-        </p>
+        <h4 className="text-sm font-medium">Variants</h4>
         <AddVariantPopover onAdd={onAdd} />
       </div>
       {variants.length === 0 ? (
         <p className="py-1 text-xs text-muted-foreground/60">No variants defined.</p>
       ) : (
-        <div className="divide-y">
+        <div className="space-y-1">
           {variants.map((v, i) => (
             <VariantRow
               key={`${v.name}-${i}`}
@@ -769,22 +793,21 @@ function VariantRow({
   onDelete: () => void
 }) {
   return (
-    <div className="group/row flex items-center gap-2 px-1 py-1.5 text-xs">
+    <Item variant="muted" size="sm" className="group/row py-1.5">
       {variant.type === "boolean" ? (
         <ToggleLeft className="size-3.5 shrink-0 text-muted-foreground" />
       ) : (
         <Diamond className="size-3.5 shrink-0 text-muted-foreground" />
       )}
-      <span className="font-medium">{variant.name}</span>
-      <span className="truncate text-muted-foreground">
-        {variant.type === "boolean"
-          ? `= ${variant.defaultValue}`
-          : variant.options.map((opt) =>
-              opt === variant.defaultValue ? `${opt} (default)` : opt
-            ).join(", ")}
-      </span>
-      <div className="flex-1" />
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+      <ItemContent className="flex-row items-center gap-2">
+        <ItemTitle className="text-xs">{variant.name}</ItemTitle>
+        {variant.type === "variant" && variant.options.length > 0 && (
+          <ItemDescription className="truncate text-xs">
+            {variant.options.join(", ")}
+          </ItemDescription>
+        )}
+      </ItemContent>
+      <ItemActions className="opacity-0 transition-opacity group-hover/row:opacity-100">
         <EditVariantPopover variant={variant} onSave={onUpdate} />
         <button
           type="button"
@@ -793,8 +816,8 @@ function VariantRow({
         >
           <X className="size-3.5" />
         </button>
-      </div>
-    </div>
+      </ItemActions>
+    </Item>
   )
 }
 
