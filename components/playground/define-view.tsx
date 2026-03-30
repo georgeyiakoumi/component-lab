@@ -235,7 +235,7 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
     <ScrollArea className="flex-1">
       <div className="w-full max-w-2xl space-y-8 p-8">
         {/* ── Main component ───────────────────────────────── */}
-        <div className="space-y-4 rounded-lg bg-muted p-5">
+        <div className="space-y-3 rounded-lg bg-muted p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-semibold">{tree.name}</h1>
@@ -501,22 +501,27 @@ function InlinePropsSection({
   onAdd: (prop: ComponentProp) => void
 }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Props
-      </p>
-      {props.length === 0 && (
-        <p className="text-xs text-muted-foreground/60">No props defined.</p>
+    <div>
+      <div className="flex items-center justify-between pb-1">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Props
+        </p>
+        <AddPropPopover onAdd={onAdd} />
+      </div>
+      {props.length === 0 ? (
+        <p className="py-1 text-xs text-muted-foreground/60">No props defined.</p>
+      ) : (
+        <div className="divide-y">
+          {props.map((p, i) => (
+            <PropRow
+              key={`${p.name}-${i}`}
+              prop={p}
+              onUpdate={(updated) => onUpdate(i, updated)}
+              onDelete={() => onDelete(i)}
+            />
+          ))}
+        </div>
       )}
-      {props.map((p, i) => (
-        <PropRow
-          key={`${p.name}-${i}`}
-          prop={p}
-          onUpdate={(updated) => onUpdate(i, updated)}
-          onDelete={() => onDelete(i)}
-        />
-      ))}
-      <AddPropPopover onAdd={onAdd} />
     </div>
   )
 }
@@ -533,11 +538,11 @@ function PropRow({
   onDelete: () => void
 }) {
   return (
-    <div className="group/row flex items-center gap-2 rounded-md px-2 py-1 text-xs hover:bg-muted/40">
+    <div className="group/row flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted/40">
       <Badge variant="outline" className="h-5 text-xs">{prop.type}</Badge>
       <code className="font-medium">{prop.name}</code>
       {prop.required && (
-        <Badge variant="secondary" className="h-4 px-1.5 text-xs">req</Badge>
+        <span className="text-destructive" title="Required">*</span>
       )}
       <div className="flex-1" />
       <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
@@ -716,22 +721,27 @@ function InlineVariantsSection({
   onAdd: (variant: CustomVariantDef) => void
 }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Variants
-      </p>
-      {variants.length === 0 && (
-        <p className="text-xs text-muted-foreground/60">No variants defined.</p>
+    <div>
+      <div className="flex items-center justify-between pb-1">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Variants
+        </p>
+        <AddVariantPopover onAdd={onAdd} />
+      </div>
+      {variants.length === 0 ? (
+        <p className="py-1 text-xs text-muted-foreground/60">No variants defined.</p>
+      ) : (
+        <div className="divide-y">
+          {variants.map((v, i) => (
+            <VariantRow
+              key={`${v.name}-${i}`}
+              variant={v}
+              onUpdate={(updated) => onUpdate(i, updated)}
+              onDelete={() => onDelete(i)}
+            />
+          ))}
+        </div>
       )}
-      {variants.map((v, i) => (
-        <VariantRow
-          key={`${v.name}-${i}`}
-          variant={v}
-          onUpdate={(updated) => onUpdate(i, updated)}
-          onDelete={() => onDelete(i)}
-        />
-      ))}
-      <AddVariantPopover onAdd={onAdd} />
     </div>
   )
 }
@@ -748,10 +758,13 @@ function VariantRow({
   onDelete: () => void
 }) {
   return (
-    <div className="group/row rounded-md px-2 py-1 text-xs hover:bg-muted/40">
+    <div className="group/row px-2 py-1.5 text-xs hover:bg-muted/40">
       <div className="flex items-center gap-2">
         <Badge variant="outline" className="h-5 text-xs">{variant.type}</Badge>
         <code className="font-medium">{variant.name}</code>
+        {variant.type === "boolean" && (
+          <span className="text-muted-foreground">= {variant.defaultValue}</span>
+        )}
         <div className="flex-1" />
         <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
           <EditVariantPopover variant={variant} onSave={onUpdate} />
@@ -765,7 +778,7 @@ function VariantRow({
         </div>
       </div>
       {variant.type === "variant" && variant.options.length > 0 && (
-        <div className="mt-1 ml-7 space-y-1">
+        <div className="mt-1 ml-7">
           <div className="flex flex-wrap gap-1">
             {variant.options.map((opt) => (
               <Badge
@@ -777,15 +790,7 @@ function VariantRow({
               </Badge>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Default: {variant.defaultValue}
-          </p>
         </div>
-      )}
-      {variant.type === "boolean" && (
-        <p className="mt-1 ml-7 text-xs text-muted-foreground">
-          Default: {variant.defaultValue}
-        </p>
       )}
     </div>
   )
@@ -1422,6 +1427,38 @@ function AddSubComponentDialog({
     setOpen(false)
   }
 
+  function handleAddAnother() {
+    if (!pascalName) {
+      setError("Name is required")
+      return
+    }
+    if (existingNames.includes(pascalName)) {
+      setError("A sub-component with this name already exists")
+      return
+    }
+
+    const sc: SubComponentDef & { nestInside?: string } = {
+      id: `sc_${Date.now().toString(36)}`,
+      name: pascalName,
+      baseElement,
+      dataSlot: toDataSlot(pascalName),
+      usecases,
+      tree: createElementNode(baseElement),
+      classes: [],
+      props: [],
+      variants: [],
+      nestInside: nestInside || undefined,
+    }
+
+    onAdd(sc)
+    // Clear form but keep nestInside and baseElement for convenience
+    const keepNestInside = nestInside
+    const keepBaseElement = baseElement
+    resetForm()
+    setNestInside(keepNestInside)
+    setBaseElement(keepBaseElement)
+  }
+
   return (
     <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
       <AlertDialogTrigger asChild>
@@ -1524,8 +1561,11 @@ function AddSubComponentDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button variant="outline" onClick={handleAddAnother} disabled={!pascalName}>
+            Add another
+          </Button>
           <Button onClick={handleAdd} disabled={!pascalName}>
-            Add sub-component
+            Add
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
