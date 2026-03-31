@@ -280,7 +280,6 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                     name: newName,
                     dataSlot: toDataSlot(newName),
                     baseElement: newBaseElement,
-                    tree: { ...tree.tree, tag: newBaseElement },
                     subComponents: updatedSubComponents,
                     assemblyTree: updatedTree,
                   })
@@ -1437,7 +1436,6 @@ function AddSubComponentDialog({
       baseElement,
       dataSlot: toDataSlot(pascalName),
       usecases,
-      tree: createElementNode(baseElement),
       classes: [],
       props: [],
       variants: [],
@@ -1465,7 +1463,6 @@ function AddSubComponentDialog({
       baseElement,
       dataSlot: toDataSlot(pascalName),
       usecases,
-      tree: createElementNode(baseElement),
       classes: [],
       props: [],
       variants: [],

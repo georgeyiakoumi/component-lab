@@ -130,9 +130,9 @@ export function BuilderPanel({
   const focusedName = focusedId === "main"
     ? tree.name
     : focusedSc?.name ?? null
-  const focusedTree = focusedId === "main"
-    ? tree.tree
-    : focusedSc?.tree ?? null
+  const focusedClasses = focusedId === "main"
+    ? tree.classes
+    : focusedSc?.classes ?? []
   const focusedProps = focusedId === "main"
     ? tree.props
     : focusedSc?.props ?? []
@@ -141,12 +141,12 @@ export function BuilderPanel({
     : focusedSc?.variants ?? []
 
   // Handlers that route to the correct tree
-  const handleTreeUpdate = (newElementTree: ElementNode) => {
+  const handleClassesUpdate = (newClasses: string[]) => {
     if (focusedId === "main") {
-      onTreeChange({ ...tree, tree: newElementTree })
+      onTreeChange({ ...tree, classes: newClasses })
     } else if (focusedSc) {
       const updated = tree.subComponents.map((sc) =>
-        sc.id === focusedId ? { ...sc, tree: newElementTree } : sc,
+        sc.id === focusedId ? { ...sc, classes: newClasses } : sc,
       )
       onTreeChange({ ...tree, subComponents: updated })
     }
@@ -324,56 +324,16 @@ export function BuilderPanel({
           )}
 
           {/* ── Focused component editing ───────────────────── */}
-          {focusedId !== null && focusedTree && (
+          {focusedId !== null && (
             <>
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {focusedName} — definition
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                  This is the component&apos;s internal structure. Changes here are exported to .tsx.
+                  Props, variants, and classes for this component. Classes are exported to .tsx.
                 </p>
               </div>
-
-              <BuilderSection
-                icon={<Layers className="size-3.5" />}
-                title="Structure"
-                badge={countNodes(focusedTree)}
-                open={structureOpen}
-                onOpenChange={setStructureOpen}
-              >
-                <ElementTree
-                  node={focusedTree}
-                  depth={0}
-                  isRoot
-                  selectedNodeId={selectedNodeId}
-                  subComponents={focusedId === "main" ? tree.subComponents : []}
-                  hideEditor
-                  hideTextEditor
-                  onSelectNode={setSelectedNodeId}
-                  onAddChild={(parentId, tag) => {
-                    const child = createElementNode(tag)
-                    const newTree = addChild(focusedTree, parentId, child)
-                    handleTreeUpdate(newTree)
-                  }}
-                  onRemoveNode={(nodeId) => {
-                    const newTree = removeNode(focusedTree, nodeId)
-                    handleTreeUpdate(newTree)
-                  }}
-                  onUpdateClasses={(nodeId, classes) => {
-                    const newTree = updateNodeClasses(focusedTree, nodeId, classes)
-                    handleTreeUpdate(newTree)
-                  }}
-                  onUpdateText={(nodeId, text) => {
-                    const newTree = updateNodeText(focusedTree, nodeId, text || undefined)
-                    handleTreeUpdate(newTree)
-                  }}
-                  onMoveNode={(dragId, targetId, position) => {
-                    const newTree = moveNode(focusedTree, dragId, targetId, position)
-                    handleTreeUpdate(newTree)
-                  }}
-                />
-              </BuilderSection>
 
               <Separator />
 
@@ -474,7 +434,7 @@ function AssemblyTree({
             <Component className="size-3" />
             &lt;{subComponent.name}&gt;
           </button>
-          {subComponent.tree.children.map((child) =>
+          {node.children.map((child) =>
             renderAssemblyNode(child, depth + 1),
           )}
         </div>
@@ -506,7 +466,7 @@ function AssemblyTree({
         <Component className="size-3" />
         &lt;{tree.name}&gt;
       </button>
-      {tree.tree.children.map((child) =>
+      {tree.assemblyTree.children.map((child) =>
         renderAssemblyNode(child, 1),
       )}
     </div>
@@ -1522,7 +1482,6 @@ function SubComponentsEditor({
       baseElement,
       dataSlot: toDataSlot(fullName),
       usecases,
-      tree: createElementNode(baseElement),
       classes: [],
       props: [],
       variants: [],

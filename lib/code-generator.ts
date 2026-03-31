@@ -676,7 +676,7 @@ export function generateFromTree(tree: ComponentTree): string {
 
   // ── CVA block ────────────────────────────────────────────────────
   if (hasVariants) {
-    const rootClasses = tree.tree.classes
+    const rootClasses = tree.classes ?? []
     sections.push(buildCvaBlock(variantsName, rootClasses, variants))
   }
 
@@ -724,11 +724,12 @@ export function generateFromTree(tree: ComponentTree): string {
 
   const classNameExpr = hasVariants
     ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
-    : tree.tree.classes.length > 0
-      ? `cn("${tree.tree.classes.join(" ")}", className)`
+    : (tree.classes ?? []).length > 0
+      ? `cn("${(tree.classes ?? []).join(" ")}", className)`
       : "cn(className)"
 
-  const jsxBody = renderElementTree(tree.tree, 3, true, tree.dataSlot)
+  // Component renders {children} pass-through — no internal element tree
+  const jsxBody = `      <${tree.baseElement}\n        ref={ref}\n        ${tree.dataSlot ? `data-slot="${tree.dataSlot}"\n        ` : ""}className={${classNameExpr}}\n        {...props}\n      >\n        {children}\n      </${tree.baseElement}>`
 
   sections.push(
     `const ${name} = React.forwardRef<${elementInfo.htmlElement}, ${name}Props>(
@@ -854,7 +855,7 @@ function generateSubComponent(
 
   // cva block for sub-component variants
   if (hasVariants) {
-    const rootClasses = sub.tree.classes
+    const rootClasses = sub.classes ?? []
     parts.push(buildCvaBlock(variantsName, rootClasses, sub.variants))
   }
 
@@ -894,17 +895,14 @@ function generateSubComponent(
     "...props",
   ]
 
-  // Render JSX body from sub-component's own tree
-  const jsxBody = renderElementTree(sub.tree, 2, true, sub.dataSlot)
-
   const classNameExpr = hasVariants
     ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
-    : sub.tree.classes.length > 0
-      ? `cn("${sub.tree.classes.join(" ")}", className)`
+    : (sub.classes ?? []).length > 0
+      ? `cn("${(sub.classes ?? []).join(" ")}", className)`
       : "cn(className)"
 
-  // Use classNameExpr in the JSX — it's built into renderElementTree via isRoot
-  void classNameExpr // classNameExpr is used by renderElementTree when isRoot=true
+  // Sub-component renders {children} pass-through
+  const jsxBody = `    <${sub.baseElement}\n      ref={ref}\n      ${sub.dataSlot ? `data-slot="${sub.dataSlot}"\n      ` : ""}className={${classNameExpr}}\n      {...props}\n    >\n      {children}\n    </${sub.baseElement}>`
 
   parts.push(
     `const ${sub.name} = React.forwardRef<${elementInfo.htmlElement}, ${sub.name}Props>(

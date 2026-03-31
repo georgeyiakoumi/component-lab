@@ -39,7 +39,7 @@ export interface SubComponentDef {
   /** What kind of content this sub-component wraps. Used to generate
    *  realistic placeholder content in the canvas preview (not exported). */
   usecases: SubComponentUsecase[]
-  tree: ElementNode
+  /** Tailwind classes applied to this sub-component (exported to .tsx) */
   classes: string[]
   props: ComponentProp[]
   variants: CustomVariantDef[]
@@ -51,13 +51,11 @@ export interface ComponentTree {
   name: string
   baseElement: string
   dataSlot: string
-  /** Component definition — the internal structure of the component itself.
-   *  This is what gets exported as .tsx code.
-   *  Typically simple: just the root element with className + {children} pass-through. */
-  tree: ElementNode
-  /** Assembly / usage example — how this component and its sub-components compose
+  /** Tailwind classes applied to the root component (exported to .tsx) */
+  classes: string[]
+  /** Assembly tree — how this component and its sub-components compose
    *  together for the canvas preview. This is NOT part of the exported .tsx file.
-   *  Think of it like a Storybook story or a docs example. */
+   *  The single source of truth for what the canvas renders. */
   assemblyTree: ElementNode
   props: ComponentProp[]
   variants: CustomVariantDef[]
@@ -100,7 +98,7 @@ export function createComponentTree(
     name,
     baseElement,
     dataSlot: toDataSlot(name),
-    tree: createElementNode(baseElement),
+    classes: [],
     assemblyTree: createElementNode(baseElement),
     props: [],
     variants: [],
@@ -121,7 +119,6 @@ export function createSubComponent(
     dataSlot: toDataSlot(fullName),
     baseElement,
     usecases,
-    tree: createElementNode(baseElement),
     classes: [],
     props: [],
     variants: [],

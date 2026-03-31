@@ -97,8 +97,8 @@ export default function CustomComponentPage() {
   // Check if any component has styles applied (show Export only then)
   const hasAnyStyles = React.useMemo(() => {
     if (!componentTree) return false
-    if (componentTree.tree.classes.length > 0) return true
-    return componentTree.subComponents.some((sc) => sc.tree.classes.length > 0)
+    if ((componentTree.classes ?? []).length > 0) return true
+    return componentTree.subComponents.some((sc) => (sc.classes ?? []).length > 0)
   }, [componentTree])
 
   // Clear selection when leaving edit mode
@@ -172,71 +172,71 @@ export default function CustomComponentPage() {
   }, [componentTree])
 
   // Render the component tree as live JSX for the canvas preview
-  const renderTreePreview = React.useCallback(
-    (node: ElementNode): React.ReactNode => {
-      // Skip hidden nodes
-      if (hiddenIds.has(node.id)) return null
+  // Not memoized — needs to re-render when assemblyTree changes
+  function renderTreePreview(node: ElementNode): React.ReactNode {
+    // Skip hidden nodes
+    if (hiddenIds.has(node.id)) return null
 
-      const subComponent = subComponentMap.get(node.tag)
+    const subComponent = subComponentMap.get(node.tag)
 
-      // If this node is a sub-component, render its actual tree content
-      if (subComponent) {
-        return renderSubComponentPreview(subComponent, node.id)
-      }
+    // If this node is a sub-component, render its actual tree content
+    // Pass assembly children (added via picker) so they render inside too
+    if (subComponent) {
+      return renderSubComponentPreview(subComponent, node.id, node.children)
+    }
 
-      const tag = node.tag as keyof React.JSX.IntrinsicElements
-      const className = node.classes.length > 0
-        ? node.classes.join(" ")
-        : undefined
+    const tag = node.tag as keyof React.JSX.IntrinsicElements
+    const className = node.classes.length > 0
+      ? node.classes.join(" ")
+      : undefined
 
-      const children: React.ReactNode[] = []
+    const children: React.ReactNode[] = []
 
-      if (node.text) {
-        children.push(node.text)
-      }
+    if (node.text) {
+      children.push(node.text)
+    }
 
-      children.push(...node.children.map(renderTreePreview))
+    children.push(...node.children.map((child) => renderTreePreview(child)))
 
-      // Empty element placeholder
-      if (children.length === 0) {
-        children.push(
-          React.createElement(
-            "span",
-            {
-              key: "__empty__",
-              className: "text-xs text-muted-foreground/40 select-none",
-            },
-            `<${node.tag}>`,
-          ),
-        )
-      }
+    // Empty element placeholder
+    if (children.length === 0) {
+      children.push(
+        React.createElement(
+          "span",
+          {
+            key: "__empty__",
+            className: "text-xs text-muted-foreground/40 select-none",
+          },
+          `<${node.tag}>`,
+        ),
+      )
+    }
 
-      return React.createElement(tag, { key: node.id, className }, ...children)
-    },
-    [subComponentMap, hiddenIds],
-  )
+    return React.createElement(tag, { key: node.id, className }, ...children)
+  }
 
   // Render a sub-component using its own tree
-  const renderSubComponentPreview = React.useCallback(
-    (sc: import("@/lib/component-tree").SubComponentDef, key: string): React.ReactNode => {
-      const tag = sc.baseElement as keyof React.JSX.IntrinsicElements
-      // Use classes from the definition tree root (these are the styled classes)
-      const allClasses = [...sc.tree.classes, ...sc.classes].filter(Boolean)
-      const className = allClasses.length > 0
-        ? allClasses.join(" ")
-        : undefined
+  function renderSubComponentPreview(
+    sc: import("@/lib/component-tree").SubComponentDef,
+    key: string,
+    assemblyChildren?: ElementNode[],
+  ): React.ReactNode {
+    const tag = sc.baseElement as keyof React.JSX.IntrinsicElements
+    // Use classes from the definition tree root (these are the styled classes)
+    const allClasses = sc.classes.filter(Boolean)
+    const className = allClasses.length > 0
+      ? allClasses.join(" ")
+      : undefined
 
-      const children: React.ReactNode[] = []
+    const children: React.ReactNode[] = []
 
-      // Render the sub-component's own tree children
-      sc.tree.children.forEach((child) => {
-        children.push(renderTreePreview(child))
-      })
+    // Render assembly children first (elements added via picker — preview only)
+    if (assemblyChildren && assemblyChildren.length > 0) {
+      children.push(...assemblyChildren.map((child) => renderTreePreview(child)))
+    }
 
-      // Sub-component's own text
-      if (sc.tree.text) {
-        children.unshift(sc.tree.text)
-      }
+    // Sub-components no longer have their own tree —
+    // all content comes from assembly children above
 
       // Generate usecase-based placeholder content (canvas-only, not exported)
       if (children.length === 0) {
@@ -328,19 +328,17 @@ export default function CustomComponentPage() {
         }
       }
 
-      return React.createElement(tag, { key, className }, ...children)
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [subComponentMap],
-  )
+    return React.createElement(tag, { key, className }, ...children)
+  }
 
+  // Re-render on every tree change — no memoization needed
   const customPreview = React.useMemo(() => {
     if (!componentTree) return null
     // Apply main component definition classes to the assembly root for preview
     const assemblyWithClasses = {
       ...componentTree.assemblyTree,
       classes: [
-        ...componentTree.tree.classes,
+        ...(componentTree.classes ?? []),
         ...componentTree.assemblyTree.classes,
       ].filter(Boolean),
     }
@@ -380,19 +378,14 @@ export default function CustomComponentPage() {
     (targetId: string, classes: string[]) => {
       if (!componentTree) return
       if (targetId === "main") {
-        const newTree = {
-          ...componentTree,
-          tree: { ...componentTree.tree, classes },
-        }
-        handleTreeChange(newTree)
+        handleTreeChange({ ...componentTree, classes })
       } else {
-        const newTree = {
+        handleTreeChange({
           ...componentTree,
           subComponents: componentTree.subComponents.map((sc) =>
-            sc.id === targetId ? { ...sc, tree: { ...sc.tree, classes } } : sc,
+            sc.id === targetId ? { ...sc, classes } : sc,
           ),
-        }
-        handleTreeChange(newTree)
+        })
       }
     },
     [componentTree, handleTreeChange],
@@ -588,10 +581,10 @@ export default function CustomComponentPage() {
                             (sc) => sc.id === styledComponentId,
                           )?.name ?? "",
                       currentClasses: styledComponentId === "main"
-                        ? componentTree.tree.classes
+                        ? (componentTree.classes ?? [])
                         : componentTree.subComponents.find(
                             (sc) => sc.id === styledComponentId,
-                          )?.tree.classes ?? [],
+                          )?.classes ?? [],
                       elementPath: "",
                       rect: new DOMRect(),
                       domElement: document.createElement("div"),
