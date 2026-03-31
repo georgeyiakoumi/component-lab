@@ -161,7 +161,11 @@ function AssemblyNode({
   const hasChildren = node.children.length > 0
   const subComponent = subComponents.find((sc) => sc.name === node.tag)
   const isSubComponent = !!subComponent
-  const isSelected = subComponent ? selectedId === subComponent.id : selectedId === "main" && isRoot
+  const isSelected = subComponent
+    ? selectedId === subComponent.id
+    : isRoot
+      ? selectedId === "main"
+      : selectedId === node.id
 
   // Display name — root shows component name, sub-components show their name
   const displayName = isRoot && rootName ? rootName : node.tag
@@ -242,27 +246,31 @@ function AssemblyNode({
           {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
         </button>
 
-        {/* Tag name — clickable for sub-components */}
+        {/* Tag name — clickable for all nodes */}
         <button
           type="button"
           className={cn(
             "min-w-0 flex-1 truncate text-left font-mono text-xs",
             isSubComponent
               ? "text-blue-500/80 hover:text-blue-500"
-              : "text-muted-foreground",
+              : isSelected
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground/70",
           )}
           onClick={() => {
             if (isSubComponent && onSelectComponent) {
               onSelectComponent(subComponent.id)
             } else if (isRoot && onSelectComponent) {
               onSelectComponent("main")
+            } else if (onSelectComponent) {
+              onSelectComponent(node.id)
             }
           }}
         >
           &lt;{displayName}{!hasChildren && !node.text ? " /" : ""}&gt;
           {node.text && (
-            <span className="ml-1 font-sans text-foreground/40">
-              {node.text.slice(0, 12)}
+            <span className="ml-1 font-sans text-foreground/50 italic">
+              {node.text.length > 20 ? node.text.slice(0, 20) + "…" : node.text}
             </span>
           )}
         </button>

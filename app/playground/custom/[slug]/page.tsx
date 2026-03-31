@@ -164,6 +164,27 @@ export default function CustomComponentPage() {
     [],
   )
 
+  // Resolve a styledComponentId (which might be a node ID or sc.id or "main")
+  // to find the sub-component definition it belongs to
+  function findSubComponentForNodeId(nodeId: string | null): import("@/lib/component-tree").SubComponentDef | null {
+    if (!nodeId || nodeId === "main" || !componentTree) return null
+    // Direct match on sub-component ID
+    const directMatch = componentTree.subComponents.find((sc) => sc.id === nodeId)
+    if (directMatch) return directMatch
+    // Check if this node ID is an assembly node whose tag matches a sub-component
+    function findInTree(node: ElementNode): import("@/lib/component-tree").SubComponentDef | null {
+      if (node.id === nodeId) {
+        return componentTree!.subComponents.find((sc) => sc.name === node.tag) ?? null
+      }
+      for (const child of node.children) {
+        const found = findInTree(child)
+        if (found) return found
+      }
+      return null
+    }
+    return componentTree.assemblyTree ? findInTree(componentTree.assemblyTree) : null
+  }
+
   // Build a map of sub-component name → SubComponentDef for quick lookup
   const subComponentMap = React.useMemo(() => {
     const map = new Map<string, import("@/lib/component-tree").SubComponentDef>()
@@ -212,7 +233,7 @@ export default function CustomComponentPage() {
       )
     }
 
-    return React.createElement(tag, { key: node.id, className }, ...children)
+    return React.createElement(tag, { key: node.id, className, "data-node-id": node.id }, ...children)
   }
 
   // Render a sub-component using its own tree
@@ -238,97 +259,21 @@ export default function CustomComponentPage() {
     // Sub-components no longer have their own tree —
     // all content comes from assembly children above
 
-      // Generate usecase-based placeholder content (canvas-only, not exported)
+      // Show empty placeholder when sub-component has no assembly children
       if (children.length === 0) {
-        const ucs = sc.usecases ?? []
-        if (ucs.length === 0) {
-          // No usecases defined — show generic placeholder
-          children.push(
-            React.createElement(
-              "span",
-              {
-                key: "__sc_empty__",
-                className: "text-xs text-muted-foreground/40 select-none",
-              },
-              `<${sc.name}>`,
-            ),
-          )
-        } else {
-          // Render placeholder content based on usecases
-          ucs.forEach((uc, i) => {
-            const placeholderKey = `__uc_${i}__`
-            switch (uc) {
-              case "plain-text":
-                children.push(
-                  React.createElement("span", { key: placeholderKey }, "Sample text content"),
-                )
-                break
-              case "heading":
-                children.push(
-                  React.createElement("h3", { key: placeholderKey, className: "text-lg font-semibold" }, "Heading"),
-                )
-                break
-              case "button":
-                children.push(
-                  React.createElement("button", {
-                    key: placeholderKey,
-                    className: "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground",
-                  }, "Click me"),
-                )
-                break
-              case "image":
-                children.push(
-                  React.createElement("div", {
-                    key: placeholderKey,
-                    className: "flex h-32 w-full items-center justify-center rounded-md bg-muted text-xs text-muted-foreground",
-                  }, "Image placeholder"),
-                )
-                break
-              case "input":
-                children.push(
-                  React.createElement("input", {
-                    key: placeholderKey,
-                    className: "h-9 w-full rounded-md border bg-transparent px-3 text-sm",
-                    placeholder: "Type here...",
-                    readOnly: true,
-                  }),
-                )
-                break
-              case "list":
-                children.push(
-                  React.createElement("ul", { key: placeholderKey, className: "list-disc pl-5 text-sm space-y-1" },
-                    React.createElement("li", { key: "1" }, "Item one"),
-                    React.createElement("li", { key: "2" }, "Item two"),
-                    React.createElement("li", { key: "3" }, "Item three"),
-                  ),
-                )
-                break
-              case "icon":
-                children.push(
-                  React.createElement("div", {
-                    key: placeholderKey,
-                    className: "flex size-8 items-center justify-center rounded bg-muted text-muted-foreground",
-                  }, "★"),
-                )
-                break
-              case "wrapper":
-                children.push(
-                  React.createElement("div", {
-                    key: placeholderKey,
-                    className: "min-h-[40px] rounded border border-dashed border-muted-foreground/30 p-2",
-                  },
-                    React.createElement("span", {
-                      className: "text-xs text-muted-foreground/40 select-none",
-                    }, "{children}"),
-                  ),
-                )
-                break
-            }
-          })
-        }
+        children.push(
+          React.createElement(
+            "span",
+            {
+              key: "__sc_empty__",
+              className: "text-xs text-muted-foreground/40 select-none",
+            },
+            `{children}`,
+          ),
+        )
       }
 
-    return React.createElement(tag, { key, className }, ...children)
+    return React.createElement(tag, { key, className, "data-node-id": key }, ...children)
   }
 
   // Re-render on every tree change — no memoization needed
@@ -492,7 +437,21 @@ export default function CustomComponentPage() {
               />
 
               {/* Canvas + floating assembly panel */}
-              <div className="relative flex flex-1 flex-col">
+              <div
+                className="relative flex flex-1 flex-col"
+                onClick={(e) => {
+                  // Walk up from clicked element to find data-node-id
+                  let el = e.target as HTMLElement | null
+                  while (el && !el.getAttribute("data-node-id")) {
+                    if (el.classList.contains("assembly-panel") || el === e.currentTarget) break
+                    el = el.parentElement
+                  }
+                  const nodeId = el?.getAttribute("data-node-id")
+                  if (nodeId) {
+                    setStyledComponentId(nodeId)
+                  }
+                }}
+              >
                 <ComponentCanvas
                   slug={slug}
                   componentName={componentTree?.name ?? userComponent.name}
@@ -541,7 +500,7 @@ export default function CustomComponentPage() {
                   onClick={() => setStyledComponentId("main")}
                   className={cn(
                     "rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
-                    styledComponentId === "main"
+                    (styledComponentId === "main" || styledComponentId === componentTree.assemblyTree.id)
                       ? "bg-blue-500/10 text-blue-500"
                       : "text-muted-foreground hover:bg-muted/50",
                   )}
@@ -555,7 +514,7 @@ export default function CustomComponentPage() {
                     onClick={() => setStyledComponentId(sc.id)}
                     className={cn(
                       "rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
-                      styledComponentId === sc.id
+                      styledComponentId === sc.id || findSubComponentForNodeId(styledComponentId)?.id === sc.id
                         ? "bg-blue-500/10 text-blue-500"
                         : "text-muted-foreground hover:bg-muted/50",
                     )}
@@ -567,34 +526,34 @@ export default function CustomComponentPage() {
 
               {/* Visual editor for selected component */}
               <ScrollArea className="flex-1">
-                {styledComponentId ? (
+                {styledComponentId ? (() => {
+                  const matchedSc = findSubComponentForNodeId(styledComponentId)
+                  const isMain = styledComponentId === "main" || (!matchedSc && styledComponentId === componentTree.assemblyTree.id)
+                  return (
                   <VisualEditor
                     selectedElement={{
-                      tagName: styledComponentId === "main"
+                      tagName: isMain
                         ? componentTree.baseElement
-                        : componentTree.subComponents.find(
-                            (sc) => sc.id === styledComponentId,
-                          )?.baseElement ?? "div",
-                      textContent: styledComponentId === "main"
+                        : matchedSc?.baseElement ?? "div",
+                      textContent: isMain
                         ? componentTree.name
-                        : componentTree.subComponents.find(
-                            (sc) => sc.id === styledComponentId,
-                          )?.name ?? "",
-                      currentClasses: styledComponentId === "main"
+                        : matchedSc?.name ?? "",
+                      currentClasses: isMain
                         ? (componentTree.classes ?? [])
-                        : componentTree.subComponents.find(
-                            (sc) => sc.id === styledComponentId,
-                          )?.classes ?? [],
+                        : matchedSc?.classes ?? [],
                       elementPath: "",
                       rect: new DOMRect(),
                       domElement: document.createElement("div"),
                     }}
                     onClassChange={(classes) => {
-                      handleTreeClassChange(styledComponentId, classes)
+                      // Route to the correct target: main or sub-component
+                      const targetId = isMain ? "main" : matchedSc?.id ?? styledComponentId
+                      handleTreeClassChange(targetId, classes)
                     }}
                     onDeselect={() => setStyledComponentId(null)}
                   />
-                ) : (
+                  )
+                })() : (
                   <div className="flex flex-1 items-center justify-center p-8">
                     <p className="text-xs text-muted-foreground text-center">
                       Select a component above to edit its styles.
