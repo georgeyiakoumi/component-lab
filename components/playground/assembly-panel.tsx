@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown } from "lucide-react"
+import { Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown, Box, Type, Heading, MousePointer, Image, FormInput, List, Minus, Code2, Component } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { ComponentTree, ElementNode } from "@/lib/component-tree"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import type { ComponentTree, ElementNode, SubComponentDef } from "@/lib/component-tree"
 import {
   addChild,
   removeNode,
@@ -252,24 +265,14 @@ function AssemblyNode({
 
         {/* Hover actions */}
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          {/* Add inside — available on all nodes including root */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-5"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onAddChild(node.id, "div")
-                  setExpanded(true)
-                }}
-              >
-                <Plus className="size-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">Add inside</TooltipContent>
-          </Tooltip>
+          {/* Add inside — Popover with Command picker */}
+          <AddElementPicker
+            subComponents={subComponents}
+            onSelect={(tag) => {
+              onAddChild(node.id, tag)
+              setExpanded(true)
+            }}
+          />
 
           {/* Toggle visibility — not on root */}
           {!isRoot && (
@@ -342,5 +345,137 @@ function AssemblyNode({
         />
       )}
     </div>
+  )
+}
+
+/* ── AddElementPicker — Command-based popover for adding elements ── */
+
+const DOM_ELEMENTS = [
+  { tag: "div", label: "div", description: "Container", icon: Box },
+  { tag: "p", label: "p", description: "Paragraph", icon: Type },
+  { tag: "span", label: "span", description: "Inline text", icon: Type },
+  { tag: "h1", label: "h1", description: "Heading 1", icon: Heading },
+  { tag: "h2", label: "h2", description: "Heading 2", icon: Heading },
+  { tag: "h3", label: "h3", description: "Heading 3", icon: Heading },
+  { tag: "h4", label: "h4", description: "Heading 4", icon: Heading },
+  { tag: "button", label: "button", description: "Button", icon: MousePointer },
+  { tag: "a", label: "a", description: "Link", icon: MousePointer },
+  { tag: "img", label: "img", description: "Image", icon: Image },
+  { tag: "input", label: "input", description: "Input field", icon: FormInput },
+  { tag: "textarea", label: "textarea", description: "Text area", icon: FormInput },
+  { tag: "ul", label: "ul", description: "Unordered list", icon: List },
+  { tag: "ol", label: "ol", description: "Ordered list", icon: List },
+  { tag: "li", label: "li", description: "List item", icon: Minus },
+  { tag: "section", label: "section", description: "Section", icon: Box },
+  { tag: "article", label: "article", description: "Article", icon: Box },
+  { tag: "header", label: "header", description: "Header", icon: Box },
+  { tag: "footer", label: "footer", description: "Footer", icon: Box },
+  { tag: "nav", label: "nav", description: "Navigation", icon: Box },
+  { tag: "form", label: "form", description: "Form", icon: FormInput },
+] as const
+
+const SHADCN_ELEMENTS = [
+  { tag: "Button", label: "Button", description: "shadcn Button" },
+  { tag: "Badge", label: "Badge", description: "shadcn Badge" },
+  { tag: "Input", label: "Input", description: "shadcn Input" },
+  { tag: "Label", label: "Label", description: "shadcn Label" },
+  { tag: "Separator", label: "Separator", description: "shadcn Separator" },
+  { tag: "Avatar", label: "Avatar", description: "shadcn Avatar" },
+  { tag: "Checkbox", label: "Checkbox", description: "shadcn Checkbox" },
+  { tag: "Switch", label: "Switch", description: "shadcn Switch" },
+  { tag: "Slider", label: "Slider", description: "shadcn Slider" },
+  { tag: "Progress", label: "Progress", description: "shadcn Progress" },
+  { tag: "Skeleton", label: "Skeleton", description: "shadcn Skeleton" },
+] as const
+
+function AddElementPicker({
+  subComponents,
+  onSelect,
+}: {
+  subComponents: SubComponentDef[]
+  onSelect: (tag: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+
+  function handleSelect(tag: string) {
+    onSelect(tag)
+    setOpen(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Plus className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">Add inside</TooltipContent>
+        </Tooltip>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="start" side="right">
+        <Command className="[&_[cmdk-list]]:max-h-[240px]">
+          <CommandInput placeholder="Search elements..." className="h-8 text-xs" />
+          <CommandList>
+            <CommandEmpty className="py-3 text-center text-xs">No matches.</CommandEmpty>
+
+            {/* Sub-components */}
+            {subComponents.length > 0 && (
+              <CommandGroup heading="Your sub-components">
+                {subComponents.map((sc) => (
+                  <CommandItem
+                    key={sc.id}
+                    value={sc.name}
+                    onSelect={() => handleSelect(sc.name)}
+                    className="gap-2 text-xs"
+                  >
+                    <Component className="size-3.5 text-blue-500" />
+                    <span className="font-medium">{sc.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* DOM elements */}
+            <CommandGroup heading="HTML elements">
+              {DOM_ELEMENTS.map((el) => (
+                <CommandItem
+                  key={el.tag}
+                  value={`${el.tag} ${el.description}`}
+                  onSelect={() => handleSelect(el.tag)}
+                  className="gap-2 text-xs"
+                >
+                  <el.icon className="size-3.5 text-muted-foreground" />
+                  <code className="font-mono text-xs">&lt;{el.label}&gt;</code>
+                  <span className="text-muted-foreground">{el.description}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+
+            {/* shadcn components (preview only) */}
+            <CommandGroup heading="shadcn (preview only)">
+              {SHADCN_ELEMENTS.map((el) => (
+                <CommandItem
+                  key={el.tag}
+                  value={`${el.tag} ${el.description}`}
+                  onSelect={() => handleSelect(el.tag)}
+                  className="gap-2 text-xs"
+                >
+                  <Code2 className="size-3.5 text-purple-500" />
+                  <span className="font-medium">{el.label}</span>
+                  <span className="text-muted-foreground">{el.description}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
