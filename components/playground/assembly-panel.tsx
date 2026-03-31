@@ -1,11 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown, Box, Type, Heading, MousePointer, Image, FormInput, List, Minus, Code2, Component } from "lucide-react"
+import { Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown, Box, Type, Heading, MousePointer, Image, FormInput, List, Minus, Code2, Component, TextCursorInput } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Tooltip,
   TooltipContent,
@@ -84,21 +83,24 @@ export function AssemblyPanel({
   }
 
   function handleAddChild(parentId: string, tag: string) {
-    const child = createElementNode(tag)
+    const child = createElementNode(tag === "#text" ? "span" : tag)
+    if (tag === "#text") {
+      child.text = "Sample text"
+    }
     const newAssembly = addChild(tree.assemblyTree, parentId, child)
     onTreeChange({ ...tree, assemblyTree: newAssembly })
   }
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex flex-col">
-        <div className="flex items-center gap-1.5 border-b px-3 py-1.5">
+      <div className="flex max-h-96 flex-col">
+        <div className="flex shrink-0 items-center gap-1.5 border-b px-3 py-1.5">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Assembly
           </span>
         </div>
-        <ScrollArea className="max-h-64">
-          <div className="p-1.5">
+        <div className="flex-1 overflow-auto">
+          <div className="min-w-max p-1.5">
             <AssemblyNode
               node={tree.assemblyTree}
               depth={0}
@@ -114,7 +116,7 @@ export function AssemblyPanel({
               onAddChild={handleAddChild}
             />
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </TooltipProvider>
   )
@@ -205,7 +207,7 @@ function AssemblyNode({
       {dropPosition === "before" && !isRoot && (
         <div
           className="h-0.5 rounded-full bg-blue-500"
-          style={{ marginLeft: `${depth * 14 + 4}px` }}
+          style={{ marginLeft: `${depth * 14 + 20}px` }}
         />
       )}
 
@@ -218,14 +220,16 @@ function AssemblyNode({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "group flex items-center gap-1 rounded-md py-0.5 pr-1",
+          "group flex items-center gap-1 rounded-md py-0.5 pl-1",
           isSelected && "bg-blue-500/10",
           isHidden && "opacity-40",
           dropPosition === "inside" && "ring-1 ring-blue-500 bg-blue-500/5",
           !isRoot && "cursor-grab active:cursor-grabbing",
         )}
-        style={{ paddingLeft: `${depth * 14 + 4}px` }}
       >
+        {/* Indentation spacer */}
+        {depth > 0 && <div className="shrink-0" style={{ width: `${depth * 14}px` }} />}
+
         {/* Expand/collapse */}
         <button
           type="button"
@@ -242,7 +246,7 @@ function AssemblyNode({
         <button
           type="button"
           className={cn(
-            "flex-1 truncate text-left font-mono text-xs",
+            "min-w-0 flex-1 truncate text-left font-mono text-xs",
             isSubComponent
               ? "text-blue-500/80 hover:text-blue-500"
               : "text-muted-foreground",
@@ -257,14 +261,14 @@ function AssemblyNode({
         >
           &lt;{displayName}{!hasChildren && !node.text ? " /" : ""}&gt;
           {node.text && (
-            <span className="ml-1 text-foreground/40 font-sans">
+            <span className="ml-1 font-sans text-foreground/40">
               {node.text.slice(0, 12)}
             </span>
           )}
         </button>
 
-        {/* Hover actions */}
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Hover actions — sticky to panel right edge */}
+        <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-0.5 bg-gradient-to-l from-background from-70% to-transparent pl-4 pr-1 opacity-0 transition-opacity group-hover:opacity-100">
           {/* Add inside — Popover with Command picker */}
           <AddElementPicker
             subComponents={subComponents}
@@ -341,7 +345,7 @@ function AssemblyNode({
       {dropPosition === "after" && !isRoot && (
         <div
           className="h-0.5 rounded-full bg-blue-500"
-          style={{ marginLeft: `${depth * 14 + 4}px` }}
+          style={{ marginLeft: `${depth * 14 + 20}px` }}
         />
       )}
     </div>
@@ -351,6 +355,7 @@ function AssemblyNode({
 /* ── AddElementPicker — Command-based popover for adding elements ── */
 
 const DOM_ELEMENTS = [
+  { tag: "#text", label: "Plain text", description: "Raw text content", icon: TextCursorInput },
   { tag: "div", label: "div", description: "Container", icon: Box },
   { tag: "p", label: "p", description: "Paragraph", icon: Type },
   { tag: "span", label: "span", description: "Inline text", icon: Type },
@@ -405,21 +410,17 @@ function AddElementPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Plus className="size-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">Add inside</TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-5"
+          title="Add inside"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Plus className="size-3" />
+        </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start" side="right">
+      <PopoverContent className="w-64 p-0" align="end" side="right" sideOffset={4}>
         <Command className="[&_[cmdk-list]]:max-h-[240px]">
           <CommandInput placeholder="Search elements..." className="h-8 text-xs" />
           <CommandList>
@@ -452,7 +453,11 @@ function AddElementPicker({
                   className="gap-2 text-xs"
                 >
                   <el.icon className="size-3.5 text-muted-foreground" />
-                  <code className="font-mono text-xs">&lt;{el.label}&gt;</code>
+                  {el.tag === "#text" ? (
+                    <span className="font-medium">{el.label}</span>
+                  ) : (
+                    <code className="font-mono text-xs">&lt;{el.label}&gt;</code>
+                  )}
                   <span className="text-muted-foreground">{el.description}</span>
                 </CommandItem>
               ))}
