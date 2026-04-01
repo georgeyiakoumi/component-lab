@@ -338,13 +338,20 @@ interface ControlState {
   minHeight: string
   maxHeight: string
   size: string
+  // Space reverse
+  spaceXReverse: string
+  spaceYReverse: string
   // Spacing
   padding: string
+  paddingX: string
+  paddingY: string
   paddingTop: string
   paddingRight: string
   paddingBottom: string
   paddingLeft: string
   margin: string
+  marginX: string
+  marginY: string
   marginTop: string
   marginRight: string
   marginBottom: string
@@ -394,22 +401,24 @@ const OBJECT_POSITION_OPTIONS = [
   "object-left-top", "object-right-top", "object-left-bottom", "object-right-bottom",
 ]
 const OVERFLOW_OPTIONS = ["overflow-visible", "overflow-hidden", "overflow-scroll", "overflow-auto"]
-const SPACING_SCALE_FULL = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16]
+const SPACING_SCALE_FULL = ["0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"] as const
 const SPACE_Y_OPTIONS = SPACING_SCALE_FULL.map((v) => `space-y-${v}`)
 const SPACE_X_OPTIONS = SPACING_SCALE_FULL.map((v) => `space-x-${v}`)
+const SPACE_X_REVERSE = "space-x-reverse"
+const SPACE_Y_REVERSE = "space-y-reverse"
 
 const WIDTH_OPTIONS = [
   "w-0", "w-0.5", "w-1", "w-1.5", "w-2", "w-2.5", "w-3", "w-3.5", "w-4", "w-5", "w-6", "w-7", "w-8", "w-9",
   "w-10", "w-11", "w-12", "w-14", "w-16", "w-20", "w-24", "w-28", "w-32", "w-36", "w-40", "w-44", "w-48",
   "w-52", "w-56", "w-60", "w-64", "w-72", "w-80", "w-96",
-  "w-auto", "w-full", "w-screen", "w-min", "w-max", "w-fit",
+  "w-auto", "w-full", "w-screen", "w-svw", "w-lvw", "w-dvw", "w-min", "w-max", "w-fit",
   "w-1/2", "w-1/3", "w-2/3", "w-1/4", "w-3/4", "w-1/5", "w-2/5", "w-3/5", "w-4/5",
 ]
 const HEIGHT_OPTIONS = [
   "h-0", "h-0.5", "h-1", "h-1.5", "h-2", "h-2.5", "h-3", "h-3.5", "h-4", "h-5", "h-6", "h-7", "h-8", "h-9",
   "h-10", "h-11", "h-12", "h-14", "h-16", "h-20", "h-24", "h-28", "h-32", "h-36", "h-40", "h-44", "h-48",
   "h-52", "h-56", "h-60", "h-64", "h-72", "h-80", "h-96",
-  "h-auto", "h-full", "h-screen", "h-min", "h-max", "h-fit",
+  "h-auto", "h-full", "h-screen", "h-svh", "h-lvh", "h-dvh", "h-min", "h-max", "h-fit",
   "h-1/2", "h-1/3", "h-2/3", "h-1/4", "h-3/4", "h-1/5", "h-2/5", "h-3/5", "h-4/5",
 ]
 const MIN_WIDTH_OPTIONS = ["min-w-0", "min-w-full", "min-w-min", "min-w-max", "min-w-fit"]
@@ -419,10 +428,10 @@ const MAX_WIDTH_OPTIONS = [
   "max-w-full", "max-w-min", "max-w-max", "max-w-fit", "max-w-prose", "max-w-screen-sm",
   "max-w-screen-md", "max-w-screen-lg", "max-w-screen-xl", "max-w-screen-2xl",
 ]
-const MIN_HEIGHT_OPTIONS = ["min-h-0", "min-h-full", "min-h-screen", "min-h-min", "min-h-max", "min-h-fit"]
+const MIN_HEIGHT_OPTIONS = ["min-h-0", "min-h-full", "min-h-screen", "min-h-svh", "min-h-lvh", "min-h-dvh", "min-h-min", "min-h-max", "min-h-fit"]
 const MAX_HEIGHT_OPTIONS = [
-  "max-h-none", "max-h-0", "max-h-full", "max-h-screen", "max-h-min", "max-h-max", "max-h-fit",
-  ...SPACING_SCALE_FULL.filter((v) => v >= 1).map((v) => `max-h-${v}`),
+  "max-h-none", "max-h-0", "max-h-full", "max-h-screen", "max-h-svh", "max-h-lvh", "max-h-dvh", "max-h-min", "max-h-max", "max-h-fit",
+  ...SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px" && v !== "0.5").map((v) => `max-h-${v}`),
 ]
 const SIZE_OPTIONS = [
   "size-0", "size-0.5", "size-1", "size-1.5", "size-2", "size-2.5", "size-3", "size-3.5",
@@ -506,16 +515,29 @@ const ALIGN_OPTIONS = [
 const GAP_OPTIONS = GAP_SLIDER_VALUES.map((v) => `gap-${v}`)
 
 const PADDING_SCALE = [
-  "p-0", "p-0.5", "p-1", "p-1.5", "p-2", "p-2.5", "p-3", "p-3.5",
+  "p-0", "p-px", "p-0.5", "p-1", "p-1.5", "p-2", "p-2.5", "p-3", "p-3.5",
   "p-4", "p-5", "p-6", "p-7", "p-8", "p-9", "p-10", "p-11", "p-12", "p-14", "p-16",
 ]
 const MARGIN_SCALE = [
-  "m-0", "m-0.5", "m-1", "m-1.5", "m-2", "m-2.5", "m-3", "m-3.5",
+  "m-auto",
+  "m-0", "m-px", "m-0.5", "m-1", "m-1.5", "m-2", "m-2.5", "m-3", "m-3.5",
   "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10", "m-11", "m-12", "m-14", "m-16",
-  "m-6",
-  "m-8",
-  "m-10",
-  "m-12",
+  // Negative margins
+  "-m-0.5", "-m-1", "-m-1.5", "-m-2", "-m-2.5", "-m-3", "-m-3.5",
+  "-m-4", "-m-5", "-m-6", "-m-7", "-m-8", "-m-9", "-m-10", "-m-11", "-m-12", "-m-14", "-m-16",
+]
+
+const PADDING_X_SCALE = SPACING_SCALE_FULL.map((v) => `px-${v}`)
+const PADDING_Y_SCALE = SPACING_SCALE_FULL.map((v) => `py-${v}`)
+const MARGIN_X_SCALE = [
+  "mx-auto",
+  ...SPACING_SCALE_FULL.map((v) => `mx-${v}`),
+  ...SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px").map((v) => `-mx-${v}`),
+]
+const MARGIN_Y_SCALE = [
+  "my-auto",
+  ...SPACING_SCALE_FULL.map((v) => `my-${v}`),
+  ...SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px").map((v) => `-my-${v}`),
 ]
 
 const PADDING_SIDES = {
@@ -526,10 +548,14 @@ const PADDING_SIDES = {
 } as const
 
 const MARGIN_SIDES = {
-  marginTop: ["mt-0", "mt-1", "mt-2", "mt-3", "mt-4", "mt-5", "mt-6", "mt-8", "mt-10", "mt-12"],
-  marginRight: ["mr-0", "mr-1", "mr-2", "mr-3", "mr-4", "mr-5", "mr-6", "mr-8", "mr-10", "mr-12"],
-  marginBottom: ["mb-0", "mb-1", "mb-2", "mb-3", "mb-4", "mb-5", "mb-6", "mb-8", "mb-10", "mb-12"],
-  marginLeft: ["ml-0", "ml-1", "ml-2", "ml-3", "ml-4", "ml-5", "ml-6", "ml-8", "ml-10", "ml-12"],
+  marginTop: ["mt-auto", "mt-0", "mt-0.5", "mt-1", "mt-1.5", "mt-2", "mt-2.5", "mt-3", "mt-3.5", "mt-4", "mt-5", "mt-6", "mt-7", "mt-8", "mt-9", "mt-10", "mt-11", "mt-12", "mt-14", "mt-16",
+    "-mt-0.5", "-mt-1", "-mt-1.5", "-mt-2", "-mt-2.5", "-mt-3", "-mt-3.5", "-mt-4", "-mt-5", "-mt-6", "-mt-8", "-mt-10", "-mt-12"],
+  marginRight: ["mr-auto", "mr-0", "mr-0.5", "mr-1", "mr-1.5", "mr-2", "mr-2.5", "mr-3", "mr-3.5", "mr-4", "mr-5", "mr-6", "mr-7", "mr-8", "mr-9", "mr-10", "mr-11", "mr-12", "mr-14", "mr-16",
+    "-mr-0.5", "-mr-1", "-mr-1.5", "-mr-2", "-mr-2.5", "-mr-3", "-mr-3.5", "-mr-4", "-mr-5", "-mr-6", "-mr-8", "-mr-10", "-mr-12"],
+  marginBottom: ["mb-auto", "mb-0", "mb-0.5", "mb-1", "mb-1.5", "mb-2", "mb-2.5", "mb-3", "mb-3.5", "mb-4", "mb-5", "mb-6", "mb-7", "mb-8", "mb-9", "mb-10", "mb-11", "mb-12", "mb-14", "mb-16",
+    "-mb-0.5", "-mb-1", "-mb-1.5", "-mb-2", "-mb-2.5", "-mb-3", "-mb-3.5", "-mb-4", "-mb-5", "-mb-6", "-mb-8", "-mb-10", "-mb-12"],
+  marginLeft: ["ml-auto", "ml-0", "ml-0.5", "ml-1", "ml-1.5", "ml-2", "ml-2.5", "ml-3", "ml-3.5", "ml-4", "ml-5", "ml-6", "ml-7", "ml-8", "ml-9", "ml-10", "ml-11", "ml-12", "ml-14", "ml-16",
+    "-ml-0.5", "-ml-1", "-ml-1.5", "-ml-2", "-ml-2.5", "-ml-3", "-ml-3.5", "-ml-4", "-ml-5", "-ml-6", "-ml-8", "-ml-10", "-ml-12"],
 } as const
 
 const FONT_SIZE_OPTIONS = [
@@ -588,6 +614,7 @@ const SHADOW_OPTIONS = [
 
 const SPACING_PX: Record<string, string> = {
   "0": "0px",
+  "px": "1px",
   "1": "4px",
   "2": "8px",
   "3": "12px",
@@ -684,12 +711,18 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     minHeight: findMatch(classes, MIN_HEIGHT_OPTIONS),
     maxHeight: findMatch(classes, MAX_HEIGHT_OPTIONS),
     size: findMatch(classes, SIZE_OPTIONS),
+    spaceXReverse: findMatch(classes, [SPACE_X_REVERSE]),
+    spaceYReverse: findMatch(classes, [SPACE_Y_REVERSE]),
     padding: findMatch(classes, PADDING_SCALE),
+    paddingX: findMatch(classes, PADDING_X_SCALE),
+    paddingY: findMatch(classes, PADDING_Y_SCALE),
     paddingTop: findMatch(classes, [...PADDING_SIDES.paddingTop]),
     paddingRight: findMatch(classes, [...PADDING_SIDES.paddingRight]),
     paddingBottom: findMatch(classes, [...PADDING_SIDES.paddingBottom]),
     paddingLeft: findMatch(classes, [...PADDING_SIDES.paddingLeft]),
     margin: findMatch(classes, MARGIN_SCALE),
+    marginX: findMatch(classes, MARGIN_X_SCALE),
+    marginY: findMatch(classes, MARGIN_Y_SCALE),
     marginTop: findMatch(classes, [...MARGIN_SIDES.marginTop]),
     marginRight: findMatch(classes, [...MARGIN_SIDES.marginRight]),
     marginBottom: findMatch(classes, [...MARGIN_SIDES.marginBottom]),
@@ -754,6 +787,8 @@ const MANAGED_PREFIXES = [
   ...OBJECT_POSITION_OPTIONS,
   ...SPACE_Y_OPTIONS,
   ...SPACE_X_OPTIONS,
+  SPACE_X_REVERSE,
+  SPACE_Y_REVERSE,
   ...WIDTH_OPTIONS,
   ...HEIGHT_OPTIONS,
   ...MIN_WIDTH_OPTIONS,
@@ -762,8 +797,12 @@ const MANAGED_PREFIXES = [
   ...MAX_HEIGHT_OPTIONS,
   ...SIZE_OPTIONS,
   ...PADDING_SCALE,
+  ...PADDING_X_SCALE,
+  ...PADDING_Y_SCALE,
   ...Object.values(PADDING_SIDES).flat(),
   ...MARGIN_SCALE,
+  ...MARGIN_X_SCALE,
+  ...MARGIN_Y_SCALE,
   ...Object.values(MARGIN_SIDES).flat(),
   ...FONT_SIZE_OPTIONS,
   ...FONT_WEIGHT_OPTIONS,
@@ -848,6 +887,8 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.objectPosition)
   push(state.spaceY)
   push(state.spaceX)
+  push(state.spaceXReverse)
+  push(state.spaceYReverse)
   push(state.width)
   push(state.height)
   push(state.minWidth)
@@ -856,11 +897,15 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.maxHeight)
   push(state.size)
   push(state.padding)
+  push(state.paddingX)
+  push(state.paddingY)
   push(state.paddingTop)
   push(state.paddingRight)
   push(state.paddingBottom)
   push(state.paddingLeft)
   push(state.margin)
+  push(state.marginX)
+  push(state.marginY)
   push(state.marginTop)
   push(state.marginRight)
   push(state.marginBottom)
@@ -889,6 +934,8 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
 const PROPERTY_GROUP_PREFIXES = [
   "w-", "h-", "min-w-", "max-w-", "min-h-", "max-h-", "size-",
   "space-x-", "space-y-",
+  "px-", "py-", "mx-", "my-",
+  "-m-", "-mt-", "-mr-", "-mb-", "-ml-", "-mx-", "-my-",
   "z-",
   "inset-x-", "inset-y-", "inset-",
   "top-", "right-", "bottom-", "left-",
@@ -1264,21 +1311,30 @@ function TextToggle({
 
 /* ── Spacing value input (Figma-style) ──────────────────────────── */
 
-const SPACING_VALUES = ["0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"] as const
+const SPACING_VALUES = ["0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"] as const
+
+const NEGATIVE_SPACING_VALUES = ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"] as const
 
 function SpacingValueInput({
   prefix,
   value,
   onChange,
   placeholder = "–",
+  allowNegative = false,
+  allowAuto = false,
 }: {
   prefix: string // e.g. "p", "pt", "m", "ml"
   value: string // e.g. "p-4" or ""
   onChange: (val: string) => void
   placeholder?: string
+  allowNegative?: boolean
+  allowAuto?: boolean
 }) {
-  const numericVal = value ? value.replace(/^[a-z]+-/, "") : ""
-  const pxLabel = SPACING_PX[numericVal] ?? ""
+  // Handle negative prefix: value might be "-mt-4" with prefix "mt"
+  const isNeg = value.startsWith("-")
+  const stripped = isNeg ? value.replace(/^-[a-z]+-/, "") : value.replace(/^[a-z]+-/, "")
+  const numericVal = value ? (isNeg ? `-${stripped}` : stripped === "auto" ? "auto" : stripped) : ""
+  const pxLabel = SPACING_PX[stripped] ?? ""
 
   return (
     <div className="flex items-center gap-1">
@@ -1288,21 +1344,35 @@ function SpacingValueInput({
         onValueChange={(v) => {
           if (v === "__none__") {
             onChange("")
+          } else if (v === "auto") {
+            onChange(`${prefix}-auto`)
+          } else if (v.startsWith("-")) {
+            onChange(`-${prefix}-${v.slice(1)}`)
           } else {
             onChange(`${prefix}-${v}`)
           }
         }}
       >
-        <SelectTrigger className="h-6 w-14 text-xs">
+        <SelectTrigger className="h-6 w-16 text-xs">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__none__">–</SelectItem>
+          {allowAuto && <SelectItem value="auto">auto</SelectItem>}
           {SPACING_VALUES.map((v) => (
             <SelectItem key={v} value={v}>
               {v} {SPACING_PX[v] ? `(${SPACING_PX[v]})` : ""}
             </SelectItem>
           ))}
+          {allowNegative && (
+            <>
+              {NEGATIVE_SPACING_VALUES.map((v) => (
+                <SelectItem key={`neg-${v}`} value={`-${v}`}>
+                  -{v}
+                </SelectItem>
+              ))}
+            </>
+          )}
         </SelectContent>
       </Select>
       {pxLabel && (
@@ -1322,6 +1392,8 @@ function BoxModelControl({
   sides,
   expanded,
   onToggleExpand,
+  allowNegative = false,
+  allowAuto = false,
 }: {
   label: string
   allPrefix: string
@@ -1335,6 +1407,8 @@ function BoxModelControl({
   }[]
   expanded: boolean
   onToggleExpand: () => void
+  allowNegative?: boolean
+  allowAuto?: boolean
 }) {
   return (
     <div className="space-y-1.5">
@@ -1343,6 +1417,8 @@ function BoxModelControl({
           prefix={allPrefix}
           value={allValue}
           onChange={onAllChange}
+          allowNegative={allowNegative}
+          allowAuto={allowAuto}
         />
         <div className="flex-1" />
         <Button
@@ -1366,6 +1442,8 @@ function BoxModelControl({
               prefix={side.prefix}
               value={side.value}
               onChange={side.onChange}
+              allowNegative={allowNegative}
+              allowAuto={allowAuto}
             />
           ))}
         </div>
@@ -2638,6 +2716,11 @@ export function VisualEditor({
                       expanded={showPaddingSides}
                       onToggleExpand={() => setShowPaddingSides((v) => !v)}
                     />
+                    {/* Padding axes */}
+                    <div className="mt-1 flex gap-2 pl-6">
+                      <SpacingValueInput prefix="px" value={state.paddingX} onChange={(v) => update("paddingX", v)} />
+                      <SpacingValueInput prefix="py" value={state.paddingY} onChange={(v) => update("paddingY", v)} />
+                    </div>
                   </ControlRow>
 
                   {/* Margin */}
@@ -2655,30 +2738,43 @@ export function VisualEditor({
                       ]}
                       expanded={showMarginSides}
                       onToggleExpand={() => setShowMarginSides((v) => !v)}
+                      allowNegative
+                      allowAuto
                     />
+                    {/* Margin axes */}
+                    <div className="mt-1 flex gap-2 pl-6">
+                      <SpacingValueInput prefix="mx" value={state.marginX} onChange={(v) => update("marginX", v)} allowNegative allowAuto />
+                      <SpacingValueInput prefix="my" value={state.marginY} onChange={(v) => update("marginY", v)} allowNegative allowAuto />
+                    </div>
                   </ControlRow>
 
                   {/* Space between — conditional on display/direction */}
                   {isFlexRow && (
                     <ControlRow label="Space-X">
-                      <Select value={state.spaceX ? state.spaceX.replace("space-x-", "") : "__none__"} onValueChange={(v) => update("spaceX", v === "__none__" ? "" : `space-x-${v}`)}>
-                        <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">–</SelectItem>
-                          {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Select value={state.spaceX ? state.spaceX.replace("space-x-", "") : "__none__"} onValueChange={(v) => update("spaceX", v === "__none__" ? "" : `space-x-${v}`)}>
+                          <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">–</SelectItem>
+                            {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <TextToggle value="space-x-reverse" label="rev" tooltip="space-x-reverse" isActive={!!state.spaceXReverse} onClick={() => update("spaceXReverse", state.spaceXReverse ? "" : "space-x-reverse")} />
+                      </div>
                     </ControlRow>
                   )}
                   {(isBlockDisplay || isFlexCol) && (
                     <ControlRow label="Space-Y">
-                      <Select value={state.spaceY ? state.spaceY.replace("space-y-", "") : "__none__"} onValueChange={(v) => update("spaceY", v === "__none__" ? "" : `space-y-${v}`)}>
-                        <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">–</SelectItem>
-                          {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Select value={state.spaceY ? state.spaceY.replace("space-y-", "") : "__none__"} onValueChange={(v) => update("spaceY", v === "__none__" ? "" : `space-y-${v}`)}>
+                          <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">–</SelectItem>
+                            {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <TextToggle value="space-y-reverse" label="rev" tooltip="space-y-reverse" isActive={!!state.spaceYReverse} onClick={() => update("spaceYReverse", state.spaceYReverse ? "" : "space-y-reverse")} />
+                      </div>
                     </ControlRow>
                   )}
 
