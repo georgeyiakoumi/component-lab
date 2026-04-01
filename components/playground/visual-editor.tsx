@@ -383,6 +383,15 @@ interface ControlState {
   // Colours
   textColor: string
   bgColor: string
+  borderColor: string
+  ringColor: string
+  ringOffsetColor: string
+  outlineColor: string
+  opacity: string
+  gradientDirection: string
+  gradientFrom: string
+  gradientVia: string
+  gradientTo: string
   // Borders
   borderRadius: string
   borderWidth: string
@@ -613,23 +622,155 @@ const LIST_STYLE_TYPE_OPTIONS = ["list-none", "list-disc", "list-decimal"]
 const LIST_STYLE_POSITION_OPTIONS = ["list-inside", "list-outside"]
 const FONT_VARIANT_NUMERIC_OPTIONS = ["normal-nums", "ordinal", "slashed-zero", "lining-nums", "oldstyle-nums", "proportional-nums", "tabular-nums"]
 
-const TEXT_COLOR_OPTIONS = [
+/* ── Full Tailwind colour palette ──────────────────────────────── */
+
+const TW_COLOR_NAMES = [
+  "slate", "gray", "zinc", "neutral", "stone",
+  "red", "orange", "amber", "yellow", "lime", "green", "emerald",
+  "teal", "cyan", "sky", "blue", "indigo", "violet", "purple",
+  "fuchsia", "pink", "rose",
+] as const
+
+const TW_SHADES = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const
+
+/** Generate all Tailwind colour classes for a given prefix, e.g. "text", "bg", "border" */
+function generateTwColorClasses(prefix: string): string[] {
+  const classes: string[] = [
+    `${prefix}-inherit`, `${prefix}-current`, `${prefix}-transparent`,
+    `${prefix}-black`, `${prefix}-white`,
+  ]
+  for (const color of TW_COLOR_NAMES) {
+    for (const shade of TW_SHADES) {
+      classes.push(`${prefix}-${color}-${shade}`)
+    }
+  }
+  return classes
+}
+
+/** shadcn semantic token options for a prefix */
+const SHADCN_TEXT_TOKENS = [
   { label: "Foreground", value: "text-foreground" },
   { label: "Primary", value: "text-primary" },
-  { label: "Secondary", value: "text-secondary-foreground" },
-  { label: "Muted", value: "text-muted-foreground" },
+  { label: "Secondary FG", value: "text-secondary-foreground" },
+  { label: "Muted FG", value: "text-muted-foreground" },
   { label: "Destructive", value: "text-destructive" },
-  { label: "Accent", value: "text-accent-foreground" },
+  { label: "Accent FG", value: "text-accent-foreground" },
 ]
 
-const BG_COLOR_OPTIONS = [
+const SHADCN_BG_TOKENS = [
   { label: "Background", value: "bg-background" },
   { label: "Primary", value: "bg-primary" },
   { label: "Secondary", value: "bg-secondary" },
   { label: "Muted", value: "bg-muted" },
   { label: "Accent", value: "bg-accent" },
   { label: "Destructive", value: "bg-destructive" },
+  { label: "Card", value: "bg-card" },
+  { label: "Popover", value: "bg-popover" },
 ]
+
+const SHADCN_BORDER_TOKENS = [
+  { label: "Border", value: "border-border" },
+  { label: "Input", value: "border-input" },
+  { label: "Ring", value: "border-ring" },
+  { label: "Primary", value: "border-primary" },
+  { label: "Destructive", value: "border-destructive" },
+]
+
+const SHADCN_RING_TOKENS = [
+  { label: "Ring", value: "ring-ring" },
+  { label: "Primary", value: "ring-primary" },
+  { label: "Destructive", value: "ring-destructive" },
+]
+
+const TEXT_COLOR_OPTIONS = [
+  ...SHADCN_TEXT_TOKENS.map((t) => t.value),
+  ...generateTwColorClasses("text"),
+]
+
+const BG_COLOR_OPTIONS = [
+  ...SHADCN_BG_TOKENS.map((t) => t.value),
+  ...generateTwColorClasses("bg"),
+]
+
+const BORDER_COLOR_OPTIONS = [
+  ...SHADCN_BORDER_TOKENS.map((t) => t.value),
+  ...generateTwColorClasses("border"),
+]
+
+const RING_COLOR_OPTIONS = [
+  ...SHADCN_RING_TOKENS.map((t) => t.value),
+  ...generateTwColorClasses("ring"),
+]
+
+const RING_OFFSET_COLOR_OPTIONS = generateTwColorClasses("ring-offset")
+
+const OUTLINE_COLOR_OPTIONS = generateTwColorClasses("outline")
+
+const GRADIENT_FROM_OPTIONS = generateTwColorClasses("from")
+const GRADIENT_VIA_OPTIONS = generateTwColorClasses("via")
+const GRADIENT_TO_OPTIONS = generateTwColorClasses("to")
+
+const GRADIENT_DIRECTION_OPTIONS = [
+  "bg-gradient-to-t", "bg-gradient-to-tr", "bg-gradient-to-r", "bg-gradient-to-br",
+  "bg-gradient-to-b", "bg-gradient-to-bl", "bg-gradient-to-l", "bg-gradient-to-tl",
+]
+
+const OPACITY_OPTIONS = [
+  "opacity-0", "opacity-5", "opacity-10", "opacity-15", "opacity-20", "opacity-25",
+  "opacity-30", "opacity-35", "opacity-40", "opacity-45", "opacity-50", "opacity-55",
+  "opacity-60", "opacity-65", "opacity-70", "opacity-75", "opacity-80", "opacity-85",
+  "opacity-90", "opacity-95", "opacity-100",
+]
+
+/** Swatch CSS colour mapping — maps Tailwind shade to actual hex for display */
+const TW_SWATCH_COLORS: Record<string, Record<string, string>> = {
+  slate: { "50": "#f8fafc", "100": "#f1f5f9", "200": "#e2e8f0", "300": "#cbd5e1", "400": "#94a3b8", "500": "#64748b", "600": "#475569", "700": "#334155", "800": "#1e293b", "900": "#0f172a", "950": "#020617" },
+  gray: { "50": "#f9fafb", "100": "#f3f4f6", "200": "#e5e7eb", "300": "#d1d5db", "400": "#9ca3af", "500": "#6b7280", "600": "#4b5563", "700": "#374151", "800": "#1f2937", "900": "#111827", "950": "#030712" },
+  zinc: { "50": "#fafafa", "100": "#f4f4f5", "200": "#e4e4e7", "300": "#d4d4d8", "400": "#a1a1aa", "500": "#71717a", "600": "#52525b", "700": "#3f3f46", "800": "#27272a", "900": "#18181b", "950": "#09090b" },
+  neutral: { "50": "#fafafa", "100": "#f5f5f5", "200": "#e5e5e5", "300": "#d4d4d4", "400": "#a3a3a3", "500": "#737373", "600": "#525252", "700": "#404040", "800": "#262626", "900": "#171717", "950": "#0a0a0a" },
+  stone: { "50": "#fafaf9", "100": "#f5f5f4", "200": "#e7e5e4", "300": "#d6d3d1", "400": "#a8a29e", "500": "#78716c", "600": "#57534e", "700": "#44403c", "800": "#292524", "900": "#1c1917", "950": "#0c0a09" },
+  red: { "50": "#fef2f2", "100": "#fee2e2", "200": "#fecaca", "300": "#fca5a5", "400": "#f87171", "500": "#ef4444", "600": "#dc2626", "700": "#b91c1c", "800": "#991b1b", "900": "#7f1d1d", "950": "#450a0a" },
+  orange: { "50": "#fff7ed", "100": "#ffedd5", "200": "#fed7aa", "300": "#fdba74", "400": "#fb923c", "500": "#f97316", "600": "#ea580c", "700": "#c2410c", "800": "#9a3412", "900": "#7c2d12", "950": "#431407" },
+  amber: { "50": "#fffbeb", "100": "#fef3c7", "200": "#fde68a", "300": "#fcd34d", "400": "#fbbf24", "500": "#f59e0b", "600": "#d97706", "700": "#b45309", "800": "#92400e", "900": "#78350f", "950": "#451a03" },
+  yellow: { "50": "#fefce8", "100": "#fef9c3", "200": "#fef08a", "300": "#fde047", "400": "#facc15", "500": "#eab308", "600": "#ca8a04", "700": "#a16207", "800": "#854d0e", "900": "#713f12", "950": "#422006" },
+  lime: { "50": "#f7fee7", "100": "#ecfccb", "200": "#d9f99d", "300": "#bef264", "400": "#a3e635", "500": "#84cc16", "600": "#65a30d", "700": "#4d7c0f", "800": "#3f6212", "900": "#365314", "950": "#1a2e05" },
+  green: { "50": "#f0fdf4", "100": "#dcfce7", "200": "#bbf7d0", "300": "#86efac", "400": "#4ade80", "500": "#22c55e", "600": "#16a34a", "700": "#15803d", "800": "#166534", "900": "#14532d", "950": "#052e16" },
+  emerald: { "50": "#ecfdf5", "100": "#d1fae5", "200": "#a7f3d0", "300": "#6ee7b7", "400": "#34d399", "500": "#10b981", "600": "#059669", "700": "#047857", "800": "#065f46", "900": "#064e3b", "950": "#022c22" },
+  teal: { "50": "#f0fdfa", "100": "#ccfbf1", "200": "#99f6e4", "300": "#5eead4", "400": "#2dd4bf", "500": "#14b8a6", "600": "#0d9488", "700": "#0f766e", "800": "#115e59", "900": "#134e4a", "950": "#042f2e" },
+  cyan: { "50": "#ecfeff", "100": "#cffafe", "200": "#a5f3fc", "300": "#67e8f9", "400": "#22d3ee", "500": "#06b6d4", "600": "#0891b2", "700": "#0e7490", "800": "#155e75", "900": "#164e63", "950": "#083344" },
+  sky: { "50": "#f0f9ff", "100": "#e0f2fe", "200": "#bae6fd", "300": "#7dd3fc", "400": "#38bdf8", "500": "#0ea5e9", "600": "#0284c7", "700": "#0369a1", "800": "#075985", "900": "#0c4a6e", "950": "#082f49" },
+  blue: { "50": "#eff6ff", "100": "#dbeafe", "200": "#bfdbfe", "300": "#93c5fd", "400": "#60a5fa", "500": "#3b82f6", "600": "#2563eb", "700": "#1d4ed8", "800": "#1e40af", "900": "#1e3a8a", "950": "#172554" },
+  indigo: { "50": "#eef2ff", "100": "#e0e7ff", "200": "#c7d2fe", "300": "#a5b4fc", "400": "#818cf8", "500": "#6366f1", "600": "#4f46e5", "700": "#4338ca", "800": "#3730a3", "900": "#312e81", "950": "#1e1b4b" },
+  violet: { "50": "#f5f3ff", "100": "#ede9fe", "200": "#ddd6fe", "300": "#c4b5fd", "400": "#a78bfa", "500": "#8b5cf6", "600": "#7c3aed", "700": "#6d28d9", "800": "#5b21b6", "900": "#4c1d95", "950": "#2e1065" },
+  purple: { "50": "#faf5ff", "100": "#f3e8ff", "200": "#e9d5ff", "300": "#d8b4fe", "400": "#c084fc", "500": "#a855f7", "600": "#9333ea", "700": "#7e22ce", "800": "#6b21a8", "900": "#581c87", "950": "#3b0764" },
+  fuchsia: { "50": "#fdf4ff", "100": "#fae8ff", "200": "#f5d0fe", "300": "#f0abfc", "400": "#e879f9", "500": "#d946ef", "600": "#c026d3", "700": "#a21caf", "800": "#86198f", "900": "#701a75", "950": "#4a044e" },
+  pink: { "50": "#fdf2f8", "100": "#fce7f3", "200": "#fbcfe8", "300": "#f9a8d4", "400": "#f472b6", "500": "#ec4899", "600": "#db2777", "700": "#be185d", "800": "#9d174d", "900": "#831843", "950": "#500724" },
+  rose: { "50": "#fff1f2", "100": "#ffe4e6", "200": "#fecdd3", "300": "#fda4af", "400": "#fb7185", "500": "#f43f5e", "600": "#e11d48", "700": "#be123c", "800": "#9f1239", "900": "#881337", "950": "#4c0519" },
+}
+
+/** Parse a Tailwind colour class like "text-blue-500" into { color, shade } */
+function parseTwColorClass(cls: string, prefix: string): { color: string; shade: string } | null {
+  const withoutPrefix = cls.startsWith(`${prefix}-`) ? cls.slice(prefix.length + 1) : null
+  if (!withoutPrefix) return null
+  const lastDash = withoutPrefix.lastIndexOf("-")
+  if (lastDash === -1) return null
+  const color = withoutPrefix.slice(0, lastDash)
+  const shade = withoutPrefix.slice(lastDash + 1)
+  if (TW_SWATCH_COLORS[color]?.[shade]) return { color, shade }
+  return null
+}
+
+/** Get hex colour for a Tailwind class */
+function getSwatchHex(cls: string, prefix: string): string | null {
+  if (cls === `${prefix}-black`) return "#000000"
+  if (cls === `${prefix}-white`) return "#ffffff"
+  if (cls === `${prefix}-transparent`) return null
+  if (cls === `${prefix}-current`) return null
+  if (cls === `${prefix}-inherit`) return null
+  const parsed = parseTwColorClass(cls, prefix)
+  if (!parsed) return null
+  return TW_SWATCH_COLORS[parsed.color]?.[parsed.shade] ?? null
+}
 
 const BORDER_RADIUS_OPTIONS = [
   "rounded-none",
@@ -671,12 +812,36 @@ function findMatch(classes: string[], options: string[]): string {
   return classes.find((c) => options.includes(c)) ?? ""
 }
 
-function findColorMatch(
-  classes: string[],
-  options: { label: string; value: string }[],
-): string {
-  const values = options.map((o) => o.value)
-  return classes.find((c) => values.includes(c)) ?? ""
+/** Known colour suffixes — shadcn tokens, Tailwind specials, and palette colours */
+const COLOR_SUFFIXES = new Set([
+  "inherit", "current", "transparent", "black", "white",
+  // shadcn tokens
+  "foreground", "primary", "secondary", "secondary-foreground",
+  "muted", "muted-foreground", "accent", "accent-foreground",
+  "destructive", "destructive-foreground", "background",
+  "card", "card-foreground", "popover", "popover-foreground",
+  "border", "input", "ring",
+  "primary-foreground",
+])
+
+/** Check if a class suffix is a valid Tailwind colour (token, special, or palette shade) */
+function isColorSuffix(suffix: string): boolean {
+  if (COLOR_SUFFIXES.has(suffix)) return true
+  // Check for palette: {color}-{shade}
+  const lastDash = suffix.lastIndexOf("-")
+  if (lastDash === -1) return false
+  const color = suffix.slice(0, lastDash)
+  const shade = suffix.slice(lastDash + 1)
+  return !!TW_SWATCH_COLORS[color]?.[shade]
+}
+
+/** Find a colour class by prefix — matches prefix-based (e.g. any "text-" colour class) */
+function findPrefixColorMatch(classes: string[], prefix: string): string {
+  return classes.find((c) => {
+    if (!c.startsWith(`${prefix}-`)) return false
+    const suffix = c.slice(prefix.length + 1)
+    return isColorSuffix(suffix)
+  }) ?? ""
 }
 
 function classesToControlState(classes: string[], context: StyleContext = "default"): ControlState {
@@ -789,8 +954,17 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     listStyleType: findMatch(classes, LIST_STYLE_TYPE_OPTIONS),
     listStylePosition: findMatch(classes, LIST_STYLE_POSITION_OPTIONS),
     fontVariantNumeric: findMatch(classes, FONT_VARIANT_NUMERIC_OPTIONS),
-    textColor: findColorMatch(classes, TEXT_COLOR_OPTIONS),
-    bgColor: findColorMatch(classes, BG_COLOR_OPTIONS),
+    textColor: findPrefixColorMatch(classes, "text"),
+    bgColor: findPrefixColorMatch(classes, "bg"),
+    borderColor: findPrefixColorMatch(classes, "border"),
+    ringColor: findPrefixColorMatch(classes, "ring"),
+    ringOffsetColor: findPrefixColorMatch(classes, "ring-offset"),
+    outlineColor: findPrefixColorMatch(classes, "outline"),
+    opacity: findMatch(classes, OPACITY_OPTIONS),
+    gradientDirection: findMatch(classes, GRADIENT_DIRECTION_OPTIONS),
+    gradientFrom: findPrefixColorMatch(classes, "from"),
+    gradientVia: findPrefixColorMatch(classes, "via"),
+    gradientTo: findPrefixColorMatch(classes, "to"),
     borderRadius: findMatch(classes, BORDER_RADIUS_OPTIONS),
     borderWidth: findMatch(classes, BORDER_WIDTH_OPTIONS),
     shadow: findMatch(classes, SHADOW_OPTIONS),
@@ -886,8 +1060,17 @@ const MANAGED_PREFIXES = [
   ...LIST_STYLE_TYPE_OPTIONS,
   ...LIST_STYLE_POSITION_OPTIONS,
   ...FONT_VARIANT_NUMERIC_OPTIONS,
-  ...TEXT_COLOR_OPTIONS.map((o) => o.value),
-  ...BG_COLOR_OPTIONS.map((o) => o.value),
+  ...TEXT_COLOR_OPTIONS,
+  ...BG_COLOR_OPTIONS,
+  ...BORDER_COLOR_OPTIONS,
+  ...RING_COLOR_OPTIONS,
+  ...RING_OFFSET_COLOR_OPTIONS,
+  ...OUTLINE_COLOR_OPTIONS,
+  ...OPACITY_OPTIONS,
+  ...GRADIENT_DIRECTION_OPTIONS,
+  ...GRADIENT_FROM_OPTIONS,
+  ...GRADIENT_VIA_OPTIONS,
+  ...GRADIENT_TO_OPTIONS,
   ...BORDER_RADIUS_OPTIONS,
   ...BORDER_WIDTH_OPTIONS,
   ...SHADOW_OPTIONS,
@@ -1014,6 +1197,15 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.fontVariantNumeric)
   push(state.textColor)
   push(state.bgColor)
+  push(state.borderColor)
+  push(state.ringColor)
+  push(state.ringOffsetColor)
+  push(state.outlineColor)
+  push(state.opacity)
+  push(state.gradientDirection)
+  push(state.gradientFrom)
+  push(state.gradientVia)
+  push(state.gradientTo)
   push(state.borderRadius)
   push(state.borderWidth)
   push(state.shadow)
@@ -1049,6 +1241,10 @@ const PROPERTY_GROUP_PREFIXES = [
   "gap-x-", "gap-y-",
   "justify-items-", "justify-self-",
   "content-",
+  "ring-offset-",
+  "opacity-",
+  "bg-gradient-to-",
+  "from-", "via-", "to-",
 ]
 
 function mergeClasses(
@@ -1610,62 +1806,234 @@ function SpacingSlider({
   )
 }
 
-/* ── Colour swatch grid ──────────────────────────────────────────── */
+/* ── Colour picker ────────────────────────────────────────────────── */
 
-const COLOR_SWATCH_MAP: Record<string, string> = {
+/** shadcn semantic token swatch map — maps token class to its CSS bg class for display */
+const SHADCN_SWATCH_MAP: Record<string, string> = {
+  // text tokens
   "text-foreground": "bg-foreground",
   "text-primary": "bg-primary",
   "text-secondary-foreground": "bg-secondary-foreground",
   "text-muted-foreground": "bg-muted-foreground",
   "text-destructive": "bg-destructive",
   "text-accent-foreground": "bg-accent-foreground",
+  // bg tokens
   "bg-background": "bg-background border",
   "bg-primary": "bg-primary",
   "bg-secondary": "bg-secondary",
   "bg-muted": "bg-muted",
   "bg-accent": "bg-accent",
   "bg-destructive": "bg-destructive",
+  "bg-card": "bg-card border",
+  "bg-popover": "bg-popover border",
+  // border tokens
+  "border-border": "bg-border",
+  "border-input": "bg-input",
+  "border-ring": "bg-ring",
+  "border-primary": "bg-primary",
+  "border-destructive": "bg-destructive",
+  // ring tokens
+  "ring-ring": "bg-ring",
+  "ring-primary": "bg-primary",
+  "ring-destructive": "bg-destructive",
 }
 
-function ColorSwatchGrid({
+/** Get the swatch for a shadcn token class */
+function getShadcnTokenSwatch(cls: string): { type: "css"; value: string } | null {
+  const mapped = SHADCN_SWATCH_MAP[cls]
+  if (mapped) return { type: "css", value: mapped }
+  return null
+}
+
+/** ColourPicker popover — shadcn tokens + full Tailwind palette */
+function ColorPicker({
   label,
-  options,
+  prefix,
+  shadcnTokens,
   value,
   onChange,
 }: {
   label: string
-  options: { label: string; value: string }[]
+  prefix: string // "text", "bg", "border", "ring", "ring-offset", "outline", "from", "via", "to"
+  shadcnTokens?: { label: string; value: string }[]
   value: string
   onChange: (val: string) => void
 }) {
+  const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState("")
+
+  // Parse current value for display
+  const hex = value ? getSwatchHex(value, prefix) : null
+  const tokenSwatch = value ? getShadcnTokenSwatch(value) : null
+  const displayLabel = value
+    ? value.startsWith(`${prefix}-`) ? value.slice(prefix.length + 1) : value
+    : "–"
+
+  // Filter palette by search
+  const filteredColors = search
+    ? TW_COLOR_NAMES.filter((c) => c.includes(search.toLowerCase()))
+    : TW_COLOR_NAMES
+
   return (
     <ControlRow label={label}>
-      <TooltipProvider delayDuration={200}>
-        <div className="flex flex-wrap gap-1.5">
-          {options.map((opt) => (
-            <Tooltip key={opt.value}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "size-6 rounded-md transition-all",
-                    COLOR_SWATCH_MAP[opt.value] ?? "bg-muted",
-                    value === opt.value
-                      ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
-                      : "ring-1 ring-border hover:ring-foreground/30",
-                  )}
-                  onClick={() =>
-                    onChange(value === opt.value ? "" : opt.value)
-                  }
-                />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {opt.label}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      </TooltipProvider>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex h-7 w-full items-center gap-2 rounded-md border bg-transparent px-2 text-xs hover:bg-muted"
+          >
+            {value ? (
+              <span
+                className={cn(
+                  "size-4 shrink-0 rounded-sm border border-border/50",
+                  tokenSwatch ? tokenSwatch.value : "",
+                )}
+                style={hex ? { backgroundColor: hex } : undefined}
+              />
+            ) : (
+              <span className="size-4 shrink-0 rounded-sm border border-dashed border-muted-foreground/40" />
+            )}
+            <span className="flex-1 truncate text-left">{displayLabel}</span>
+            {value && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onChange("") }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onChange("") } }}
+              >
+                <X className="size-3" />
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0" align="end" side="top">
+          <div className="space-y-2 p-2">
+            {/* Search */}
+            <Input
+              placeholder="Search colours…"
+              className="h-7 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <ScrollArea className="max-h-[300px]">
+              <div className="space-y-2 pr-2">
+                {/* Special values */}
+                <div>
+                  <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">Special</p>
+                  <div className="flex flex-wrap gap-1">
+                    {["inherit", "current", "transparent"].map((s) => {
+                      const cls = `${prefix}-${s}`
+                      return (
+                        <Badge
+                          key={s}
+                          variant={value === cls ? "default" : "outline"}
+                          className="cursor-pointer text-[10px]"
+                          onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
+                        >
+                          {s}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* shadcn tokens */}
+                {shadcnTokens && shadcnTokens.length > 0 && (!search || "shadcn".includes(search.toLowerCase())) && (
+                  <div>
+                    <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">shadcn tokens</p>
+                    <div className="flex flex-wrap gap-1">
+                      {shadcnTokens.map((t) => (
+                        <Tooltip key={t.value}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className={cn(
+                                "size-6 rounded-md transition-all",
+                                SHADCN_SWATCH_MAP[t.value] ?? "bg-muted",
+                                value === t.value
+                                  ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                                  : "ring-1 ring-border hover:ring-foreground/30",
+                              )}
+                              onClick={() => { onChange(value === t.value ? "" : t.value); setOpen(false) }}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            {t.label}
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Black & White */}
+                {(!search || "black white".includes(search.toLowerCase())) && (
+                  <div>
+                    <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">Black & White</p>
+                    <div className="flex gap-1">
+                      {[
+                        { s: "black", hex: "#000000" },
+                        { s: "white", hex: "#ffffff" },
+                      ].map(({ s, hex: h }) => {
+                        const cls = `${prefix}-${s}`
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            className={cn(
+                              "size-6 rounded-md border transition-all",
+                              value === cls
+                                ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                                : "ring-1 ring-border hover:ring-foreground/30",
+                            )}
+                            style={{ backgroundColor: h }}
+                            onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Full Tailwind palette */}
+                {filteredColors.map((colorName) => (
+                  <div key={colorName}>
+                    <p className="mb-1 text-[10px] font-medium capitalize text-muted-foreground">{colorName}</p>
+                    <div className="flex gap-0.5">
+                      {TW_SHADES.map((shade) => {
+                        const cls = `${prefix}-${colorName}-${shade}`
+                        const h = TW_SWATCH_COLORS[colorName]?.[shade] ?? "#888"
+                        return (
+                          <Tooltip key={shade}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "size-5 rounded-sm transition-all",
+                                  value === cls
+                                    ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                                    : "hover:ring-1 hover:ring-foreground/30",
+                                )}
+                                style={{ backgroundColor: h }}
+                                onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">
+                              {colorName}-{shade}
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        </PopoverContent>
+      </Popover>
     </ControlRow>
   )
 }
@@ -3183,17 +3551,110 @@ export function VisualEditor({
 
           {/* ── Colours ──────────────────────────────────── */}
           <ControlSection icon={Palette} title="Colours">
-            <ColorSwatchGrid
+            <ColorPicker
               label="Text"
-              options={TEXT_COLOR_OPTIONS}
+              prefix="text"
+              shadcnTokens={SHADCN_TEXT_TOKENS}
               value={state.textColor}
               onChange={(v) => update("textColor", v)}
             />
-            <ColorSwatchGrid
+            <ColorPicker
               label="Background"
-              options={BG_COLOR_OPTIONS}
+              prefix="bg"
+              shadcnTokens={SHADCN_BG_TOKENS}
               value={state.bgColor}
               onChange={(v) => update("bgColor", v)}
+            />
+            <ColorPicker
+              label="Border"
+              prefix="border"
+              shadcnTokens={SHADCN_BORDER_TOKENS}
+              value={state.borderColor}
+              onChange={(v) => update("borderColor", v)}
+            />
+            <ColorPicker
+              label="Ring"
+              prefix="ring"
+              shadcnTokens={SHADCN_RING_TOKENS}
+              value={state.ringColor}
+              onChange={(v) => update("ringColor", v)}
+            />
+            <ColorPicker
+              label="Ring offset"
+              prefix="ring-offset"
+              value={state.ringOffsetColor}
+              onChange={(v) => update("ringOffsetColor", v)}
+            />
+            <ColorPicker
+              label="Outline"
+              prefix="outline"
+              value={state.outlineColor}
+              onChange={(v) => update("outlineColor", v)}
+            />
+
+            <Separator className="my-1" />
+
+            {/* Opacity */}
+            <ControlRow label="Opacity">
+              <div className="space-y-1.5">
+                <Slider
+                  value={[state.opacity ? parseInt(state.opacity.replace("opacity-", ""), 10) : 100]}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onValueChange={([v]) =>
+                    update("opacity", v === 100 ? "" : `opacity-${v}`)
+                  }
+                />
+                <div className="text-center text-[10px] text-muted-foreground">
+                  {state.opacity ? state.opacity.replace("opacity-", "") + "%" : "100%"}
+                </div>
+              </div>
+            </ControlRow>
+
+            <Separator className="my-1" />
+
+            {/* Gradient */}
+            <ControlRow label="Gradient dir.">
+              <div className="flex flex-wrap gap-0.5">
+                {[
+                  { value: "bg-gradient-to-t", label: "↑" },
+                  { value: "bg-gradient-to-tr", label: "↗" },
+                  { value: "bg-gradient-to-r", label: "→" },
+                  { value: "bg-gradient-to-br", label: "↘" },
+                  { value: "bg-gradient-to-b", label: "↓" },
+                  { value: "bg-gradient-to-bl", label: "↙" },
+                  { value: "bg-gradient-to-l", label: "←" },
+                  { value: "bg-gradient-to-tl", label: "↖" },
+                ].map((opt) => (
+                  <TextToggle
+                    key={opt.value}
+                    value={opt.value}
+                    label={opt.label}
+                    tooltip={opt.value}
+                    isActive={state.gradientDirection === opt.value}
+                    onClick={(v) => update("gradientDirection", v)}
+                  />
+                ))}
+              </div>
+            </ControlRow>
+            <ColorPicker
+              label="From"
+              prefix="from"
+              value={state.gradientFrom}
+              onChange={(v) => update("gradientFrom", v)}
+            />
+            <ColorPicker
+              label="Via"
+              prefix="via"
+              value={state.gradientVia}
+              onChange={(v) => update("gradientVia", v)}
+            />
+            <ColorPicker
+              label="To"
+              prefix="to"
+              value={state.gradientTo}
+              onChange={(v) => update("gradientTo", v)}
             />
           </ControlSection>
 

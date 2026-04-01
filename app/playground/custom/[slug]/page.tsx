@@ -26,6 +26,7 @@ import { StatusBar } from "@/components/playground/status-bar"
 import { RightPanel } from "@/components/playground/right-panel"
 import { DefineView } from "@/components/playground/define-view"
 import { VisualEditor } from "@/components/playground/visual-editor"
+import { resolveColorStyles } from "@/lib/resolve-color-styles"
 import { DragHandle } from "@/components/playground/drag-handle"
 import { AssemblyPanel } from "@/components/playground/assembly-panel"
 import { Button } from "@/components/ui/button"
@@ -238,13 +239,15 @@ export default function CustomComponentPage() {
     const isNodeSelected = selectedNodeId === node.id ||
       (selectedNodeId === "main" && componentTree?.assemblyTree.id === node.id)
     const resolvedClasses = resolveVariantClasses(node.classes)
+    const { remainingClasses: colorResolvedClasses, style: colorStyle } = resolveColorStyles(resolvedClasses)
     const nodeClasses = [
-      ...resolvedClasses,
+      ...colorResolvedClasses,
       isNodeSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
     ].filter(Boolean)
     const className = nodeClasses.length > 0
       ? nodeClasses.join(" ")
       : undefined
+    const inlineStyle = Object.keys(colorStyle).length > 0 ? colorStyle : undefined
 
     const children: React.ReactNode[] = []
 
@@ -282,7 +285,7 @@ export default function CustomComponentPage() {
       )
     }
 
-    return React.createElement(tag, { key: node.id, className, "data-node-id": node.id, ...extraProps }, ...children)
+    return React.createElement(tag, { key: node.id, className, style: inlineStyle, "data-node-id": node.id, ...extraProps }, ...children)
   }
 
   // Render a sub-component using its own tree
@@ -297,13 +300,15 @@ export default function CustomComponentPage() {
     const tag = (isShadcnBase ? "div" : sc.baseElement) as keyof React.JSX.IntrinsicElements
     const isScSelected = selectedNodeId === key
     const resolvedScClasses = resolveVariantClasses(sc.classes.filter(Boolean))
+    const { remainingClasses: scColorResolved, style: scColorStyle } = resolveColorStyles(resolvedScClasses)
     const allClasses = [
-      ...resolvedScClasses,
+      ...scColorResolved,
       isScSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
     ].filter(Boolean)
     const className = allClasses.length > 0
       ? allClasses.join(" ")
       : undefined
+    const scInlineStyle = Object.keys(scColorStyle).length > 0 ? scColorStyle : undefined
 
     const children: React.ReactNode[] = []
 
@@ -331,8 +336,8 @@ export default function CustomComponentPage() {
 
     // Use actual shadcn component if available, otherwise HTML tag
     const element = ShadcnComp
-      ? React.createElement(ShadcnComp, { key, className, "data-node-id": key }, ...children)
-      : React.createElement(tag, { key, className, "data-node-id": key }, ...children)
+      ? React.createElement(ShadcnComp, { key, className, style: scInlineStyle, "data-node-id": key }, ...children)
+      : React.createElement(tag, { key, className, style: scInlineStyle, "data-node-id": key }, ...children)
 
     return element
   }
