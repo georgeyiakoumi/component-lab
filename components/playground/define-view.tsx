@@ -35,7 +35,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -133,9 +135,17 @@ function moveInAssemblyTree(
 
 const PROP_TYPES = ["string", "number", "boolean", "ReactNode"] as const
 
-const BASE_ELEMENTS = [
+const HTML_ELEMENTS = [
   "div", "section", "header", "footer", "nav", "aside", "span", "p", "ul", "li",
+  "button", "a", "form", "input", "textarea", "select", "img", "article",
 ]
+
+const SHADCN_BASE_COMPONENTS = [
+  "Button", "Badge", "Input", "Label", "Separator", "Checkbox", "Switch",
+  "Slider", "Progress", "Skeleton", "Avatar", "Toggle",
+]
+
+const BASE_ELEMENTS = [...HTML_ELEMENTS, ...SHADCN_BASE_COMPONENTS]
 
 const USECASE_OPTIONS: { value: SubComponentUsecase; label: string }[] = [
   { value: "plain-text", label: "Text" },
@@ -1208,17 +1218,28 @@ function EditSettingsDialog({
 
           {/* Base element — for BOTH compound and sub-components */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Base element</Label>
+            <Label className="text-xs">Based on</Label>
             <Select value={baseElement} onValueChange={setBaseElement}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {BASE_ELEMENTS.map((el) => (
-                  <SelectItem key={el} value={el} className="text-xs">
-                    &lt;{el}&gt;
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-muted-foreground">HTML elements</SelectLabel>
+                  {HTML_ELEMENTS.map((el) => (
+                    <SelectItem key={el} value={el} className="text-xs">
+                      &lt;{el}&gt;
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-muted-foreground">shadcn components</SelectLabel>
+                  {SHADCN_BASE_COMPONENTS.map((el) => (
+                    <SelectItem key={el} value={el} className="text-xs">
+                      {el}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -1515,17 +1536,28 @@ function AddSubComponentDialog({
 
           {/* Base element */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Base element</Label>
+            <Label className="text-xs">Based on</Label>
             <Select value={baseElement} onValueChange={setBaseElement}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {BASE_ELEMENTS.map((el) => (
-                  <SelectItem key={el} value={el} className="text-xs">
-                    &lt;{el}&gt;
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-muted-foreground">HTML elements</SelectLabel>
+                  {HTML_ELEMENTS.map((el) => (
+                    <SelectItem key={el} value={el} className="text-xs">
+                      &lt;{el}&gt;
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel className="text-xs text-muted-foreground">shadcn components</SelectLabel>
+                  {SHADCN_BASE_COMPONENTS.map((el) => (
+                    <SelectItem key={el} value={el} className="text-xs">
+                      {el}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>

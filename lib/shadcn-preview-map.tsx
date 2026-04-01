@@ -14,6 +14,25 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 /**
+ * Map of PascalCase shadcn component names to actual React components.
+ * Used for sub-components that wrap a shadcn component as their base.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const shadcnComponentMap: Record<string, React.ComponentType<any>> = {
+  Button,
+  Badge,
+  Input,
+  Label,
+  Separator,
+  Checkbox,
+  Switch,
+  Slider,
+  Progress,
+  Skeleton,
+  Avatar,
+}
+
+/**
  * Map of PascalCase shadcn component names to render functions.
  * Used by the canvas preview to render actual shadcn components
  * added via the assembly picker (preview-only, not exported to .tsx).

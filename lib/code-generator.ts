@@ -83,6 +83,13 @@ const ELEMENT_TYPE_MAP: Record<string, ElementTypeInfo> = {
  * Falls back to div if the element is not in the map.
  */
 function getElementTypeInfo(element: string): ElementTypeInfo {
+  // PascalCase = shadcn component wrapper
+  if (/^[A-Z]/.test(element)) {
+    return {
+      htmlElement: `React.ElementRef<typeof ${element}>`,
+      htmlAttributes: `React.ComponentPropsWithoutRef<typeof ${element}>`,
+    }
+  }
   return (
     ELEMENT_TYPE_MAP[element] ?? {
       htmlElement: "HTMLDivElement",
@@ -672,6 +679,18 @@ export function generateFromTree(tree: ComponentTree): string {
   }
   importLines.push("")
   importLines.push('import { cn } from "@/lib/utils"')
+
+  // Add imports for shadcn base components used by this component or its sub-components
+  const shadcnBases = new Set<string>()
+  if (/^[A-Z]/.test(tree.baseElement)) shadcnBases.add(tree.baseElement)
+  for (const sc of tree.subComponents) {
+    if (/^[A-Z]/.test(sc.baseElement)) shadcnBases.add(sc.baseElement)
+  }
+  for (const scName of shadcnBases) {
+    const slug = scName.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()
+    importLines.push(`import { ${scName} } from "@/components/ui/${slug}"`)
+  }
+
   sections.push(importLines.join("\n"))
 
   // ── CVA block ────────────────────────────────────────────────────

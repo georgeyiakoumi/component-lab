@@ -30,7 +30,7 @@ import { VisualEditor } from "@/components/playground/visual-editor"
 import { DragHandle } from "@/components/playground/drag-handle"
 import { AssemblyPanel } from "@/components/playground/assembly-panel"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { shadcnPreviewMap } from "@/lib/shadcn-preview-map"
+import { shadcnPreviewMap, shadcnComponentMap } from "@/lib/shadcn-preview-map"
 
 export default function CustomComponentPage() {
   const params = useParams<{ slug: string }>()
@@ -277,7 +277,10 @@ export default function CustomComponentPage() {
     key: string,
     assemblyChildren?: ElementNode[],
   ): React.ReactNode {
-    const tag = sc.baseElement as keyof React.JSX.IntrinsicElements
+    // If based on a shadcn component, use the actual component; otherwise use HTML tag
+    const isShadcnBase = /^[A-Z]/.test(sc.baseElement)
+    const ShadcnComp = isShadcnBase ? shadcnComponentMap[sc.baseElement] : null
+    const tag = (isShadcnBase ? "div" : sc.baseElement) as keyof React.JSX.IntrinsicElements
     const isScSelected = selectedNodeId === key
     const allClasses = [
       ...sc.classes.filter(Boolean),
@@ -311,7 +314,12 @@ export default function CustomComponentPage() {
         )
       }
 
-    return React.createElement(tag, { key, className, "data-node-id": key }, ...children)
+    // Use actual shadcn component if available, otherwise HTML tag
+    const element = ShadcnComp
+      ? React.createElement(ShadcnComp, { key, className, "data-node-id": key }, ...children)
+      : React.createElement(tag, { key, className, "data-node-id": key }, ...children)
+
+    return element
   }
 
   // Re-render on every tree change — no memoization needed
