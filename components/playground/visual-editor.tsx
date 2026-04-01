@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils"
 import type { ElementInfo } from "@/components/playground/element-selector"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
   Popover,
@@ -289,6 +290,9 @@ interface ControlState {
   gridFlow: string
   autoRows: string
   autoCols: string
+  justifyItems: string
+  // Layout — child (flex OR grid — always available)
+  justifySelf: string
   // Layout — child (flex OR grid — always available)
   colSpan: string
   rowSpan: string
@@ -366,6 +370,8 @@ const ROW_SPAN_OPTIONS = [
 
 const AUTO_ROWS_OPTIONS = ["auto-rows-auto", "auto-rows-min", "auto-rows-max", "auto-rows-fr"]
 const AUTO_COLS_OPTIONS = ["auto-cols-auto", "auto-cols-min", "auto-cols-max", "auto-cols-fr"]
+const JUSTIFY_ITEMS_OPTIONS = ["justify-items-start", "justify-items-center", "justify-items-end", "justify-items-stretch"]
+const JUSTIFY_SELF_OPTIONS = ["justify-self-auto", "justify-self-start", "justify-self-center", "justify-self-end", "justify-self-stretch"]
 const COL_START_OPTIONS = [...Array.from({ length: 13 }, (_, i) => `col-start-${i + 1}`), "col-start-auto"]
 const COL_END_OPTIONS = [...Array.from({ length: 13 }, (_, i) => `col-end-${i + 1}`), "col-end-auto"]
 const ROW_START_OPTIONS = [...Array.from({ length: 7 }, (_, i) => `row-start-${i + 1}`), "row-start-auto"]
@@ -557,6 +563,8 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     gridFlow: findMatch(classes, GRID_FLOW_OPTIONS),
     autoRows: findMatch(classes, AUTO_ROWS_OPTIONS),
     autoCols: findMatch(classes, AUTO_COLS_OPTIONS),
+    justifyItems: findMatch(classes, JUSTIFY_ITEMS_OPTIONS),
+    justifySelf: findMatch(classes, JUSTIFY_SELF_OPTIONS),
     colSpan: findMatch(classes, COL_SPAN_OPTIONS),
     rowSpan: findMatch(classes, ROW_SPAN_OPTIONS),
     colStart: findMatch(classes, COL_START_OPTIONS),
@@ -607,6 +615,8 @@ const MANAGED_PREFIXES = [
   ...GRID_FLOW_OPTIONS,
   ...AUTO_ROWS_OPTIONS,
   ...AUTO_COLS_OPTIONS,
+  ...JUSTIFY_ITEMS_OPTIONS,
+  ...JUSTIFY_SELF_OPTIONS,
   ...COL_SPAN_OPTIONS,
   ...ROW_SPAN_OPTIONS,
   ...COL_START_OPTIONS,
@@ -677,6 +687,8 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.gridFlow)
   push(state.autoRows)
   push(state.autoCols)
+  push(state.justifyItems)
+  push(state.justifySelf)
   push(state.colSpan)
   push(state.rowSpan)
   push(state.colStart)
@@ -719,6 +731,21 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
  * Merge updated control-state classes with original classes,
  * preserving any classes the editor does not manage.
  */
+/**
+ * Property group prefixes — if a new class starts with one of these,
+ * any existing class with the same prefix gets removed (including arbitrary values).
+ * e.g. grid-cols-[1fr_auto] replaces grid-cols-3 and vice versa.
+ */
+const PROPERTY_GROUP_PREFIXES = [
+  "grid-cols-", "grid-rows-", "grid-flow-",
+  "auto-rows-", "auto-cols-",
+  "col-span-", "row-span-",
+  "col-start-", "col-end-", "row-start-", "row-end-",
+  "gap-x-", "gap-y-",
+  "justify-items-", "justify-self-",
+  "content-",
+]
+
 function mergeClasses(
   original: string[],
   state: ControlState,
@@ -729,18 +756,39 @@ function mergeClasses(
   const editorClasses = controlStateToClasses(state, context, elementTag)
   const editorSet = new Set(editorClasses)
 
-  // Keep classes that either:
-  // 1. Don't belong to the current context (preserve other contexts)
-  // 2. Belong to current context but aren't managed by the editor
+  // Build a set of active property group prefixes from editor output
+  const activeGroupPrefixes = new Set<string>()
+  for (const cls of editorClasses) {
+    const stripped = stripPrefix(cls, context)
+    if (stripped) {
+      for (const gp of PROPERTY_GROUP_PREFIXES) {
+        if (stripped.startsWith(gp)) {
+          activeGroupPrefixes.add(gp)
+          break
+        }
+      }
+    }
+  }
+
   const kept = original.filter((c) => {
-    if (editorSet.has(c)) return false // will be re-added from editorClasses
-    if (!hasPrefix(c, context)) return true // different context, keep it
+    if (editorSet.has(c)) return false
+    if (!hasPrefix(c, context)) return true
+
     const stripped = stripPrefix(c, context)
-    if (stripped && managed.has(stripped)) return false // managed class in this context, will be replaced
-    return true // unmanaged class in this context, keep it
+    if (!stripped) return true
+
+    // Check exact match in managed set
+    if (managed.has(stripped)) return false
+
+    // Check property group prefix — if the editor is emitting a class in the
+    // same group, remove the old one (handles arbitrary values)
+    for (const gp of activeGroupPrefixes) {
+      if (stripped.startsWith(gp)) return false
+    }
+
+    return true
   })
 
-  // Deduplicate the result
   return [...new Set([...kept, ...editorClasses])]
 }
 
@@ -1295,19 +1343,73 @@ function GridNumberPicker({
   prefix,
   max = 12,
   extras,
+  allowCustom = false,
   onChange,
 }: {
   value: string
   prefix: string // e.g. "grid-cols", "col-span"
   max?: number
   extras?: Array<{ value: string; label: string }>
+  allowCustom?: boolean
   onChange: (v: string) => void
 }) {
+  const [showCustom, setShowCustom] = React.useState(false)
+  const [customInput, setCustomInput] = React.useState("")
+
   // Parse current numeric value
-  const numMatch = value.match(new RegExp(`^${prefix}-(\\d+)$`))
+  const numMatch = value.match(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`))
   const currentNum = numMatch ? parseInt(numMatch[1], 10) : 0
   const isNumeric = !!numMatch
-  const isExtra = value && !isNumeric
+  const isArbitrary = value.includes("[")
+  const isExtra = value && !isNumeric && !isArbitrary
+
+  // Detect if current value is arbitrary and populate input
+  React.useEffect(() => {
+    if (isArbitrary) {
+      const match = value.match(/\[([^\]]+)\]/)
+      if (match) {
+        setCustomInput(match[1].replace(/_/g, " "))
+        setShowCustom(true)
+      }
+    }
+  }, [value, isArbitrary])
+
+  function handleCustomSubmit() {
+    if (!customInput.trim()) {
+      onChange("")
+      setShowCustom(false)
+      return
+    }
+    // Convert spaces to underscores for Tailwind arbitrary syntax
+    const twValue = customInput.trim().replace(/\s+/g, "_")
+    onChange(`${prefix}-[${twValue}]`)
+  }
+
+  if (showCustom) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit() }}
+          placeholder="e.g. 1fr auto"
+          className="h-6 w-28 text-xs"
+          autoFocus
+        />
+        <Button variant="ghost" size="icon" className="size-6" onClick={handleCustomSubmit}>
+          <ChevronRight className="size-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 text-muted-foreground"
+          onClick={() => { setShowCustom(false); setCustomInput(""); if (isArbitrary) onChange("") }}
+        >
+          <X className="size-3" />
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-1">
@@ -1317,19 +1419,19 @@ function GridNumberPicker({
           variant="ghost"
           size="icon"
           className="size-6 rounded-r-none"
-          disabled={isExtra || currentNum <= 1}
+          disabled={isExtra || isArbitrary || currentNum <= 1}
           onClick={() => onChange(currentNum <= 1 ? "" : `${prefix}-${currentNum - 1}`)}
         >
           <ChevronDown className="size-3" />
         </Button>
         <span className="w-6 text-center text-xs tabular-nums">
-          {isNumeric ? currentNum : isExtra ? "–" : "–"}
+          {isNumeric ? currentNum : "–"}
         </span>
         <Button
           variant="ghost"
           size="icon"
           className="size-6 rounded-l-none"
-          disabled={isExtra || currentNum >= max}
+          disabled={isExtra || isArbitrary || currentNum >= max}
           onClick={() => onChange(`${prefix}-${currentNum + 1}`)}
         >
           <ChevronUp className="size-3" />
@@ -1347,6 +1449,17 @@ function GridNumberPicker({
           onClick={() => onChange(value === ext.value ? "" : ext.value)}
         />
       ))}
+
+      {/* Custom button */}
+      {allowCustom && (
+        <TextToggle
+          value="__custom__"
+          label="custom"
+          tooltip="Arbitrary value (e.g. 1fr auto)"
+          isActive={isArbitrary}
+          onClick={() => setShowCustom(true)}
+        />
+      )}
 
       {/* Clear */}
       {value && (
@@ -1913,6 +2026,7 @@ export function VisualEditor({
                           value={state.gridCols}
                           prefix="grid-cols"
                           max={12}
+                          allowCustom
                           extras={[
                             { value: "grid-cols-none", label: "auto" },
                             { value: "grid-cols-subgrid", label: "subgrid" },
@@ -1926,6 +2040,7 @@ export function VisualEditor({
                           value={state.gridRows}
                           prefix="grid-rows"
                           max={12}
+                          allowCustom
                           extras={[
                             { value: "grid-rows-none", label: "auto" },
                             { value: "grid-rows-subgrid", label: "subgrid" },
@@ -1997,6 +2112,36 @@ export function VisualEditor({
                               tooltip={opt}
                               isActive={state.autoCols === opt}
                               onClick={(v) => update("autoCols", state.autoCols === v ? "" : v)}
+                            />
+                          ))}
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Justify items">
+                        <div className="flex flex-wrap gap-0.5">
+                          {JUSTIFY_ITEMS_OPTIONS.map((opt) => (
+                            <TextToggle
+                              key={opt}
+                              value={opt}
+                              label={opt.replace("justify-items-", "")}
+                              tooltip={opt}
+                              isActive={state.justifyItems === opt}
+                              onClick={(v) => update("justifyItems", state.justifyItems === v ? "" : v)}
+                            />
+                          ))}
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Align content">
+                        <div className="flex flex-wrap gap-0.5">
+                          {ALIGN_CONTENT_OPTIONS.map((opt) => (
+                            <TextToggle
+                              key={opt}
+                              value={opt}
+                              label={opt.replace("content-", "")}
+                              tooltip={opt}
+                              isActive={state.alignContent === opt}
+                              onClick={(v) => update("alignContent", state.alignContent === v ? "" : v)}
                             />
                           ))}
                         </div>
@@ -2089,6 +2234,14 @@ export function VisualEditor({
                         <div className="flex flex-wrap gap-0.5">
                           {ALIGN_SELF_OPTIONS.map((opt) => (
                             <TextToggle key={opt} value={opt} label={opt.replace("self-", "")} tooltip={opt} isActive={state.alignSelf === opt} onClick={(v) => update("alignSelf", state.alignSelf === v ? "" : v)} />
+                          ))}
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Justify self">
+                        <div className="flex flex-wrap gap-0.5">
+                          {JUSTIFY_SELF_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("justify-self-", "")} tooltip={opt} isActive={state.justifySelf === opt} onClick={(v) => update("justifySelf", state.justifySelf === v ? "" : v)} />
                           ))}
                         </div>
                       </ControlRow>
