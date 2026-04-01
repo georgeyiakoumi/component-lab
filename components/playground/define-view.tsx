@@ -147,16 +147,6 @@ const SHADCN_BASE_COMPONENTS = [
 
 const BASE_ELEMENTS = [...HTML_ELEMENTS, ...SHADCN_BASE_COMPONENTS]
 
-const USECASE_OPTIONS: { value: SubComponentUsecase; label: string }[] = [
-  { value: "plain-text", label: "Text" },
-  { value: "heading", label: "Heading" },
-  { value: "button", label: "Button" },
-  { value: "image", label: "Image" },
-  { value: "input", label: "Input" },
-  { value: "list", label: "List" },
-  { value: "icon", label: "Icon" },
-  { value: "wrapper", label: "Wrapper" },
-]
 
 /* ── Props ──────────────────────────────────────────────────────── */
 
@@ -400,12 +390,6 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                 <CardDescription>
                   <span className="flex flex-wrap items-center gap-1.5">
                     <span>&lt;{sc.baseElement}&gt;</span>
-                    {(sc.usecases ?? []).length > 0 && (
-                      <>
-                        <span>·</span>
-                        <span>{(sc.usecases ?? []).join(", ")}</span>
-                      </>
-                    )}
                     {sc.nestInside && (
                       <>
                         <span>·</span>
@@ -1244,30 +1228,6 @@ function EditSettingsDialog({
             </Select>
           </div>
 
-          {/* Content type — sub-components only */}
-          {isSubComponent && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Content type</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {USECASE_OPTIONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => toggleUsecase(value)}
-                    className={cn(
-                      "rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-                      usecases.includes(value)
-                        ? "border-blue-500 bg-blue-500/10 text-blue-500"
-                        : "border-border text-muted-foreground hover:bg-muted/50",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Nests inside — sub-components only */}
           {isSubComponent && existingSubComponents && (
             <div className="space-y-1.5">
@@ -1560,28 +1520,6 @@ function AddSubComponentDialog({
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Content type */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Content type</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {USECASE_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleUsecase(value)}
-                  className={cn(
-                    "rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-                    usecases.includes(value)
-                      ? "border-blue-500 bg-blue-500/10 text-blue-500"
-                      : "border-border text-muted-foreground hover:bg-muted/50",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Nests inside */}
