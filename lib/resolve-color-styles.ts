@@ -54,6 +54,7 @@ const COLOR_PREFIX_TO_CSS: Record<string, string> = {
   "ring": "--tw-ring-color",
   "ring-offset": "--tw-ring-offset-color",
   "outline": "outlineColor",
+  "shadow": "--tw-shadow-color",
 }
 
 /** Gradient prefix → CSS variable */
@@ -93,6 +94,8 @@ const NON_COLOR_SUFFIXES = new Set([
   "clip-border", "clip-padding", "clip-content", "clip-text",
   "origin-border", "origin-padding", "origin-content",
   "none",
+  // shadow- utilities that aren't colours
+  "sm", "md", "lg", "xl", "2xl", "inner",
 ])
 
 function isNonColorSuffix(suffix: string): boolean {
@@ -144,7 +147,7 @@ export function resolveColorStyles(
     // Colour prefixes (text-, bg-, border-, ring-, ring-offset-, outline-)
     // Must check longer prefixes first (ring-offset before ring)
     if (!resolved) {
-      const prefixes = ["ring-offset", "ring", "outline", "text", "bg", "border"]
+      const prefixes = ["ring-offset", "ring", "outline", "shadow", "text", "bg", "border"]
       for (const prefix of prefixes) {
         if (!cls.startsWith(`${prefix}-`)) continue
         const suffix = cls.slice(prefix.length + 1)

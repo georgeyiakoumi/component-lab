@@ -37,6 +37,8 @@ import {
   WrapText,
   Maximize2,
   Check,
+  Move,
+  SlidersHorizontal,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -394,9 +396,65 @@ interface ControlState {
   gradientTo: string
   // Borders
   borderRadius: string
+  borderRadiusTL: string
+  borderRadiusTR: string
+  borderRadiusBR: string
+  borderRadiusBL: string
   borderWidth: string
+  borderWidthT: string
+  borderWidthR: string
+  borderWidthB: string
+  borderWidthL: string
+  borderStyle: string
+  ringWidth: string
+  ringOffsetWidth: string
+  outlineWidth: string
+  outlineStyle: string
+  outlineOffset: string
+  divideX: string
+  divideY: string
+  divideStyle: string
+  divideReverse: string
   // Effects
   shadow: string
+  shadowColor: string
+  mixBlend: string
+  bgBlend: string
+  // Filters
+  blur: string
+  brightness: string
+  contrast: string
+  grayscale: string
+  hueRotate: string
+  invert: string
+  saturate: string
+  sepia: string
+  dropShadow: string
+  backdropBlur: string
+  backdropBrightness: string
+  backdropContrast: string
+  backdropGrayscale: string
+  backdropHueRotate: string
+  backdropInvert: string
+  backdropOpacity: string
+  backdropSaturate: string
+  backdropSepia: string
+  // Transitions & Animation
+  transitionProperty: string
+  transitionDuration: string
+  transitionTiming: string
+  transitionDelay: string
+  animation: string
+  // Transforms
+  scale: string
+  scaleX: string
+  scaleY: string
+  rotate: string
+  translateX: string
+  translateY: string
+  skewX: string
+  skewY: string
+  transformOrigin: string
 }
 
 /* ── Class-to-state mapping ──────────────────────────────────────── */
@@ -780,14 +838,106 @@ const BORDER_RADIUS_OPTIONS = [
   "rounded-xl",
   "rounded-full",
 ]
-const BORDER_WIDTH_OPTIONS = ["border-0", "border", "border-2", "border-4"]
+const BORDER_WIDTH_OPTIONS = ["border-0", "border", "border-2", "border-4", "border-8"]
+const BORDER_WIDTH_T_OPTIONS = ["border-t-0", "border-t", "border-t-2", "border-t-4", "border-t-8"]
+const BORDER_WIDTH_R_OPTIONS = ["border-r-0", "border-r", "border-r-2", "border-r-4", "border-r-8"]
+const BORDER_WIDTH_B_OPTIONS = ["border-b-0", "border-b", "border-b-2", "border-b-4", "border-b-8"]
+const BORDER_WIDTH_L_OPTIONS = ["border-l-0", "border-l", "border-l-2", "border-l-4", "border-l-8"]
+const BORDER_STYLE_OPTIONS = ["border-solid", "border-dashed", "border-dotted", "border-double", "border-hidden", "border-none"]
+const BORDER_RADIUS_TL_OPTIONS = ["rounded-tl-none", "rounded-tl-sm", "rounded-tl-md", "rounded-tl-lg", "rounded-tl-xl", "rounded-tl-2xl", "rounded-tl-full"]
+const BORDER_RADIUS_TR_OPTIONS = ["rounded-tr-none", "rounded-tr-sm", "rounded-tr-md", "rounded-tr-lg", "rounded-tr-xl", "rounded-tr-2xl", "rounded-tr-full"]
+const BORDER_RADIUS_BR_OPTIONS = ["rounded-br-none", "rounded-br-sm", "rounded-br-md", "rounded-br-lg", "rounded-br-xl", "rounded-br-2xl", "rounded-br-full"]
+const BORDER_RADIUS_BL_OPTIONS = ["rounded-bl-none", "rounded-bl-sm", "rounded-bl-md", "rounded-bl-lg", "rounded-bl-xl", "rounded-bl-2xl", "rounded-bl-full"]
+const RING_WIDTH_OPTIONS = ["ring-0", "ring-1", "ring-2", "ring-4", "ring-8", "ring"]
+const RING_OFFSET_WIDTH_OPTIONS = ["ring-offset-0", "ring-offset-1", "ring-offset-2", "ring-offset-4", "ring-offset-8"]
+const OUTLINE_WIDTH_OPTIONS = ["outline-0", "outline-1", "outline-2", "outline-4", "outline-8"]
+const OUTLINE_STYLE_OPTIONS = ["outline-none", "outline", "outline-dashed", "outline-dotted", "outline-double"]
+const OUTLINE_OFFSET_OPTIONS = ["outline-offset-0", "outline-offset-1", "outline-offset-2", "outline-offset-4", "outline-offset-8"]
+const DIVIDE_X_OPTIONS = ["divide-x-0", "divide-x", "divide-x-2", "divide-x-4", "divide-x-8"]
+const DIVIDE_Y_OPTIONS = ["divide-y-0", "divide-y", "divide-y-2", "divide-y-4", "divide-y-8"]
+const DIVIDE_STYLE_OPTIONS = ["divide-solid", "divide-dashed", "divide-dotted", "divide-double", "divide-none"]
+const DIVIDE_REVERSE_OPTIONS = ["divide-x-reverse", "divide-y-reverse"]
 
 const SHADOW_OPTIONS = [
-  "shadow-none",
-  "shadow-sm",
-  "shadow-md",
-  "shadow-lg",
-  "shadow-xl",
+  "shadow-none", "shadow-sm", "shadow", "shadow-md", "shadow-lg", "shadow-xl", "shadow-2xl", "shadow-inner",
+]
+const MIX_BLEND_OPTIONS = [
+  "mix-blend-normal", "mix-blend-multiply", "mix-blend-screen", "mix-blend-overlay",
+  "mix-blend-darken", "mix-blend-lighten", "mix-blend-color-dodge", "mix-blend-color-burn",
+  "mix-blend-hard-light", "mix-blend-soft-light", "mix-blend-difference", "mix-blend-exclusion",
+  "mix-blend-hue", "mix-blend-saturation", "mix-blend-color", "mix-blend-luminosity",
+  "mix-blend-plus-darker", "mix-blend-plus-lighter",
+]
+const BG_BLEND_OPTIONS = [
+  "bg-blend-normal", "bg-blend-multiply", "bg-blend-screen", "bg-blend-overlay",
+  "bg-blend-darken", "bg-blend-lighten", "bg-blend-color-dodge", "bg-blend-color-burn",
+  "bg-blend-hard-light", "bg-blend-soft-light", "bg-blend-difference", "bg-blend-exclusion",
+  "bg-blend-hue", "bg-blend-saturation", "bg-blend-color", "bg-blend-luminosity",
+]
+
+// Filters
+const BLUR_OPTIONS = ["blur-none", "blur-sm", "blur", "blur-md", "blur-lg", "blur-xl", "blur-2xl", "blur-3xl"]
+const BRIGHTNESS_OPTIONS = ["brightness-0", "brightness-50", "brightness-75", "brightness-90", "brightness-95", "brightness-100", "brightness-105", "brightness-110", "brightness-125", "brightness-150", "brightness-200"]
+const CONTRAST_OPTIONS = ["contrast-0", "contrast-50", "contrast-75", "contrast-100", "contrast-125", "contrast-150", "contrast-200"]
+const GRAYSCALE_OPTIONS = ["grayscale-0", "grayscale"]
+const HUE_ROTATE_OPTIONS = ["hue-rotate-0", "hue-rotate-15", "hue-rotate-30", "hue-rotate-60", "hue-rotate-90", "hue-rotate-180"]
+const INVERT_OPTIONS = ["invert-0", "invert"]
+const SATURATE_OPTIONS = ["saturate-0", "saturate-50", "saturate-100", "saturate-150", "saturate-200"]
+const SEPIA_OPTIONS = ["sepia-0", "sepia"]
+const DROP_SHADOW_OPTIONS = ["drop-shadow-none", "drop-shadow-sm", "drop-shadow", "drop-shadow-md", "drop-shadow-lg", "drop-shadow-xl", "drop-shadow-2xl"]
+
+// Backdrop filters
+const BACKDROP_BLUR_OPTIONS = ["backdrop-blur-none", "backdrop-blur-sm", "backdrop-blur", "backdrop-blur-md", "backdrop-blur-lg", "backdrop-blur-xl", "backdrop-blur-2xl", "backdrop-blur-3xl"]
+const BACKDROP_BRIGHTNESS_OPTIONS = ["backdrop-brightness-0", "backdrop-brightness-50", "backdrop-brightness-75", "backdrop-brightness-90", "backdrop-brightness-95", "backdrop-brightness-100", "backdrop-brightness-105", "backdrop-brightness-110", "backdrop-brightness-125", "backdrop-brightness-150", "backdrop-brightness-200"]
+const BACKDROP_CONTRAST_OPTIONS = ["backdrop-contrast-0", "backdrop-contrast-50", "backdrop-contrast-75", "backdrop-contrast-100", "backdrop-contrast-125", "backdrop-contrast-150", "backdrop-contrast-200"]
+const BACKDROP_GRAYSCALE_OPTIONS = ["backdrop-grayscale-0", "backdrop-grayscale"]
+const BACKDROP_HUE_ROTATE_OPTIONS = ["backdrop-hue-rotate-0", "backdrop-hue-rotate-15", "backdrop-hue-rotate-30", "backdrop-hue-rotate-60", "backdrop-hue-rotate-90", "backdrop-hue-rotate-180"]
+const BACKDROP_INVERT_OPTIONS = ["backdrop-invert-0", "backdrop-invert"]
+const BACKDROP_OPACITY_OPTIONS = ["backdrop-opacity-0", "backdrop-opacity-5", "backdrop-opacity-10", "backdrop-opacity-20", "backdrop-opacity-25", "backdrop-opacity-30", "backdrop-opacity-40", "backdrop-opacity-50", "backdrop-opacity-60", "backdrop-opacity-70", "backdrop-opacity-75", "backdrop-opacity-80", "backdrop-opacity-90", "backdrop-opacity-95", "backdrop-opacity-100"]
+const BACKDROP_SATURATE_OPTIONS = ["backdrop-saturate-0", "backdrop-saturate-50", "backdrop-saturate-100", "backdrop-saturate-150", "backdrop-saturate-200"]
+const BACKDROP_SEPIA_OPTIONS = ["backdrop-sepia-0", "backdrop-sepia"]
+
+// Transitions & Animation
+const TRANSITION_PROPERTY_OPTIONS = ["transition-none", "transition-all", "transition", "transition-colors", "transition-opacity", "transition-shadow", "transition-transform"]
+const TRANSITION_DURATION_OPTIONS = ["duration-0", "duration-75", "duration-100", "duration-150", "duration-200", "duration-300", "duration-500", "duration-700", "duration-1000"]
+const TRANSITION_TIMING_OPTIONS = ["ease-linear", "ease-in", "ease-out", "ease-in-out"]
+const TRANSITION_DELAY_OPTIONS = ["delay-0", "delay-75", "delay-100", "delay-150", "delay-200", "delay-300", "delay-500", "delay-700", "delay-1000"]
+const ANIMATION_OPTIONS = ["animate-none", "animate-spin", "animate-ping", "animate-pulse", "animate-bounce"]
+
+// Transforms
+const SCALE_OPTIONS = ["scale-0", "scale-50", "scale-75", "scale-90", "scale-95", "scale-100", "scale-105", "scale-110", "scale-125", "scale-150"]
+const SCALE_X_OPTIONS = ["scale-x-0", "scale-x-50", "scale-x-75", "scale-x-90", "scale-x-95", "scale-x-100", "scale-x-105", "scale-x-110", "scale-x-125", "scale-x-150"]
+const SCALE_Y_OPTIONS = ["scale-y-0", "scale-y-50", "scale-y-75", "scale-y-90", "scale-y-95", "scale-y-100", "scale-y-105", "scale-y-110", "scale-y-125", "scale-y-150"]
+const ROTATE_OPTIONS = ["rotate-0", "rotate-1", "rotate-2", "rotate-3", "rotate-6", "rotate-12", "rotate-45", "rotate-90", "rotate-180"]
+const TRANSLATE_X_OPTIONS = [
+  "translate-x-0", "translate-x-px", "translate-x-0.5", "translate-x-1", "translate-x-1.5", "translate-x-2", "translate-x-2.5", "translate-x-3", "translate-x-3.5", "translate-x-4",
+  "translate-x-5", "translate-x-6", "translate-x-7", "translate-x-8", "translate-x-9", "translate-x-10", "translate-x-11", "translate-x-12",
+  "translate-x-14", "translate-x-16", "translate-x-20", "translate-x-24", "translate-x-28", "translate-x-32", "translate-x-36", "translate-x-40", "translate-x-44", "translate-x-48",
+  "translate-x-52", "translate-x-56", "translate-x-60", "translate-x-64", "translate-x-72", "translate-x-80", "translate-x-96",
+  "translate-x-1/2", "translate-x-1/3", "translate-x-2/3", "translate-x-1/4", "translate-x-3/4", "translate-x-full",
+  "-translate-x-0", "-translate-x-px", "-translate-x-0.5", "-translate-x-1", "-translate-x-1.5", "-translate-x-2", "-translate-x-2.5", "-translate-x-3", "-translate-x-3.5", "-translate-x-4",
+  "-translate-x-5", "-translate-x-6", "-translate-x-7", "-translate-x-8", "-translate-x-9", "-translate-x-10", "-translate-x-11", "-translate-x-12",
+  "-translate-x-14", "-translate-x-16", "-translate-x-20", "-translate-x-24", "-translate-x-28", "-translate-x-32", "-translate-x-36", "-translate-x-40", "-translate-x-44", "-translate-x-48",
+  "-translate-x-52", "-translate-x-56", "-translate-x-60", "-translate-x-64", "-translate-x-72", "-translate-x-80", "-translate-x-96",
+  "-translate-x-1/2", "-translate-x-1/3", "-translate-x-2/3", "-translate-x-1/4", "-translate-x-3/4", "-translate-x-full",
+]
+const TRANSLATE_Y_OPTIONS = [
+  "translate-y-0", "translate-y-px", "translate-y-0.5", "translate-y-1", "translate-y-1.5", "translate-y-2", "translate-y-2.5", "translate-y-3", "translate-y-3.5", "translate-y-4",
+  "translate-y-5", "translate-y-6", "translate-y-7", "translate-y-8", "translate-y-9", "translate-y-10", "translate-y-11", "translate-y-12",
+  "translate-y-14", "translate-y-16", "translate-y-20", "translate-y-24", "translate-y-28", "translate-y-32", "translate-y-36", "translate-y-40", "translate-y-44", "translate-y-48",
+  "translate-y-52", "translate-y-56", "translate-y-60", "translate-y-64", "translate-y-72", "translate-y-80", "translate-y-96",
+  "translate-y-1/2", "translate-y-1/3", "translate-y-2/3", "translate-y-1/4", "translate-y-3/4", "translate-y-full",
+  "-translate-y-0", "-translate-y-px", "-translate-y-0.5", "-translate-y-1", "-translate-y-1.5", "-translate-y-2", "-translate-y-2.5", "-translate-y-3", "-translate-y-3.5", "-translate-y-4",
+  "-translate-y-5", "-translate-y-6", "-translate-y-7", "-translate-y-8", "-translate-y-9", "-translate-y-10", "-translate-y-11", "-translate-y-12",
+  "-translate-y-14", "-translate-y-16", "-translate-y-20", "-translate-y-24", "-translate-y-28", "-translate-y-32", "-translate-y-36", "-translate-y-40", "-translate-y-44", "-translate-y-48",
+  "-translate-y-52", "-translate-y-56", "-translate-y-60", "-translate-y-64", "-translate-y-72", "-translate-y-80", "-translate-y-96",
+  "-translate-y-1/2", "-translate-y-1/3", "-translate-y-2/3", "-translate-y-1/4", "-translate-y-3/4", "-translate-y-full",
+]
+const SKEW_X_OPTIONS = ["skew-x-0", "skew-x-1", "skew-x-2", "skew-x-3", "skew-x-6", "skew-x-12", "-skew-x-1", "-skew-x-2", "-skew-x-3", "-skew-x-6", "-skew-x-12"]
+const SKEW_Y_OPTIONS = ["skew-y-0", "skew-y-1", "skew-y-2", "skew-y-3", "skew-y-6", "skew-y-12", "-skew-y-1", "-skew-y-2", "-skew-y-3", "-skew-y-6", "-skew-y-12"]
+const TRANSFORM_ORIGIN_OPTIONS = [
+  "origin-center", "origin-top", "origin-top-right", "origin-right", "origin-bottom-right",
+  "origin-bottom", "origin-bottom-left", "origin-left", "origin-top-left",
 ]
 
 /* ── Pixel value mapping for spacing labels ──────────────────────── */
@@ -966,8 +1116,61 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     gradientVia: findPrefixColorMatch(classes, "via"),
     gradientTo: findPrefixColorMatch(classes, "to"),
     borderRadius: findMatch(classes, BORDER_RADIUS_OPTIONS),
+    borderRadiusTL: findMatch(classes, BORDER_RADIUS_TL_OPTIONS),
+    borderRadiusTR: findMatch(classes, BORDER_RADIUS_TR_OPTIONS),
+    borderRadiusBR: findMatch(classes, BORDER_RADIUS_BR_OPTIONS),
+    borderRadiusBL: findMatch(classes, BORDER_RADIUS_BL_OPTIONS),
     borderWidth: findMatch(classes, BORDER_WIDTH_OPTIONS),
+    borderWidthT: findMatch(classes, BORDER_WIDTH_T_OPTIONS),
+    borderWidthR: findMatch(classes, BORDER_WIDTH_R_OPTIONS),
+    borderWidthB: findMatch(classes, BORDER_WIDTH_B_OPTIONS),
+    borderWidthL: findMatch(classes, BORDER_WIDTH_L_OPTIONS),
+    borderStyle: findMatch(classes, BORDER_STYLE_OPTIONS),
+    ringWidth: findMatch(classes, RING_WIDTH_OPTIONS),
+    ringOffsetWidth: findMatch(classes, RING_OFFSET_WIDTH_OPTIONS),
+    outlineWidth: findMatch(classes, OUTLINE_WIDTH_OPTIONS),
+    outlineStyle: findMatch(classes, OUTLINE_STYLE_OPTIONS),
+    outlineOffset: findMatch(classes, OUTLINE_OFFSET_OPTIONS),
+    divideX: findMatch(classes, DIVIDE_X_OPTIONS),
+    divideY: findMatch(classes, DIVIDE_Y_OPTIONS),
+    divideStyle: findMatch(classes, DIVIDE_STYLE_OPTIONS),
+    divideReverse: findMatch(classes, DIVIDE_REVERSE_OPTIONS),
     shadow: findMatch(classes, SHADOW_OPTIONS),
+    shadowColor: findPrefixColorMatch(classes, "shadow"),
+    mixBlend: findMatch(classes, MIX_BLEND_OPTIONS),
+    bgBlend: findMatch(classes, BG_BLEND_OPTIONS),
+    blur: findMatch(classes, BLUR_OPTIONS),
+    brightness: findMatch(classes, BRIGHTNESS_OPTIONS),
+    contrast: findMatch(classes, CONTRAST_OPTIONS),
+    grayscale: findMatch(classes, GRAYSCALE_OPTIONS),
+    hueRotate: findMatch(classes, HUE_ROTATE_OPTIONS),
+    invert: findMatch(classes, INVERT_OPTIONS),
+    saturate: findMatch(classes, SATURATE_OPTIONS),
+    sepia: findMatch(classes, SEPIA_OPTIONS),
+    dropShadow: findMatch(classes, DROP_SHADOW_OPTIONS),
+    backdropBlur: findMatch(classes, BACKDROP_BLUR_OPTIONS),
+    backdropBrightness: findMatch(classes, BACKDROP_BRIGHTNESS_OPTIONS),
+    backdropContrast: findMatch(classes, BACKDROP_CONTRAST_OPTIONS),
+    backdropGrayscale: findMatch(classes, BACKDROP_GRAYSCALE_OPTIONS),
+    backdropHueRotate: findMatch(classes, BACKDROP_HUE_ROTATE_OPTIONS),
+    backdropInvert: findMatch(classes, BACKDROP_INVERT_OPTIONS),
+    backdropOpacity: findMatch(classes, BACKDROP_OPACITY_OPTIONS),
+    backdropSaturate: findMatch(classes, BACKDROP_SATURATE_OPTIONS),
+    backdropSepia: findMatch(classes, BACKDROP_SEPIA_OPTIONS),
+    transitionProperty: findMatch(classes, TRANSITION_PROPERTY_OPTIONS),
+    transitionDuration: findMatch(classes, TRANSITION_DURATION_OPTIONS),
+    transitionTiming: findMatch(classes, TRANSITION_TIMING_OPTIONS),
+    transitionDelay: findMatch(classes, TRANSITION_DELAY_OPTIONS),
+    animation: findMatch(classes, ANIMATION_OPTIONS),
+    scale: findMatch(classes, SCALE_OPTIONS),
+    scaleX: findMatch(classes, SCALE_X_OPTIONS),
+    scaleY: findMatch(classes, SCALE_Y_OPTIONS),
+    rotate: findMatch(classes, ROTATE_OPTIONS),
+    translateX: findMatch(classes, TRANSLATE_X_OPTIONS),
+    translateY: findMatch(classes, TRANSLATE_Y_OPTIONS),
+    skewX: findMatch(classes, SKEW_X_OPTIONS),
+    skewY: findMatch(classes, SKEW_Y_OPTIONS),
+    transformOrigin: findMatch(classes, TRANSFORM_ORIGIN_OPTIONS),
   }
 }
 
@@ -1072,8 +1275,60 @@ const MANAGED_PREFIXES = [
   ...GRADIENT_VIA_OPTIONS,
   ...GRADIENT_TO_OPTIONS,
   ...BORDER_RADIUS_OPTIONS,
+  ...BORDER_RADIUS_TL_OPTIONS,
+  ...BORDER_RADIUS_TR_OPTIONS,
+  ...BORDER_RADIUS_BR_OPTIONS,
+  ...BORDER_RADIUS_BL_OPTIONS,
   ...BORDER_WIDTH_OPTIONS,
+  ...BORDER_WIDTH_T_OPTIONS,
+  ...BORDER_WIDTH_R_OPTIONS,
+  ...BORDER_WIDTH_B_OPTIONS,
+  ...BORDER_WIDTH_L_OPTIONS,
+  ...BORDER_STYLE_OPTIONS,
+  ...RING_WIDTH_OPTIONS,
+  ...RING_OFFSET_WIDTH_OPTIONS,
+  ...OUTLINE_WIDTH_OPTIONS,
+  ...OUTLINE_STYLE_OPTIONS,
+  ...OUTLINE_OFFSET_OPTIONS,
+  ...DIVIDE_X_OPTIONS,
+  ...DIVIDE_Y_OPTIONS,
+  ...DIVIDE_STYLE_OPTIONS,
+  ...DIVIDE_REVERSE_OPTIONS,
   ...SHADOW_OPTIONS,
+  ...MIX_BLEND_OPTIONS,
+  ...BG_BLEND_OPTIONS,
+  ...BLUR_OPTIONS,
+  ...BRIGHTNESS_OPTIONS,
+  ...CONTRAST_OPTIONS,
+  ...GRAYSCALE_OPTIONS,
+  ...HUE_ROTATE_OPTIONS,
+  ...INVERT_OPTIONS,
+  ...SATURATE_OPTIONS,
+  ...SEPIA_OPTIONS,
+  ...DROP_SHADOW_OPTIONS,
+  ...BACKDROP_BLUR_OPTIONS,
+  ...BACKDROP_BRIGHTNESS_OPTIONS,
+  ...BACKDROP_CONTRAST_OPTIONS,
+  ...BACKDROP_GRAYSCALE_OPTIONS,
+  ...BACKDROP_HUE_ROTATE_OPTIONS,
+  ...BACKDROP_INVERT_OPTIONS,
+  ...BACKDROP_OPACITY_OPTIONS,
+  ...BACKDROP_SATURATE_OPTIONS,
+  ...BACKDROP_SEPIA_OPTIONS,
+  ...TRANSITION_PROPERTY_OPTIONS,
+  ...TRANSITION_DURATION_OPTIONS,
+  ...TRANSITION_TIMING_OPTIONS,
+  ...TRANSITION_DELAY_OPTIONS,
+  ...ANIMATION_OPTIONS,
+  ...SCALE_OPTIONS,
+  ...SCALE_X_OPTIONS,
+  ...SCALE_Y_OPTIONS,
+  ...ROTATE_OPTIONS,
+  ...TRANSLATE_X_OPTIONS,
+  ...TRANSLATE_Y_OPTIONS,
+  ...SKEW_X_OPTIONS,
+  ...SKEW_Y_OPTIONS,
+  ...TRANSFORM_ORIGIN_OPTIONS,
   "place-items-start",
   "place-items-center",
   "place-items-end",
@@ -1207,8 +1462,61 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.gradientVia)
   push(state.gradientTo)
   push(state.borderRadius)
+  push(state.borderRadiusTL)
+  push(state.borderRadiusTR)
+  push(state.borderRadiusBR)
+  push(state.borderRadiusBL)
   push(state.borderWidth)
+  push(state.borderWidthT)
+  push(state.borderWidthR)
+  push(state.borderWidthB)
+  push(state.borderWidthL)
+  push(state.borderStyle)
+  push(state.ringWidth)
+  push(state.ringOffsetWidth)
+  push(state.outlineWidth)
+  push(state.outlineStyle)
+  push(state.outlineOffset)
+  push(state.divideX)
+  push(state.divideY)
+  push(state.divideStyle)
+  push(state.divideReverse)
   push(state.shadow)
+  push(state.shadowColor)
+  push(state.mixBlend)
+  push(state.bgBlend)
+  push(state.blur)
+  push(state.brightness)
+  push(state.contrast)
+  push(state.grayscale)
+  push(state.hueRotate)
+  push(state.invert)
+  push(state.saturate)
+  push(state.sepia)
+  push(state.dropShadow)
+  push(state.backdropBlur)
+  push(state.backdropBrightness)
+  push(state.backdropContrast)
+  push(state.backdropGrayscale)
+  push(state.backdropHueRotate)
+  push(state.backdropInvert)
+  push(state.backdropOpacity)
+  push(state.backdropSaturate)
+  push(state.backdropSepia)
+  push(state.transitionProperty)
+  push(state.transitionDuration)
+  push(state.transitionTiming)
+  push(state.transitionDelay)
+  push(state.animation)
+  push(state.scale)
+  push(state.scaleX)
+  push(state.scaleY)
+  push(state.rotate)
+  push(state.translateX)
+  push(state.translateY)
+  push(state.skewX)
+  push(state.skewY)
+  push(state.transformOrigin)
 
   return result
 }
@@ -1245,6 +1553,26 @@ const PROPERTY_GROUP_PREFIXES = [
   "opacity-",
   "bg-gradient-to-",
   "from-", "via-", "to-",
+  "rounded-tl-", "rounded-tr-", "rounded-br-", "rounded-bl-",
+  "border-t-", "border-r-", "border-b-", "border-l-",
+  "ring-",
+  "outline-offset-",
+  "divide-x-", "divide-y-",
+  "shadow-",
+  "mix-blend-", "bg-blend-",
+  "blur-", "brightness-", "contrast-", "grayscale-", "hue-rotate-", "invert-", "saturate-", "sepia-",
+  "drop-shadow-",
+  "backdrop-blur-", "backdrop-brightness-", "backdrop-contrast-", "backdrop-grayscale-",
+  "backdrop-hue-rotate-", "backdrop-invert-", "backdrop-opacity-", "backdrop-saturate-", "backdrop-sepia-",
+  "duration-", "delay-", "ease-",
+  "animate-",
+  "scale-", "scale-x-", "scale-y-",
+  "rotate-",
+  "translate-x-", "translate-y-",
+  "-translate-x-", "-translate-y-",
+  "skew-x-", "skew-y-",
+  "-skew-x-", "-skew-y-",
+  "origin-",
 ]
 
 function mergeClasses(
@@ -3660,33 +3988,141 @@ export function VisualEditor({
 
           {/* ── Borders ──────────────────────────────────── */}
           <ControlSection icon={Square} title="Borders">
+            {/* Radius — all */}
             <ControlRow label="Radius">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1">
-                  <Select
-                    value={state.borderRadius || "__none__"}
-                    onValueChange={(v) => update("borderRadius", v === "__none__" ? "" : v)}
-                  >
-                    <SelectTrigger className="h-6 flex-1 text-xs">
-                      <SelectValue placeholder="–" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">–</SelectItem>
-                      {RADIUS_VALUES.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label} ({r.px})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <Select value={state.borderRadius || "__none__"} onValueChange={(v) => update("borderRadius", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 flex-1 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {RADIUS_VALUES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label} ({r.px})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </ControlRow>
+            {/* Per-corner radius */}
+            {[
+              { label: "TL", key: "borderRadiusTL" as const, options: BORDER_RADIUS_TL_OPTIONS },
+              { label: "TR", key: "borderRadiusTR" as const, options: BORDER_RADIUS_TR_OPTIONS },
+              { label: "BR", key: "borderRadiusBR" as const, options: BORDER_RADIUS_BR_OPTIONS },
+              { label: "BL", key: "borderRadiusBL" as const, options: BORDER_RADIUS_BL_OPTIONS },
+            ].map((corner) => (
+              <ControlRow key={corner.label} label={`Radius ${corner.label}`}>
+                <div className="flex flex-wrap gap-0.5">
+                  {corner.options.map((opt) => (
+                    <TextToggle key={opt} value={opt} label={opt.split("-").pop()!} tooltip={opt} isActive={state[corner.key] === opt} onClick={(v) => update(corner.key, state[corner.key] === v ? "" : v)} />
+                  ))}
+                </div>
+              </ControlRow>
+            ))}
 
+            <Separator className="my-1" />
+
+            {/* Border width — all */}
             <ControlRow label="Width">
               <div className="flex flex-wrap gap-0.5">
                 {BORDER_WIDTH_OPTIONS.map((opt) => (
-                  <TextToggle key={opt} value={opt} label={opt === "border" ? "1" : opt.replace("border-", "")} tooltip={opt} isActive={state.borderWidth === opt} onClick={(v) => update("borderWidth", v)} />
+                  <TextToggle key={opt} value={opt} label={opt === "border" ? "1" : opt.replace("border-", "")} tooltip={opt} isActive={state.borderWidth === opt} onClick={(v) => update("borderWidth", state.borderWidth === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            {/* Per-side border width */}
+            {[
+              { label: "Width T", key: "borderWidthT" as const, options: BORDER_WIDTH_T_OPTIONS, prefix: "border-t-" },
+              { label: "Width R", key: "borderWidthR" as const, options: BORDER_WIDTH_R_OPTIONS, prefix: "border-r-" },
+              { label: "Width B", key: "borderWidthB" as const, options: BORDER_WIDTH_B_OPTIONS, prefix: "border-b-" },
+              { label: "Width L", key: "borderWidthL" as const, options: BORDER_WIDTH_L_OPTIONS, prefix: "border-l-" },
+            ].map((side) => (
+              <ControlRow key={side.label} label={side.label}>
+                <div className="flex flex-wrap gap-0.5">
+                  {side.options.map((opt) => {
+                    const short = opt === `border-${side.label.split(" ")[1]?.toLowerCase()}` ? "1" : opt.replace(side.prefix, "").replace(/^border-[trbl]$/, "1")
+                    return <TextToggle key={opt} value={opt} label={short} tooltip={opt} isActive={state[side.key] === opt} onClick={(v) => update(side.key, state[side.key] === v ? "" : v)} />
+                  })}
+                </div>
+              </ControlRow>
+            ))}
+
+            {/* Border style */}
+            <ControlRow label="Style">
+              <div className="flex flex-wrap gap-0.5">
+                {BORDER_STYLE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("border-", "")} tooltip={opt} isActive={state.borderStyle === opt} onClick={(v) => update("borderStyle", state.borderStyle === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+
+            <Separator className="my-1" />
+
+            {/* Ring */}
+            <ControlRow label="Ring">
+              <div className="flex flex-wrap gap-0.5">
+                {RING_WIDTH_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "ring" ? "3" : opt.replace("ring-", "")} tooltip={opt} isActive={state.ringWidth === opt} onClick={(v) => update("ringWidth", state.ringWidth === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Ring offset">
+              <div className="flex flex-wrap gap-0.5">
+                {RING_OFFSET_WIDTH_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("ring-offset-", "")} tooltip={opt} isActive={state.ringOffsetWidth === opt} onClick={(v) => update("ringOffsetWidth", state.ringOffsetWidth === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+
+            <Separator className="my-1" />
+
+            {/* Outline */}
+            <ControlRow label="Outline W">
+              <div className="flex flex-wrap gap-0.5">
+                {OUTLINE_WIDTH_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("outline-", "")} tooltip={opt} isActive={state.outlineWidth === opt} onClick={(v) => update("outlineWidth", state.outlineWidth === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Outline style">
+              <div className="flex flex-wrap gap-0.5">
+                {OUTLINE_STYLE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "outline" ? "solid" : opt.replace("outline-", "")} tooltip={opt} isActive={state.outlineStyle === opt} onClick={(v) => update("outlineStyle", state.outlineStyle === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Outline offset">
+              <div className="flex flex-wrap gap-0.5">
+                {OUTLINE_OFFSET_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("outline-offset-", "")} tooltip={opt} isActive={state.outlineOffset === opt} onClick={(v) => update("outlineOffset", state.outlineOffset === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+
+            <Separator className="my-1" />
+
+            {/* Divide */}
+            <ControlRow label="Divide X">
+              <div className="flex flex-wrap gap-0.5">
+                {DIVIDE_X_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "divide-x" ? "1" : opt.replace("divide-x-", "")} tooltip={opt} isActive={state.divideX === opt} onClick={(v) => update("divideX", state.divideX === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Divide Y">
+              <div className="flex flex-wrap gap-0.5">
+                {DIVIDE_Y_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "divide-y" ? "1" : opt.replace("divide-y-", "")} tooltip={opt} isActive={state.divideY === opt} onClick={(v) => update("divideY", state.divideY === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Divide style">
+              <div className="flex flex-wrap gap-0.5">
+                {DIVIDE_STYLE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("divide-", "")} tooltip={opt} isActive={state.divideStyle === opt} onClick={(v) => update("divideStyle", state.divideStyle === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Divide rev.">
+              <div className="flex flex-wrap gap-0.5">
+                {DIVIDE_REVERSE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("divide-", "")} tooltip={opt} isActive={state.divideReverse === opt} onClick={(v) => update("divideReverse", state.divideReverse === v ? "" : v)} />
                 ))}
               </div>
             </ControlRow>
@@ -3697,10 +4133,345 @@ export function VisualEditor({
             <ControlRow label="Shadow">
               <div className="flex flex-wrap gap-0.5">
                 {SHADOW_OPTIONS.map((opt) => (
-                  <TextToggle key={opt} value={opt} label={opt.replace("shadow-", "")} tooltip={opt} isActive={state.shadow === opt} onClick={(v) => update("shadow", v)} />
+                  <TextToggle key={opt} value={opt} label={opt === "shadow" ? "base" : opt.replace("shadow-", "")} tooltip={opt} isActive={state.shadow === opt} onClick={(v) => update("shadow", state.shadow === v ? "" : v)} />
                 ))}
               </div>
             </ControlRow>
+            <ColorPicker
+              label="Shadow colour"
+              prefix="shadow"
+              value={state.shadowColor}
+              onChange={(v) => update("shadowColor", v)}
+            />
+
+            <Separator className="my-1" />
+
+            <ControlRow label="Mix blend">
+              <Select value={state.mixBlend || "__none__"} onValueChange={(v) => update("mixBlend", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {MIX_BLEND_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("mix-blend-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="BG blend">
+              <Select value={state.bgBlend || "__none__"} onValueChange={(v) => update("bgBlend", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BG_BLEND_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("bg-blend-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+          </ControlSection>
+
+          {/* ── Filters ──────────────────────────────────── */}
+          <ControlSection icon={SlidersHorizontal} title="Filters">
+            <ControlRow label="Blur">
+              <div className="flex flex-wrap gap-0.5">
+                {BLUR_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "blur" ? "base" : opt.replace("blur-", "")} tooltip={opt} isActive={state.blur === opt} onClick={(v) => update("blur", state.blur === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Brightness">
+              <Select value={state.brightness || "__none__"} onValueChange={(v) => update("brightness", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BRIGHTNESS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("brightness-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Contrast">
+              <Select value={state.contrast || "__none__"} onValueChange={(v) => update("contrast", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {CONTRAST_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("contrast-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Grayscale">
+              <div className="flex flex-wrap gap-0.5">
+                {GRAYSCALE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "grayscale" ? "on" : "off"} tooltip={opt} isActive={state.grayscale === opt} onClick={(v) => update("grayscale", state.grayscale === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Hue rotate">
+              <div className="flex flex-wrap gap-0.5">
+                {HUE_ROTATE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("hue-rotate-", "") + "°"} tooltip={opt} isActive={state.hueRotate === opt} onClick={(v) => update("hueRotate", state.hueRotate === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Invert">
+              <div className="flex flex-wrap gap-0.5">
+                {INVERT_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "invert" ? "on" : "off"} tooltip={opt} isActive={state.invert === opt} onClick={(v) => update("invert", state.invert === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Saturate">
+              <Select value={state.saturate || "__none__"} onValueChange={(v) => update("saturate", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {SATURATE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("saturate-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Sepia">
+              <div className="flex flex-wrap gap-0.5">
+                {SEPIA_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "sepia" ? "on" : "off"} tooltip={opt} isActive={state.sepia === opt} onClick={(v) => update("sepia", state.sepia === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Drop shadow">
+              <div className="flex flex-wrap gap-0.5">
+                {DROP_SHADOW_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "drop-shadow" ? "base" : opt.replace("drop-shadow-", "")} tooltip={opt} isActive={state.dropShadow === opt} onClick={(v) => update("dropShadow", state.dropShadow === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+
+            <Separator className="my-1" />
+            <p className="px-1 text-[10px] font-medium uppercase text-muted-foreground">Backdrop</p>
+
+            <ControlRow label="Blur">
+              <div className="flex flex-wrap gap-0.5">
+                {BACKDROP_BLUR_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "backdrop-blur" ? "base" : opt.replace("backdrop-blur-", "")} tooltip={opt} isActive={state.backdropBlur === opt} onClick={(v) => update("backdropBlur", state.backdropBlur === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Brightness">
+              <Select value={state.backdropBrightness || "__none__"} onValueChange={(v) => update("backdropBrightness", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BACKDROP_BRIGHTNESS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("backdrop-brightness-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Contrast">
+              <Select value={state.backdropContrast || "__none__"} onValueChange={(v) => update("backdropContrast", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BACKDROP_CONTRAST_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("backdrop-contrast-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Grayscale">
+              <div className="flex flex-wrap gap-0.5">
+                {BACKDROP_GRAYSCALE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "backdrop-grayscale" ? "on" : "off"} tooltip={opt} isActive={state.backdropGrayscale === opt} onClick={(v) => update("backdropGrayscale", state.backdropGrayscale === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Hue rotate">
+              <div className="flex flex-wrap gap-0.5">
+                {BACKDROP_HUE_ROTATE_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("backdrop-hue-rotate-", "") + "°"} tooltip={opt} isActive={state.backdropHueRotate === opt} onClick={(v) => update("backdropHueRotate", state.backdropHueRotate === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Invert">
+              <div className="flex flex-wrap gap-0.5">
+                {BACKDROP_INVERT_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "backdrop-invert" ? "on" : "off"} tooltip={opt} isActive={state.backdropInvert === opt} onClick={(v) => update("backdropInvert", state.backdropInvert === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Opacity">
+              <Select value={state.backdropOpacity || "__none__"} onValueChange={(v) => update("backdropOpacity", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BACKDROP_OPACITY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("backdrop-opacity-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Saturate">
+              <Select value={state.backdropSaturate || "__none__"} onValueChange={(v) => update("backdropSaturate", v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">–</SelectItem>
+                  {BACKDROP_SATURATE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("backdrop-saturate-", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ControlRow>
+            <ControlRow label="Sepia">
+              <div className="flex flex-wrap gap-0.5">
+                {BACKDROP_SEPIA_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "backdrop-sepia" ? "on" : "off"} tooltip={opt} isActive={state.backdropSepia === opt} onClick={(v) => update("backdropSepia", state.backdropSepia === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+          </ControlSection>
+
+          {/* ── Transitions & Animation ──────────────────── */}
+          <ControlSection icon={Move} title="Motion">
+            <ControlRow label="Transition">
+              <div className="flex flex-wrap gap-0.5">
+                {TRANSITION_PROPERTY_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt === "transition" ? "default" : opt.replace("transition-", "")} tooltip={opt} isActive={state.transitionProperty === opt} onClick={(v) => update("transitionProperty", state.transitionProperty === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Duration">
+              <div className="flex flex-wrap gap-0.5">
+                {TRANSITION_DURATION_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("duration-", "")} tooltip={opt} isActive={state.transitionDuration === opt} onClick={(v) => update("transitionDuration", state.transitionDuration === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Easing">
+              <div className="flex flex-wrap gap-0.5">
+                {TRANSITION_TIMING_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("ease-", "")} tooltip={opt} isActive={state.transitionTiming === opt} onClick={(v) => update("transitionTiming", state.transitionTiming === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+            <ControlRow label="Delay">
+              <div className="flex flex-wrap gap-0.5">
+                {TRANSITION_DELAY_OPTIONS.map((opt) => (
+                  <TextToggle key={opt} value={opt} label={opt.replace("delay-", "")} tooltip={opt} isActive={state.transitionDelay === opt} onClick={(v) => update("transitionDelay", state.transitionDelay === v ? "" : v)} />
+                ))}
+              </div>
+            </ControlRow>
+
+            {/* Animation & Transforms are mutually exclusive */}
+            <ControlRow label="Animation">
+              {(state.scale || state.scaleX || state.scaleY || state.rotate || state.translateX || state.translateY || state.skewX || state.skewY) ? (
+                <p className="text-[10px] text-muted-foreground">Disabled — clear transforms first</p>
+              ) : (
+                <div className="flex flex-wrap gap-0.5">
+                  {ANIMATION_OPTIONS.map((opt) => (
+                    <TextToggle key={opt} value={opt} label={opt.replace("animate-", "")} tooltip={opt} isActive={state.animation === opt} onClick={(v) => update("animation", state.animation === v ? "" : v)} />
+                  ))}
+                </div>
+              )}
+            </ControlRow>
+
+            <Separator className="my-1" />
+
+            {(state.animation && state.animation !== "animate-none") ? (
+              <p className="px-1 text-[10px] text-muted-foreground">Transforms disabled — clear animation first</p>
+            ) : (
+              <>
+              <p className="px-1 text-[10px] font-medium uppercase text-muted-foreground">Transforms</p>
+              <ControlRow label="Scale">
+                <Select value={state.scale || "__none__"} onValueChange={(v) => update("scale", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {SCALE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("scale-", "")}%</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <ControlRow label="Scale X">
+                <Select value={state.scaleX || "__none__"} onValueChange={(v) => update("scaleX", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {SCALE_X_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("scale-x-", "")}%</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <ControlRow label="Scale Y">
+                <Select value={state.scaleY || "__none__"} onValueChange={(v) => update("scaleY", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {SCALE_Y_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("scale-y-", "")}%</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <ControlRow label="Rotate">
+                <div className="flex flex-wrap gap-0.5">
+                  {ROTATE_OPTIONS.map((opt) => (
+                    <TextToggle key={opt} value={opt} label={opt.replace("rotate-", "") + "°"} tooltip={opt} isActive={state.rotate === opt} onClick={(v) => update("rotate", state.rotate === v ? "" : v)} />
+                  ))}
+                </div>
+              </ControlRow>
+              <ControlRow label="Translate X">
+                <Select value={state.translateX || "__none__"} onValueChange={(v) => update("translateX", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {TRANSLATE_X_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("translate-x-", "").replace("-translate-x-", "-")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <ControlRow label="Translate Y">
+                <Select value={state.translateY || "__none__"} onValueChange={(v) => update("translateY", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {TRANSLATE_Y_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("translate-y-", "").replace("-translate-y-", "-")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              <ControlRow label="Skew X">
+                <div className="flex flex-wrap gap-0.5">
+                  {SKEW_X_OPTIONS.map((opt) => (
+                    <TextToggle key={opt} value={opt} label={opt.replace("skew-x-", "").replace("-skew-x-", "-") + "°"} tooltip={opt} isActive={state.skewX === opt} onClick={(v) => update("skewX", state.skewX === v ? "" : v)} />
+                  ))}
+                </div>
+              </ControlRow>
+              <ControlRow label="Skew Y">
+                <div className="flex flex-wrap gap-0.5">
+                  {SKEW_Y_OPTIONS.map((opt) => (
+                    <TextToggle key={opt} value={opt} label={opt.replace("skew-y-", "").replace("-skew-y-", "-") + "°"} tooltip={opt} isActive={state.skewY === opt} onClick={(v) => update("skewY", state.skewY === v ? "" : v)} />
+                  ))}
+                </div>
+              </ControlRow>
+              <ControlRow label="Origin">
+                <Select value={state.transformOrigin || "__none__"} onValueChange={(v) => update("transformOrigin", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">–</SelectItem>
+                    {TRANSFORM_ORIGIN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("origin-", "")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ControlRow>
+              </>
+            )}
           </ControlSection>
           </>
           )}
