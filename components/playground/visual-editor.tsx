@@ -129,24 +129,12 @@ const GAP_OPTIONS = [
 ]
 
 const PADDING_SCALE = [
-  "p-0",
-  "p-1",
-  "p-2",
-  "p-3",
-  "p-4",
-  "p-5",
-  "p-6",
-  "p-8",
-  "p-10",
-  "p-12",
+  "p-0", "p-0.5", "p-1", "p-1.5", "p-2", "p-2.5", "p-3", "p-3.5",
+  "p-4", "p-5", "p-6", "p-7", "p-8", "p-9", "p-10", "p-11", "p-12", "p-14", "p-16",
 ]
 const MARGIN_SCALE = [
-  "m-0",
-  "m-1",
-  "m-2",
-  "m-3",
-  "m-4",
-  "m-5",
+  "m-0", "m-0.5", "m-1", "m-1.5", "m-2", "m-2.5", "m-3", "m-3.5",
+  "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10", "m-11", "m-12", "m-14", "m-16",
   "m-6",
   "m-8",
   "m-10",
@@ -365,9 +353,15 @@ function mergeClasses(
   state: ControlState,
 ): string[] {
   const managed = new Set(MANAGED_PREFIXES)
-  const unmanaged = original.filter((c) => !managed.has(c))
   const editorClasses = controlStateToClasses(state)
-  return [...unmanaged, ...editorClasses]
+  const editorSet = new Set(editorClasses)
+
+  // Remove any original class that's in the managed set OR in the new editor classes
+  // This prevents duplicates and ensures old values are replaced
+  const unmanaged = original.filter((c) => !managed.has(c) && !editorSet.has(c))
+
+  // Deduplicate the result
+  return [...new Set([...unmanaged, ...editorClasses])]
 }
 
 /* ── Collapsible section ─────────────────────────────────────────── */

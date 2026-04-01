@@ -675,9 +675,10 @@ export function generateFromTree(tree: ComponentTree): string {
   sections.push(importLines.join("\n"))
 
   // ── CVA block ────────────────────────────────────────────────────
+  // cva base should only contain structural classes, not user-added utility classes
+  // User-added classes go in the component's cn() call
   if (hasVariants) {
-    const rootClasses = tree.classes ?? []
-    sections.push(buildCvaBlock(variantsName, rootClasses, variants))
+    sections.push(buildCvaBlock(variantsName, [], variants))
   }
 
   // ── Props interface ──────────────────────────────────────────────
@@ -722,10 +723,13 @@ export function generateFromTree(tree: ComponentTree): string {
     "...props",
   ]
 
+  const userClasses = (tree.classes ?? []).join(" ")
   const classNameExpr = hasVariants
-    ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
-    : (tree.classes ?? []).length > 0
-      ? `cn("${(tree.classes ?? []).join(" ")}", className)`
+    ? userClasses
+      ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }), "${userClasses}")`
+      : `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
+    : userClasses
+      ? `cn("${userClasses}", className)`
       : "cn(className)"
 
   // Component renders {children} pass-through — no internal element tree
@@ -853,10 +857,9 @@ function generateSubComponent(
 
   const parts: string[] = []
 
-  // cva block for sub-component variants
+  // cva block for sub-component variants (empty base — user classes go in cn())
   if (hasVariants) {
-    const rootClasses = sub.classes ?? []
-    parts.push(buildCvaBlock(variantsName, rootClasses, sub.variants))
+    parts.push(buildCvaBlock(variantsName, [], sub.variants))
   }
 
   // Props interface for sub-component
@@ -895,10 +898,13 @@ function generateSubComponent(
     "...props",
   ]
 
+  const subUserClasses = (sub.classes ?? []).join(" ")
   const classNameExpr = hasVariants
-    ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
-    : (sub.classes ?? []).length > 0
-      ? `cn("${(sub.classes ?? []).join(" ")}", className)`
+    ? subUserClasses
+      ? `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }), "${subUserClasses}")`
+      : `cn(${variantsName}({ ${variantPropNames.join(", ")}, className }))`
+    : subUserClasses
+      ? `cn("${subUserClasses}", className)`
       : "cn(className)"
 
   // Sub-component renders {children} pass-through
