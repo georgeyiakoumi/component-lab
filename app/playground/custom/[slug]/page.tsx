@@ -28,7 +28,19 @@ import { DefineView } from "@/components/playground/define-view"
 import { VisualEditor } from "@/components/playground/visual-editor"
 import { DragHandle } from "@/components/playground/drag-handle"
 import { AssemblyPanel } from "@/components/playground/assembly-panel"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { shadcnPreviewMap, shadcnComponentMap } from "@/lib/shadcn-preview-map"
 
 export default function CustomComponentPage() {
@@ -674,6 +686,47 @@ export default function CustomComponentPage() {
             >
               <div className="flex items-center gap-1.5 border-b px-3 py-2">
                 <span className="text-xs font-medium text-muted-foreground">Style</span>
+                <div className="flex-1" />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Clear all
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear all styles?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all classes from every component and sub-component. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => {
+                          if (!componentTree) return
+                          const cleared = {
+                            ...componentTree,
+                            classes: [],
+                            subComponents: componentTree.subComponents.map((sc) => ({
+                              ...sc,
+                              classes: [],
+                            })),
+                          }
+                          handleTreeChange(cleared)
+                          setSelectedNodeId(null)
+                        }}
+                      >
+                        Clear all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
 
               {/* Component/sub-component pills */}
