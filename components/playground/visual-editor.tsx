@@ -81,10 +81,12 @@ interface VisualEditorProps {
   selectedElement: ElementInfo | null
   onClassChange: (classes: string[]) => void
   onDeselect: () => void
-  /** Component's defined variants for the context picker */
+  /** Component's own defined variants for the context picker */
   variants?: Array<{ name: string; options: string[] }>
   /** Component's defined props for the context picker (boolean props become modifiers) */
   props?: Array<{ name: string; type: string }>
+  /** Parent component's variants (for group-data-[variant=value]/parent: cascading) */
+  parentVariants?: Array<{ name: string; options: string[]; parentName: string }>
 }
 
 /* ── Context (prefix) types ──────────────────────────────────────── */
@@ -100,19 +102,37 @@ interface ContextGroup {
 function buildContextGroups(
   variants?: Array<{ name: string; options: string[] }>,
   props?: Array<{ name: string; type: string }>,
+  parentVariants?: Array<{ name: string; options: string[]; parentName: string }>,
 ): ContextGroup[] {
   const groups: ContextGroup[] = []
 
-  // Variants
+  // Own variants
   if (variants && variants.length > 0) {
     let first = true
     for (const v of variants) {
       groups.push({
-        section: first ? "Variants" : undefined,
+        section: first ? "Own variants" : undefined,
         label: v.name,
         options: v.options.map((opt) => ({
           value: `variant:${v.name}:${opt}`,
           label: opt,
+        })),
+      })
+      first = false
+    }
+  }
+
+  // Parent variants (cascade via group-data-[variant=value]/parentName:)
+  if (parentVariants && parentVariants.length > 0) {
+    let first = true
+    for (const v of parentVariants) {
+      const parentSlug = v.parentName.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()
+      groups.push({
+        section: first ? `${v.parentName} variants` : undefined,
+        label: v.name,
+        options: v.options.map((opt) => ({
+          value: `group-data-[${v.name}=${opt}]/${parentSlug}`,
+          label: `${v.name}=${opt}`,
         })),
       })
       first = false
@@ -1047,14 +1067,16 @@ function ContextPicker({
   onContextsChange,
   variants,
   props,
+  parentVariants,
 }: {
   contexts: string[]
   onContextsChange: (ctxs: string[]) => void
   variants?: Array<{ name: string; options: string[] }>
   props?: Array<{ name: string; type: string }>
+  parentVariants?: Array<{ name: string; options: string[]; parentName: string }>
 }) {
   const [open, setOpen] = React.useState(false)
-  const groups = React.useMemo(() => buildContextGroups(variants, props), [variants, props])
+  const groups = React.useMemo(() => buildContextGroups(variants, props, parentVariants), [variants, props, parentVariants])
 
   const isDefault = contexts.length === 0
 
@@ -1168,6 +1190,7 @@ export function VisualEditor({
   onDeselect,
   variants,
   props,
+  parentVariants,
 }: VisualEditorProps) {
   const [contexts, setContexts] = React.useState<string[]>([])
 
@@ -1255,7 +1278,7 @@ export function VisualEditor({
             )}
           </p>
         </div>
-        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} />
+        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} parentVariants={parentVariants} />
         <Button
           variant="ghost"
           size="icon"

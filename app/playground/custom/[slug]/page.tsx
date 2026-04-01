@@ -650,6 +650,15 @@ export default function CustomComponentPage() {
                         ? componentTree.props.map((p) => ({ name: p.name, type: p.type }))
                         : matchedSc?.props.map((p) => ({ name: p.name, type: p.type })) ?? []
                     }
+                    parentVariants={
+                      !isMain && componentTree.variants.length > 0
+                        ? componentTree.variants.map((v) => ({
+                            name: v.name,
+                            options: v.options,
+                            parentName: componentTree.name,
+                          }))
+                        : undefined
+                    }
                   />
                   )
                 })() : (
