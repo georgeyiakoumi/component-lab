@@ -83,39 +83,59 @@ interface VisualEditorProps {
   onDeselect: () => void
   /** Component's defined variants for the context picker */
   variants?: Array<{ name: string; options: string[] }>
+  /** Component's defined props for the context picker (boolean props become modifiers) */
+  props?: Array<{ name: string; type: string }>
 }
 
 /* ── Context (prefix) types ──────────────────────────────────────── */
 
 type StyleContext = string // "default", "sm", "hover", or "variant:size:sm" etc.
 
+interface ContextGroup {
+  label: string
+  section?: string // top-level section heading (shown as separator)
+  options: Array<{ value: string; label: string }>
+}
+
 function buildContextGroups(
   variants?: Array<{ name: string; options: string[] }>,
-): Array<{ label: string; options: Array<{ value: string; label: string }> }> {
-  const groups: Array<{ label: string; options: Array<{ value: string; label: string }> }> = []
+  props?: Array<{ name: string; type: string }>,
+): ContextGroup[] {
+  const groups: ContextGroup[] = []
 
-  // Variants — always show "default" plus any defined variants
+  // Variants
   if (variants && variants.length > 0) {
+    let first = true
     for (const v of variants) {
       groups.push({
+        section: first ? "Variants" : undefined,
         label: v.name,
         options: v.options.map((opt) => ({
           value: `variant:${v.name}:${opt}`,
           label: opt,
         })),
       })
+      first = false
     }
   }
 
-  // Default (no prefix)
-  groups.unshift({
-    label: "Base",
-    options: [{ value: "default", label: "Default" }],
-  })
+  // Props (boolean props become data-attribute modifiers)
+  const boolProps = (props ?? []).filter((p) => p.type === "boolean")
+  if (boolProps.length > 0) {
+    groups.push({
+      section: "Props",
+      label: "Boolean props",
+      options: boolProps.flatMap((p) => [
+        { value: `data-[${p.name}=true]`, label: `${p.name}=true` },
+        { value: `data-[${p.name}=false]`, label: `${p.name}=false` },
+      ]),
+    })
+  }
 
   // Responsive
   groups.push({
-    label: "Responsive",
+    section: "Responsive",
+    label: "Breakpoints",
     options: [
       { value: "sm", label: "sm" },
       { value: "md", label: "md" },
@@ -127,7 +147,8 @@ function buildContextGroups(
 
   // States
   groups.push({
-    label: "States",
+    section: "States",
+    label: "Pseudo-classes",
     options: [
       { value: "hover", label: "hover" },
       { value: "focus", label: "focus" },
@@ -139,9 +160,9 @@ function buildContextGroups(
     ],
   })
 
-  // Group
+  // Group states
   groups.push({
-    label: "Group",
+    label: "Group states",
     options: [
       { value: "group-hover", label: "group-hover" },
       { value: "group-focus", label: "group-focus" },
@@ -1017,26 +1038,40 @@ function ColorSwatchGrid({
 /* ── Context picker (Command-based) ──────────────────────────────── */
 
 function ContextPicker({
-  context,
-  onContextChange,
+  contexts,
+  onContextsChange,
   variants,
+  props,
 }: {
-  context: StyleContext
-  onContextChange: (ctx: StyleContext) => void
+  contexts: string[]
+  onContextsChange: (ctxs: string[]) => void
   variants?: Array<{ name: string; options: string[] }>
+  props?: Array<{ name: string; type: string }>
 }) {
   const [open, setOpen] = React.useState(false)
-  const groups = React.useMemo(() => buildContextGroups(variants), [variants])
+  const groups = React.useMemo(() => buildContextGroups(variants, props), [variants, props])
 
-  // Display label for the current context
+  const isDefault = contexts.length === 0
+
+  // Display label
   const contextLabel = React.useMemo(() => {
-    if (context === "default") return "Default"
-    if (context.startsWith("variant:")) {
-      const parts = context.split(":")
-      return `${parts[1]}: ${parts[2]}`
+    if (isDefault) return "Default"
+    return contexts.map((c) => {
+      if (c.startsWith("variant:")) {
+        const parts = c.split(":")
+        return `${parts[1]}:${parts[2]}`
+      }
+      return c
+    }).join(":") + ":"
+  }, [contexts, isDefault])
+
+  function toggleContext(value: string) {
+    if (contexts.includes(value)) {
+      onContextsChange(contexts.filter((c) => c !== value))
+    } else {
+      onContextsChange([...contexts, value])
     }
-    return `${context}:`
-  }, [context])
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -1045,40 +1080,73 @@ function ContextPicker({
           variant="outline"
           size="sm"
           className={cn(
-            "h-7 gap-1 text-xs",
-            context !== "default" && "border-blue-500/50 text-blue-500",
+            "h-7 max-w-[180px] gap-1 truncate text-xs",
+            !isDefault && "border-blue-500/50 text-blue-500",
           )}
         >
-          {contextLabel}
-          <ChevronDown className="size-3 opacity-50" />
+          <code className="truncate font-mono">{contextLabel}</code>
+          <ChevronDown className="size-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-52 p-0" align="end">
-        <Command className="[&_[cmdk-list]]:max-h-[280px]">
-          <CommandInput placeholder="Search context..." className="h-8 text-xs" />
+      <PopoverContent className="w-56 p-0" align="end">
+        <Command className="[&_[cmdk-list]]:max-h-[320px]">
+          <CommandInput placeholder="Search..." className="h-8 text-xs" />
           <CommandList>
             <CommandEmpty className="py-3 text-center text-xs">No match.</CommandEmpty>
-            {groups.map((group) => (
-              <CommandGroup key={group.label} heading={group.label}>
-                {group.options.map((opt) => (
-                  <CommandItem
-                    key={opt.value}
-                    value={`${opt.label} ${group.label}`}
-                    onSelect={() => {
-                      onContextChange(opt.value)
-                      setOpen(false)
-                    }}
-                    className={cn(
-                      "gap-2 text-xs",
-                      context === opt.value && "bg-blue-500/10 text-blue-500",
-                    )}
-                  >
-                    <code className="font-mono text-xs">
-                      {opt.label}
-                    </code>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+
+            {/* Default / clear */}
+            <CommandItem
+              value="default clear"
+              onSelect={() => {
+                onContextsChange([])
+                setOpen(false)
+              }}
+              className={cn(
+                "gap-2 text-xs",
+                isDefault && "bg-blue-500/10 text-blue-500",
+              )}
+            >
+              <code className="font-mono text-xs">Default</code>
+              {!isDefault && (
+                <span className="ml-auto text-xs text-muted-foreground">clear all</span>
+              )}
+            </CommandItem>
+
+            {/* Groups with section separators */}
+            {groups.map((group, gi) => (
+              <React.Fragment key={`${group.label}-${gi}`}>
+                {group.section && (
+                  <div className="px-2 pb-1 pt-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      {group.section}
+                    </p>
+                  </div>
+                )}
+                <CommandGroup heading={group.section ? group.label : group.label}>
+                  {group.options.map((opt) => {
+                    const isActive = contexts.includes(opt.value)
+                    return (
+                      <CommandItem
+                        key={opt.value}
+                        value={`${opt.label} ${group.label} ${group.section ?? ""}`}
+                        onSelect={() => toggleContext(opt.value)}
+                        className={cn(
+                          "gap-2 text-xs",
+                          isActive && "bg-blue-500/10 text-blue-500",
+                        )}
+                      >
+                        <div className={cn(
+                          "flex size-3.5 items-center justify-center rounded-sm border",
+                          isActive ? "border-blue-500 bg-blue-500 text-white" : "border-muted-foreground/30",
+                        )}>
+                          {isActive && <span className="text-xs leading-none">✓</span>}
+                        </div>
+                        <code className="font-mono text-xs">{opt.label}</code>
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              </React.Fragment>
             ))}
           </CommandList>
         </Command>
@@ -1094,8 +1162,21 @@ export function VisualEditor({
   onClassChange,
   onDeselect,
   variants,
+  props,
 }: VisualEditorProps) {
-  const [context, setContext] = React.useState<StyleContext>("default")
+  const [contexts, setContexts] = React.useState<string[]>([])
+
+  // Compute the combined CSS prefix from selected contexts
+  const combinedPrefix = React.useMemo(() => {
+    if (contexts.length === 0) return "default"
+    // Filter out variant contexts (they don't produce CSS prefixes)
+    const cssPrefixes = contexts
+      .map(getCssPrefix)
+      .filter((p) => p !== "default")
+    if (cssPrefixes.length === 0) return "default"
+    return cssPrefixes.join(":")
+  }, [contexts])
+
   const [state, setState] = React.useState<ControlState>(() =>
     classesToControlState(selectedElement?.currentClasses ?? [], "default"),
   )
@@ -1113,16 +1194,16 @@ export function VisualEditor({
     isUserChange.current = false
     const classes = selectedElement?.currentClasses ?? []
     originalClasses.current = classes
-    setState(classesToControlState(classes, context))
+    setState(classesToControlState(classes, combinedPrefix))
     setShowPaddingSides(false)
     setShowMarginSides(false)
-  }, [selectedElement, context])
+  }, [selectedElement, combinedPrefix])
 
   // Emit class changes only when user interacts with controls
   React.useEffect(() => {
     if (!isUserChange.current) return
-    onClassChange(mergeClasses(originalClasses.current, state, context))
-  }, [state, context, onClassChange])
+    onClassChange(mergeClasses(originalClasses.current, state, combinedPrefix))
+  }, [state, combinedPrefix, onClassChange])
 
   const update = React.useCallback(
     <K extends keyof ControlState>(key: K, value: ControlState[K]) => {
@@ -1169,7 +1250,7 @@ export function VisualEditor({
             )}
           </p>
         </div>
-        <ContextPicker context={context} onContextChange={setContext} variants={variants} />
+        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} />
         <Button
           variant="ghost"
           size="icon"

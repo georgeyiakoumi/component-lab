@@ -592,6 +592,11 @@ export default function CustomComponentPage() {
                         ? componentTree.variants.map((v) => ({ name: v.name, options: v.options }))
                         : matchedSc?.variants.map((v) => ({ name: v.name, options: v.options })) ?? []
                     }
+                    props={
+                      isMain
+                        ? componentTree.props.map((p) => ({ name: p.name, type: p.type }))
+                        : matchedSc?.props.map((p) => ({ name: p.name, type: p.type })) ?? []
+                    }
                   />
                   )
                 })() : (
