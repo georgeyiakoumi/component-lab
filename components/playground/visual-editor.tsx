@@ -27,6 +27,7 @@ import {
   Plus,
   X,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Columns3,
   LayoutGrid,
@@ -282,6 +283,19 @@ interface ControlState {
   // Layout — flex container
   flexWrap: string
   alignContent: string
+  // Layout — grid container
+  gridCols: string
+  gridRows: string
+  gridFlow: string
+  autoRows: string
+  autoCols: string
+  // Layout — child (flex OR grid — always available)
+  colSpan: string
+  rowSpan: string
+  colStart: string
+  colEnd: string
+  rowStart: string
+  rowEnd: string
   // Layout — flex child
   flexShorthand: string
   flexGrow: string
@@ -331,6 +345,31 @@ const SPACE_Y_OPTIONS = [
   "space-y-0", "space-y-0.5", "space-y-1", "space-y-1.5", "space-y-2", "space-y-2.5",
   "space-y-3", "space-y-3.5", "space-y-4", "space-y-5", "space-y-6", "space-y-8", "space-y-10", "space-y-12",
 ]
+
+const GRID_COLS_OPTIONS = [
+  "grid-cols-none", ...Array.from({ length: 12 }, (_, i) => `grid-cols-${i + 1}`),
+  "grid-cols-subgrid",
+]
+const GRID_ROWS_OPTIONS = [
+  "grid-rows-none", ...Array.from({ length: 12 }, (_, i) => `grid-rows-${i + 1}`),
+  "grid-rows-subgrid",
+]
+const GRID_FLOW_OPTIONS = ["grid-flow-row", "grid-flow-col", "grid-flow-dense", "grid-flow-row-dense", "grid-flow-col-dense"]
+const COL_SPAN_OPTIONS = [
+  ...Array.from({ length: 12 }, (_, i) => `col-span-${i + 1}`),
+  "col-span-full",
+]
+const ROW_SPAN_OPTIONS = [
+  ...Array.from({ length: 12 }, (_, i) => `row-span-${i + 1}`),
+  "row-span-full",
+]
+
+const AUTO_ROWS_OPTIONS = ["auto-rows-auto", "auto-rows-min", "auto-rows-max", "auto-rows-fr"]
+const AUTO_COLS_OPTIONS = ["auto-cols-auto", "auto-cols-min", "auto-cols-max", "auto-cols-fr"]
+const COL_START_OPTIONS = [...Array.from({ length: 13 }, (_, i) => `col-start-${i + 1}`), "col-start-auto"]
+const COL_END_OPTIONS = [...Array.from({ length: 13 }, (_, i) => `col-end-${i + 1}`), "col-end-auto"]
+const ROW_START_OPTIONS = [...Array.from({ length: 7 }, (_, i) => `row-start-${i + 1}`), "row-start-auto"]
+const ROW_END_OPTIONS = [...Array.from({ length: 7 }, (_, i) => `row-end-${i + 1}`), "row-end-auto"]
 
 const FLEX_WRAP_OPTIONS = ["flex-wrap", "flex-wrap-reverse", "flex-nowrap"]
 const FLEX_SHORTHAND_OPTIONS = ["flex-1", "flex-auto", "flex-initial", "flex-none"]
@@ -513,6 +552,17 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     gapY: findMatch(classes, GAP_Y_OPTIONS),
     flexWrap: findMatch(classes, FLEX_WRAP_OPTIONS),
     alignContent: findMatch(classes, ALIGN_CONTENT_OPTIONS),
+    gridCols: findMatch(classes, GRID_COLS_OPTIONS),
+    gridRows: findMatch(classes, GRID_ROWS_OPTIONS),
+    gridFlow: findMatch(classes, GRID_FLOW_OPTIONS),
+    autoRows: findMatch(classes, AUTO_ROWS_OPTIONS),
+    autoCols: findMatch(classes, AUTO_COLS_OPTIONS),
+    colSpan: findMatch(classes, COL_SPAN_OPTIONS),
+    rowSpan: findMatch(classes, ROW_SPAN_OPTIONS),
+    colStart: findMatch(classes, COL_START_OPTIONS),
+    colEnd: findMatch(classes, COL_END_OPTIONS),
+    rowStart: findMatch(classes, ROW_START_OPTIONS),
+    rowEnd: findMatch(classes, ROW_END_OPTIONS),
     flexShorthand: findMatch(classes, FLEX_SHORTHAND_OPTIONS),
     flexGrow: findMatch(classes, FLEX_GROW_OPTIONS),
     flexShrink: findMatch(classes, FLEX_SHRINK_OPTIONS),
@@ -552,6 +602,17 @@ const MANAGED_PREFIXES = [
   ...GAP_OPTIONS,
   ...GAP_X_OPTIONS,
   ...GAP_Y_OPTIONS,
+  ...GRID_COLS_OPTIONS,
+  ...GRID_ROWS_OPTIONS,
+  ...GRID_FLOW_OPTIONS,
+  ...AUTO_ROWS_OPTIONS,
+  ...AUTO_COLS_OPTIONS,
+  ...COL_SPAN_OPTIONS,
+  ...ROW_SPAN_OPTIONS,
+  ...COL_START_OPTIONS,
+  ...COL_END_OPTIONS,
+  ...ROW_START_OPTIONS,
+  ...ROW_END_OPTIONS,
   ...FLEX_WRAP_OPTIONS,
   ...FLEX_SHORTHAND_OPTIONS,
   ...ALIGN_CONTENT_OPTIONS,
@@ -611,6 +672,17 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
   push(state.gapY)
   push(state.flexWrap)
   push(state.alignContent)
+  push(state.gridCols)
+  push(state.gridRows)
+  push(state.gridFlow)
+  push(state.autoRows)
+  push(state.autoCols)
+  push(state.colSpan)
+  push(state.rowSpan)
+  push(state.colStart)
+  push(state.colEnd)
+  push(state.rowStart)
+  push(state.rowEnd)
   push(state.flexShorthand)
   push(state.flexGrow)
   push(state.flexShrink)
@@ -1216,6 +1288,81 @@ function ColorSwatchGrid({
 
 /* ── Context picker (Command-based) ──────────────────────────────── */
 
+/* ── Grid number picker (e.g. grid-cols-3) ─────────────────────── */
+
+function GridNumberPicker({
+  value,
+  prefix,
+  max = 12,
+  extras,
+  onChange,
+}: {
+  value: string
+  prefix: string // e.g. "grid-cols", "col-span"
+  max?: number
+  extras?: Array<{ value: string; label: string }>
+  onChange: (v: string) => void
+}) {
+  // Parse current numeric value
+  const numMatch = value.match(new RegExp(`^${prefix}-(\\d+)$`))
+  const currentNum = numMatch ? parseInt(numMatch[1], 10) : 0
+  const isNumeric = !!numMatch
+  const isExtra = value && !isNumeric
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Number input with up/down */}
+      <div className="flex items-center rounded-md border">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 rounded-r-none"
+          disabled={isExtra || currentNum <= 1}
+          onClick={() => onChange(currentNum <= 1 ? "" : `${prefix}-${currentNum - 1}`)}
+        >
+          <ChevronDown className="size-3" />
+        </Button>
+        <span className="w-6 text-center text-xs tabular-nums">
+          {isNumeric ? currentNum : isExtra ? "–" : "–"}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 rounded-l-none"
+          disabled={isExtra || currentNum >= max}
+          onClick={() => onChange(`${prefix}-${currentNum + 1}`)}
+        >
+          <ChevronUp className="size-3" />
+        </Button>
+      </div>
+
+      {/* Extra buttons (auto, full, etc.) */}
+      {extras?.map((ext) => (
+        <TextToggle
+          key={ext.value}
+          value={ext.value}
+          label={ext.label}
+          tooltip={ext.value}
+          isActive={value === ext.value}
+          onClick={() => onChange(value === ext.value ? "" : ext.value)}
+        />
+      ))}
+
+      {/* Clear */}
+      {value && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6 text-muted-foreground hover:text-destructive"
+          onClick={() => onChange("")}
+        >
+          <X className="size-3" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
 /* ── Gap control with slider + split toggle ────────────────────── */
 
 function gapValueToIndex(val: string, prefix: string): number {
@@ -1754,91 +1901,49 @@ export function VisualEditor({
                         }}
                       />
 
-                      {/* ── Flex child controls ──────────────── */}
-                      <div className="border-t px-3 py-1.5">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Flex child</p>
-                      </div>
-
-                      <ControlRow label="Flex">
-                        <div className="flex gap-0.5">
-                          <TextToggle value="" label="–" tooltip="default (no shorthand)" isActive={!state.flexShorthand} onClick={() => update("flexShorthand", "")} />
-                          <TextToggle value="flex-1" label="1" tooltip="flex-1 (grow + shrink, basis 0%)" isActive={state.flexShorthand === "flex-1"} onClick={(v) => update("flexShorthand", v)} />
-                          <TextToggle value="flex-auto" label="auto" tooltip="flex-auto (grow + shrink, basis auto)" isActive={state.flexShorthand === "flex-auto"} onClick={(v) => update("flexShorthand", v)} />
-                          <TextToggle value="flex-initial" label="initial" tooltip="flex-initial (shrink only, basis auto)" isActive={state.flexShorthand === "flex-initial"} onClick={(v) => update("flexShorthand", v)} />
-                          <TextToggle value="flex-none" label="none" tooltip="flex-none (no grow, no shrink)" isActive={state.flexShorthand === "flex-none"} onClick={(v) => update("flexShorthand", v)} />
-                        </div>
-                      </ControlRow>
-
-                      <ControlRow label="Grow">
-                        <div className="flex gap-0.5">
-                          <TextToggle value="" label="–" tooltip="default" isActive={!state.flexGrow} onClick={() => update("flexGrow", "")} />
-                          <IconToggle value="grow" icon={Maximize2} tooltip="grow" isActive={state.flexGrow === "grow"} onClick={(v) => update("flexGrow", v)} />
-                          <TextToggle value="grow-0" label="0" tooltip="grow-0" isActive={state.flexGrow === "grow-0"} onClick={(v) => update("flexGrow", v)} />
-                        </div>
-                      </ControlRow>
-
-                      <ControlRow label="Shrink">
-                        <div className="flex gap-0.5">
-                          <TextToggle value="" label="–" tooltip="default" isActive={!state.flexShrink} onClick={() => update("flexShrink", "")} />
-                          <TextToggle value="shrink" label="shrink" tooltip="shrink" isActive={state.flexShrink === "shrink"} onClick={(v) => update("flexShrink", v)} />
-                          <TextToggle value="shrink-0" label="0" tooltip="shrink-0" isActive={state.flexShrink === "shrink-0"} onClick={(v) => update("flexShrink", v)} />
-                        </div>
-                      </ControlRow>
-
-                      <ControlRow label="Basis">
-                        <Select
-                          value={state.flexBasis || "__none__"}
-                          onValueChange={(v) => update("flexBasis", v === "__none__" ? "" : v)}
-                        >
-                          <SelectTrigger className="h-6 w-24 text-xs">
-                            <SelectValue placeholder="–" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">–</SelectItem>
-                            {FLEX_BASIS_OPTIONS.map((v) => (
-                              <SelectItem key={v} value={v} className="text-xs">{v.replace("basis-", "")}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </ControlRow>
-
-                      <ControlRow label="Align self">
-                        <div className="flex flex-wrap gap-0.5">
-                          {ALIGN_SELF_OPTIONS.map((opt) => (
-                            <TextToggle
-                              key={opt}
-                              value={opt}
-                              label={opt.replace("self-", "")}
-                              tooltip={opt}
-                              isActive={state.alignSelf === opt}
-                              onClick={(v) => update("alignSelf", state.alignSelf === v ? "" : v)}
-                            />
-                          ))}
-                        </div>
-                      </ControlRow>
-
-                      <ControlRow label="Order">
-                        <Select
-                          value={state.order || "__none__"}
-                          onValueChange={(v) => update("order", v === "__none__" ? "" : v)}
-                        >
-                          <SelectTrigger className="h-6 w-24 text-xs">
-                            <SelectValue placeholder="–" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">–</SelectItem>
-                            {ORDER_OPTIONS.map((v) => (
-                              <SelectItem key={v} value={v} className="text-xs">{v.replace("order-", "")}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </ControlRow>
                     </>
                   )}
 
                   {/* ══════ GRID-SPECIFIC ═══════════════════ */}
                   {isGrid && (
                     <>
+                      {/* ── Grid container controls ────────── */}
+                      <ControlRow label="Columns">
+                        <GridNumberPicker
+                          value={state.gridCols}
+                          prefix="grid-cols"
+                          max={12}
+                          extras={[
+                            { value: "grid-cols-none", label: "auto" },
+                            { value: "grid-cols-subgrid", label: "subgrid" },
+                          ]}
+                          onChange={(v) => update("gridCols", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Rows">
+                        <GridNumberPicker
+                          value={state.gridRows}
+                          prefix="grid-rows"
+                          max={12}
+                          extras={[
+                            { value: "grid-rows-none", label: "auto" },
+                            { value: "grid-rows-subgrid", label: "subgrid" },
+                          ]}
+                          onChange={(v) => update("gridRows", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Flow">
+                        <div className="flex flex-wrap gap-0.5">
+                          <TextToggle value="grid-flow-row" label="row" tooltip="grid-flow-row (default)" isActive={!state.gridFlow || state.gridFlow === "grid-flow-row"} onClick={() => update("gridFlow", "")} />
+                          <TextToggle value="grid-flow-col" label="col" tooltip="grid-flow-col" isActive={state.gridFlow === "grid-flow-col"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-dense" label="dense" tooltip="grid-flow-dense" isActive={state.gridFlow === "grid-flow-dense"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-row-dense" label="row+dense" tooltip="grid-flow-row-dense" isActive={state.gridFlow === "grid-flow-row-dense"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-col-dense" label="col+dense" tooltip="grid-flow-col-dense" isActive={state.gridFlow === "grid-flow-col-dense"} onClick={(v) => update("gridFlow", v)} />
+                        </div>
+                      </ControlRow>
+
                       <ControlRow label="Alignment">
                         <PositionGrid
                           justify={state.justify}
@@ -1866,6 +1971,139 @@ export function VisualEditor({
                           setState((prev) => ({ ...prev, gapY: v, gap: "" }))
                         }}
                       />
+
+                      <ControlRow label="Auto rows">
+                        <div className="flex flex-wrap gap-0.5">
+                          {AUTO_ROWS_OPTIONS.map((opt) => (
+                            <TextToggle
+                              key={opt}
+                              value={opt}
+                              label={opt.replace("auto-rows-", "")}
+                              tooltip={opt}
+                              isActive={state.autoRows === opt}
+                              onClick={(v) => update("autoRows", state.autoRows === v ? "" : v)}
+                            />
+                          ))}
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Auto cols">
+                        <div className="flex flex-wrap gap-0.5">
+                          {AUTO_COLS_OPTIONS.map((opt) => (
+                            <TextToggle
+                              key={opt}
+                              value={opt}
+                              label={opt.replace("auto-cols-", "")}
+                              tooltip={opt}
+                              isActive={state.autoCols === opt}
+                              onClick={(v) => update("autoCols", state.autoCols === v ? "" : v)}
+                            />
+                          ))}
+                        </div>
+                      </ControlRow>
+                    </>
+                  )}
+
+                  {/* ══════ CHILD PROPERTIES (always visible) ════ */}
+                  {effectiveDisplay !== "hidden" && effectiveDisplay !== "contents" && (
+                    <>
+                      <div className="border-t px-3 py-1.5">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/60">Child placement</p>
+                      </div>
+
+                      <ControlRow label="Col span">
+                        <GridNumberPicker
+                          value={state.colSpan}
+                          prefix="col-span"
+                          max={12}
+                          extras={[{ value: "col-span-full", label: "full" }]}
+                          onChange={(v) => update("colSpan", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Row span">
+                        <GridNumberPicker
+                          value={state.rowSpan}
+                          prefix="row-span"
+                          max={12}
+                          extras={[{ value: "row-span-full", label: "full" }]}
+                          onChange={(v) => update("rowSpan", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Col start">
+                        <GridNumberPicker value={state.colStart} prefix="col-start" max={13} extras={[{ value: "col-start-auto", label: "auto" }]} onChange={(v) => update("colStart", v)} />
+                      </ControlRow>
+
+                      <ControlRow label="Col end">
+                        <GridNumberPicker value={state.colEnd} prefix="col-end" max={13} extras={[{ value: "col-end-auto", label: "auto" }]} onChange={(v) => update("colEnd", v)} />
+                      </ControlRow>
+
+                      <ControlRow label="Row start">
+                        <GridNumberPicker value={state.rowStart} prefix="row-start" max={7} extras={[{ value: "row-start-auto", label: "auto" }]} onChange={(v) => update("rowStart", v)} />
+                      </ControlRow>
+
+                      <ControlRow label="Row end">
+                        <GridNumberPicker value={state.rowEnd} prefix="row-end" max={7} extras={[{ value: "row-end-auto", label: "auto" }]} onChange={(v) => update("rowEnd", v)} />
+                      </ControlRow>
+
+                      <ControlRow label="Flex">
+                        <div className="flex gap-0.5">
+                          <TextToggle value="" label="–" tooltip="default" isActive={!state.flexShorthand} onClick={() => update("flexShorthand", "")} />
+                          <TextToggle value="flex-1" label="1" tooltip="flex-1" isActive={state.flexShorthand === "flex-1"} onClick={(v) => update("flexShorthand", v)} />
+                          <TextToggle value="flex-auto" label="auto" tooltip="flex-auto" isActive={state.flexShorthand === "flex-auto"} onClick={(v) => update("flexShorthand", v)} />
+                          <TextToggle value="flex-initial" label="initial" tooltip="flex-initial" isActive={state.flexShorthand === "flex-initial"} onClick={(v) => update("flexShorthand", v)} />
+                          <TextToggle value="flex-none" label="none" tooltip="flex-none" isActive={state.flexShorthand === "flex-none"} onClick={(v) => update("flexShorthand", v)} />
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Grow">
+                        <div className="flex gap-0.5">
+                          <TextToggle value="" label="–" tooltip="default" isActive={!state.flexGrow} onClick={() => update("flexGrow", "")} />
+                          <IconToggle value="grow" icon={Maximize2} tooltip="grow" isActive={state.flexGrow === "grow"} onClick={(v) => update("flexGrow", v)} />
+                          <TextToggle value="grow-0" label="0" tooltip="grow-0" isActive={state.flexGrow === "grow-0"} onClick={(v) => update("flexGrow", v)} />
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Shrink">
+                        <div className="flex gap-0.5">
+                          <TextToggle value="" label="–" tooltip="default" isActive={!state.flexShrink} onClick={() => update("flexShrink", "")} />
+                          <TextToggle value="shrink" label="shrink" tooltip="shrink" isActive={state.flexShrink === "shrink"} onClick={(v) => update("flexShrink", v)} />
+                          <TextToggle value="shrink-0" label="0" tooltip="shrink-0" isActive={state.flexShrink === "shrink-0"} onClick={(v) => update("flexShrink", v)} />
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Basis">
+                        <Select value={state.flexBasis || "__none__"} onValueChange={(v) => update("flexBasis", v === "__none__" ? "" : v)}>
+                          <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">–</SelectItem>
+                            {FLEX_BASIS_OPTIONS.map((v) => (
+                              <SelectItem key={v} value={v} className="text-xs">{v.replace("basis-", "")}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </ControlRow>
+
+                      <ControlRow label="Align self">
+                        <div className="flex flex-wrap gap-0.5">
+                          {ALIGN_SELF_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("self-", "")} tooltip={opt} isActive={state.alignSelf === opt} onClick={(v) => update("alignSelf", state.alignSelf === v ? "" : v)} />
+                          ))}
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Order">
+                        <Select value={state.order || "__none__"} onValueChange={(v) => update("order", v === "__none__" ? "" : v)}>
+                          <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">–</SelectItem>
+                            {ORDER_OPTIONS.map((v) => (
+                              <SelectItem key={v} value={v} className="text-xs">{v.replace("order-", "")}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </ControlRow>
                     </>
                   )}
 
