@@ -226,13 +226,59 @@ function hasPrefix(cls: string, prefix: string): boolean {
   return cls.startsWith(`${cssPrefix}:`)
 }
 
+/* ── Native element defaults ────────────────────────────────────── */
+
+/** Maps HTML elements to their native CSS display value */
+const NATIVE_DISPLAY: Record<string, string> = {
+  div: "block",
+  section: "block",
+  article: "block",
+  header: "block",
+  footer: "block",
+  main: "block",
+  nav: "block",
+  aside: "block",
+  form: "block",
+  p: "block",
+  h1: "block", h2: "block", h3: "block", h4: "block", h5: "block", h6: "block",
+  ul: "block", ol: "block",
+  li: "list-item",
+  span: "inline",
+  a: "inline",
+  strong: "inline",
+  em: "inline",
+  label: "inline",
+  button: "inline-block",
+  input: "inline-block",
+  textarea: "inline-block",
+  select: "inline-block",
+  img: "inline",
+  table: "table",
+}
+
+/** Maps HTML elements to their native CSS position value */
+const NATIVE_POSITION: Record<string, string> = {
+  // All elements default to static
+}
+
+/** Get the native display for an element tag */
+function getNativeDisplay(tag: string): string {
+  return NATIVE_DISPLAY[tag] ?? "block"
+}
+
 interface ControlState {
-  // Layout
+  // Layout — shared
   display: string
+  // Layout — flex/grid only
   direction: string
   justify: string
   align: string
   gap: string
+  // Layout — positioning
+  position: string
+  overflow: string
+  // Layout — block children
+  spaceY: string
   // Spacing
   padding: string
   paddingTop: string
@@ -260,7 +306,17 @@ interface ControlState {
 
 /* ── Class-to-state mapping ──────────────────────────────────────── */
 
-const DISPLAY_OPTIONS = ["flex", "grid", "block", "inline-flex", "hidden"]
+const DISPLAY_OPTIONS = [
+  "block", "inline-block", "inline", "flex", "inline-flex",
+  "grid", "inline-grid", "contents", "hidden",
+]
+const POSITION_OPTIONS = ["static", "relative", "absolute", "fixed", "sticky"]
+const OVERFLOW_OPTIONS = ["overflow-visible", "overflow-hidden", "overflow-scroll", "overflow-auto"]
+const SPACE_Y_OPTIONS = [
+  "space-y-0", "space-y-0.5", "space-y-1", "space-y-1.5", "space-y-2", "space-y-2.5",
+  "space-y-3", "space-y-3.5", "space-y-4", "space-y-5", "space-y-6", "space-y-8", "space-y-10", "space-y-12",
+]
+
 const DIRECTION_OPTIONS = [
   "flex-row",
   "flex-col",
@@ -419,6 +475,9 @@ function classesToControlState(classes: string[], context: StyleContext = "defau
     justify: parsedJustify,
     align: parsedAlign,
     gap: findMatch(classes, GAP_OPTIONS),
+    position: findMatch(classes, POSITION_OPTIONS),
+    overflow: findMatch(classes, OVERFLOW_OPTIONS),
+    spaceY: findMatch(classes, SPACE_Y_OPTIONS),
     padding: findMatch(classes, PADDING_SCALE),
     paddingTop: findMatch(classes, [...PADDING_SIDES.paddingTop]),
     paddingRight: findMatch(classes, [...PADDING_SIDES.paddingRight]),
@@ -447,6 +506,9 @@ const MANAGED_PREFIXES = [
   ...JUSTIFY_OPTIONS,
   ...ALIGN_OPTIONS,
   ...GAP_OPTIONS,
+  ...POSITION_OPTIONS,
+  ...OVERFLOW_OPTIONS,
+  ...SPACE_Y_OPTIONS,
   ...PADDING_SCALE,
   ...Object.values(PADDING_SIDES).flat(),
   ...MARGIN_SCALE,
@@ -465,13 +527,17 @@ const MANAGED_PREFIXES = [
   "place-items-stretch",
 ]
 
-function controlStateToClasses(state: ControlState, context: StyleContext = "default"): string[] {
+function controlStateToClasses(state: ControlState, context: StyleContext = "default", elementTag?: string): string[] {
   const result: string[] = []
   const push = (v: string) => {
     if (v) result.push(addPrefix(v, context))
   }
 
-  push(state.display)
+  // Don't emit display class if it matches the element's native default
+  const nativeDisplay = elementTag ? getNativeDisplay(elementTag) : "block"
+  if (state.display && state.display !== nativeDisplay) {
+    push(state.display)
+  }
   push(state.direction)
 
   // Use place-items shorthand on grid when both axes match
@@ -487,6 +553,10 @@ function controlStateToClasses(state: ControlState, context: StyleContext = "def
     push(state.align)
   }
   push(state.gap)
+  // Positioning (don't emit "static" — it's the default)
+  if (state.position && state.position !== "static") push(state.position)
+  push(state.overflow)
+  push(state.spaceY)
   push(state.padding)
   push(state.paddingTop)
   push(state.paddingRight)
@@ -517,9 +587,10 @@ function mergeClasses(
   original: string[],
   state: ControlState,
   context: StyleContext = "default",
+  elementTag?: string,
 ): string[] {
   const managed = new Set(MANAGED_PREFIXES)
-  const editorClasses = controlStateToClasses(state, context)
+  const editorClasses = controlStateToClasses(state, context, elementTag)
   const editorSet = new Set(editorClasses)
 
   // Keep classes that either:
@@ -1291,7 +1362,7 @@ export function VisualEditor({
   // Emit class changes only when user interacts with controls
   React.useEffect(() => {
     if (!isUserChange.current) return
-    onClassChange(mergeClasses(originalClasses.current, state, combinedPrefix))
+    onClassChange(mergeClasses(originalClasses.current, state, combinedPrefix, selectedElement?.tagName))
   }, [state, combinedPrefix, onClassChange])
 
   const update = React.useCallback(
@@ -1318,8 +1389,10 @@ export function VisualEditor({
 
   if (!selectedElement) return null
 
-  const isFlex =
-    state.display === "flex" || state.display === "inline-flex"
+  const nativeDisplay = getNativeDisplay(selectedElement.tagName)
+  const effectiveDisplay = state.display || nativeDisplay
+  const isFlex = effectiveDisplay === "flex" || effectiveDisplay === "inline-flex"
+  const isGrid = effectiveDisplay === "grid" || effectiveDisplay === "inline-grid"
 
   const allClasses = mergeClasses(originalClasses.current, state)
 
@@ -1357,63 +1430,182 @@ export function VisualEditor({
           {/* ── Layout ────────────────────────────────────── */}
           <ControlSection icon={Layout} title="Layout">
             <ControlRow label="Display">
-              <div className="flex gap-0.5">
-                <IconToggle value="" icon={MinusIcon} tooltip="default (inherit)" isActive={!state.display} onClick={() => update("display", "")} />
-                <IconToggle value="block" icon={PanelTop} tooltip="block" isActive={state.display === "block"} onClick={(v) => update("display", v)} />
-                <IconToggle value="flex" icon={Columns3} tooltip="flex" isActive={state.display === "flex"} onClick={(v) => update("display", v)} />
-                <IconToggle value="grid" icon={LayoutGrid} tooltip="grid" isActive={state.display === "grid"} onClick={(v) => update("display", v)} />
-                <IconToggle value="inline-flex" icon={Columns3} tooltip="inline-flex" isActive={state.display === "inline-flex"} onClick={(v) => update("display", v)} />
-                <IconToggle value="hidden" icon={EyeOff} tooltip="hidden" isActive={state.display === "hidden"} onClick={(v) => update("display", v)} />
+              <div className="flex flex-wrap gap-0.5">
+                {(() => {
+                  const nativeDisp = getNativeDisplay(selectedElement.tagName)
+                  // The "effective" display: either explicitly set or native
+                  const effectiveDisplay = state.display || nativeDisp
+                  return (
+                    <>
+                      <IconToggle value="block" icon={PanelTop} tooltip="block" isActive={effectiveDisplay === "block"} onClick={() => update("display", nativeDisp === "block" ? "" : "block")} />
+                      <IconToggle value="inline-block" icon={Box} tooltip="inline-block" isActive={effectiveDisplay === "inline-block"} onClick={() => update("display", nativeDisp === "inline-block" ? "" : "inline-block")} />
+                      <IconToggle value="inline" icon={Minus} tooltip="inline" isActive={effectiveDisplay === "inline"} onClick={() => update("display", nativeDisp === "inline" ? "" : "inline")} />
+                      <IconToggle value="flex" icon={Columns3} tooltip="flex" isActive={effectiveDisplay === "flex"} onClick={() => update("display", nativeDisp === "flex" ? "" : "flex")} />
+                      <IconToggle value="inline-flex" icon={Columns3} tooltip="inline-flex" isActive={effectiveDisplay === "inline-flex"} onClick={() => update("display", nativeDisp === "inline-flex" ? "" : "inline-flex")} />
+                      <IconToggle value="grid" icon={LayoutGrid} tooltip="grid" isActive={effectiveDisplay === "grid"} onClick={() => update("display", nativeDisp === "grid" ? "" : "grid")} />
+                      <IconToggle value="inline-grid" icon={LayoutGrid} tooltip="inline-grid" isActive={effectiveDisplay === "inline-grid"} onClick={() => update("display", nativeDisp === "inline-grid" ? "" : "inline-grid")} />
+                      <IconToggle value="contents" icon={Box} tooltip="contents" isActive={effectiveDisplay === "contents"} onClick={() => update("display", nativeDisp === "contents" ? "" : "contents")} />
+                      <IconToggle value="hidden" icon={EyeOff} tooltip="hidden" isActive={effectiveDisplay === "hidden"} onClick={() => update("display", nativeDisp === "hidden" ? "" : "hidden")} />
+                    </>
+                  )
+                })()}
               </div>
             </ControlRow>
 
-            {isFlex && (
-              <ControlRow label="Direction">
-                <div className="flex gap-0.5">
-                  <IconToggle value="flex-row" icon={ArrowRight} tooltip="flex-row" isActive={state.direction === "flex-row"} onClick={(v) => update("direction", v)} />
-                  <IconToggle value="flex-col" icon={ArrowDown} tooltip="flex-col" isActive={state.direction === "flex-col"} onClick={(v) => update("direction", v)} />
-                </div>
-              </ControlRow>
-            )}
+            {/* ── Controls below are conditional on display type ── */}
+            {(() => {
+              const isHidden = effectiveDisplay === "hidden"
+              const isContents = effectiveDisplay === "contents"
+              const isInline = effectiveDisplay === "inline"
+              const isBlock = effectiveDisplay === "block" || effectiveDisplay === "inline-block"
+              const showPosition = !isHidden && !isContents
+              const showOverflow = !isHidden && !isContents && !isInline
 
-            <ControlRow label="Position">
-              <PositionGrid
-                justify={state.justify}
-                align={state.align}
-                display={state.display}
-                onJustifyChange={(v) => update("justify", v)}
-                onAlignChange={(v) => update("align", v)}
-              />
-            </ControlRow>
+              return (
+                <>
+                  {/* ── Position (not hidden/contents) ──────── */}
+                  {showPosition && (
+                    <ControlRow label="Position">
+                      <div className="flex gap-0.5">
+                        {POSITION_OPTIONS.map((pos) => (
+                          <TextToggle
+                            key={pos}
+                            value={pos}
+                            label={pos}
+                            tooltip={pos === "static" ? "static (default)" : pos}
+                            isActive={state.position ? state.position === pos : pos === "static"}
+                            onClick={() => update("position", pos === "static" ? "" : (state.position === pos ? "" : pos))}
+                          />
+                        ))}
+                      </div>
+                    </ControlRow>
+                  )}
 
-            <ControlRow label="Gap">
-              <div className={cn(state.justify === "justify-between" && "opacity-40 pointer-events-none")}>
-                <Select
-                  value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
-                  onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
-                  disabled={state.justify === "justify-between"}
-                >
-                  <SelectTrigger className="h-6 w-20 text-xs">
-                    <SelectValue placeholder="–" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">–</SelectItem>
-                    {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
-                      <SelectItem key={v} value={v}>
-                        {v} ({SPACING_PX[v] ?? ""})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {state.justify === "justify-between" && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Disabled — between handles spacing
-                  </p>
-                )}
-              </div>
-            </ControlRow>
+                  {/* ── Overflow (not hidden/contents/inline) ─ */}
+                  {showOverflow && (
+                    <ControlRow label="Overflow">
+                      <div className="flex gap-0.5">
+                        {(["visible", "hidden", "scroll", "auto"] as const).map((ov) => (
+                          <TextToggle
+                            key={ov}
+                            value={`overflow-${ov}`}
+                            label={ov}
+                            tooltip={`overflow-${ov}`}
+                            isActive={state.overflow === `overflow-${ov}`}
+                            onClick={() => update("overflow", state.overflow === `overflow-${ov}` ? "" : `overflow-${ov}`)}
+                          />
+                        ))}
+                      </div>
+                    </ControlRow>
+                  )}
+
+                  {/* ══════ FLEX-SPECIFIC ═══════════════════ */}
+                  {isFlex && (
+                    <>
+                      <ControlRow label="Direction">
+                        <div className="flex gap-0.5">
+                          <IconToggle value="flex-row" icon={ArrowRight} tooltip="flex-row" isActive={state.direction === "flex-row" || !state.direction} onClick={(v) => update("direction", state.direction === v ? "" : v)} />
+                          <IconToggle value="flex-col" icon={ArrowDown} tooltip="flex-col" isActive={state.direction === "flex-col"} onClick={(v) => update("direction", v)} />
+                        </div>
+                      </ControlRow>
+
+                      <ControlRow label="Alignment">
+                        <PositionGrid
+                          justify={state.justify}
+                          align={state.align}
+                          display={effectiveDisplay}
+                          onJustifyChange={(v) => update("justify", v)}
+                          onAlignChange={(v) => update("align", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Gap">
+                        <div className={cn(state.justify === "justify-between" && "opacity-40 pointer-events-none")}>
+                          <Select
+                            value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
+                            onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
+                            disabled={state.justify === "justify-between"}
+                          >
+                            <SelectTrigger className="h-6 w-20 text-xs">
+                              <SelectValue placeholder="–" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">–</SelectItem>
+                              {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
+                                <SelectItem key={v} value={v}>
+                                  {v} ({SPACING_PX[v] ?? ""})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </ControlRow>
+                    </>
+                  )}
+
+                  {/* ══════ GRID-SPECIFIC ═══════════════════ */}
+                  {isGrid && (
+                    <>
+                      <ControlRow label="Alignment">
+                        <PositionGrid
+                          justify={state.justify}
+                          align={state.align}
+                          display={effectiveDisplay}
+                          onJustifyChange={(v) => update("justify", v)}
+                          onAlignChange={(v) => update("align", v)}
+                        />
+                      </ControlRow>
+
+                      <ControlRow label="Gap">
+                        <Select
+                          value={state.gap ? state.gap.replace("gap-", "") : "__none__"}
+                          onValueChange={(v) => update("gap", v === "__none__" ? "" : `gap-${v}`)}
+                        >
+                          <SelectTrigger className="h-6 w-20 text-xs">
+                            <SelectValue placeholder="–" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">–</SelectItem>
+                            {["0", "1", "2", "3", "4", "5", "6", "8", "10", "12"].map((v) => (
+                              <SelectItem key={v} value={v}>
+                                {v} ({SPACING_PX[v] ?? ""})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </ControlRow>
+                    </>
+                  )}
+
+                  {/* ══════ BLOCK-SPECIFIC ══════════════════ */}
+                  {isBlock && (
+                    <ControlRow label="Space-Y">
+                      <Select
+                        value={state.spaceY ? state.spaceY.replace("space-y-", "") : "__none__"}
+                        onValueChange={(v) => update("spaceY", v === "__none__" ? "" : `space-y-${v}`)}
+                      >
+                        <SelectTrigger className="h-6 w-20 text-xs">
+                          <SelectValue placeholder="–" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">–</SelectItem>
+                          {["0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "8", "10", "12"].map((v) => (
+                            <SelectItem key={v} value={v}>
+                              {v} ({SPACING_PX[v] ?? ""})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </ControlRow>
+                  )}
+                </>
+              )
+            })()}
           </ControlSection>
 
+          {/* ── Remaining sections hidden when display is hidden/contents ── */}
+          {effectiveDisplay !== "hidden" && effectiveDisplay !== "contents" && (
+          <>
           {/* ── Spacing ──────────────────────────────────── */}
           <ControlSection icon={Box} title="Spacing">
             <ControlRow label="Padding">
@@ -1540,6 +1732,8 @@ export function VisualEditor({
               </div>
             </ControlRow>
           </ControlSection>
+          </>
+          )}
         </div>
         </TooltipProvider>
       </ScrollArea>
