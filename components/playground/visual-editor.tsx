@@ -1627,12 +1627,18 @@ function ControlSection({
   icon: Icon,
   title,
   children,
-  defaultOpen = true,
+  defaultOpen = false,
+  hasValues,
+  onClear,
 }: {
   icon: React.ElementType
   title: string
   children: React.ReactNode
   defaultOpen?: boolean
+  /** Whether any values are set in this section (shows indicator dot) */
+  hasValues?: boolean
+  /** Called when the user clicks "Clear" — clears all values in this section */
+  onClear?: () => void
 }) {
   const [open, setOpen] = React.useState(defaultOpen)
 
@@ -1645,6 +1651,20 @@ function ControlSection({
       >
         <Icon className="size-3.5" />
         <span className="flex-1 text-left">{title}</span>
+        {hasValues && (
+          <span className="size-1.5 rounded-full bg-blue-500" />
+        )}
+        {open && onClear && hasValues && (
+          <span
+            role="button"
+            tabIndex={0}
+            className="rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={(e) => { e.stopPropagation(); onClear() }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onClear() } }}
+          >
+            Clear
+          </span>
+        )}
         {open ? (
           <ChevronDown className="size-3" />
         ) : (
@@ -1667,7 +1687,7 @@ function ControlRow({
 }) {
   return (
     <div className="space-y-1">
-      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       {children}
@@ -2912,6 +2932,70 @@ export function VisualEditor({
     [],
   )
 
+  // Section key groups for hasValues / clear
+  const SECTION_KEYS: Record<string, (keyof ControlState)[]> = React.useMemo(() => ({
+    layout: [
+      "display", "direction", "justify", "align", "gap", "gapX", "gapY",
+      "flexWrap", "alignContent", "gridCols", "gridRows", "gridFlow", "autoRows", "autoCols",
+      "justifyItems", "justifySelf", "colSpan", "rowSpan", "colStart", "colEnd", "rowStart", "rowEnd",
+      "flexShorthand", "flexGrow", "flexShrink", "flexBasis", "alignSelf", "order",
+      "position", "overflow", "zIndex", "inset", "insetX", "insetY", "top", "right", "bottom", "left",
+      "visibility", "aspectRatio", "float", "clear", "isolation", "objectFit", "objectPosition",
+      "spaceY", "spaceX", "spaceXReverse", "spaceYReverse",
+      "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight", "size",
+    ],
+    spacing: [
+      "padding", "paddingX", "paddingY", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "margin", "marginX", "marginY", "marginTop", "marginRight", "marginBottom", "marginLeft",
+    ],
+    typography: [
+      "fontSize", "fontWeight", "fontFamily", "fontStyle", "textAlign",
+      "textDecoration", "textDecorationStyle", "textDecorationThickness", "textUnderlineOffset",
+      "textTransform", "textOverflow", "textWrap", "textIndent",
+      "lineHeight", "letterSpacing", "wordBreak", "whitespace", "hyphens", "lineClamp",
+      "verticalAlign", "listStyleType", "listStylePosition", "fontVariantNumeric",
+    ],
+    colours: [
+      "textColor", "bgColor", "borderColor", "ringColor", "ringOffsetColor", "outlineColor",
+      "opacity", "gradientDirection", "gradientFrom", "gradientVia", "gradientTo",
+    ],
+    borders: [
+      "borderRadius", "borderRadiusTL", "borderRadiusTR", "borderRadiusBR", "borderRadiusBL",
+      "borderWidth", "borderWidthT", "borderWidthR", "borderWidthB", "borderWidthL", "borderStyle",
+      "ringWidth", "ringOffsetWidth", "outlineWidth", "outlineStyle", "outlineOffset",
+      "divideX", "divideY", "divideStyle", "divideReverse",
+    ],
+    effects: ["shadow", "shadowColor", "mixBlend", "bgBlend"],
+    filters: [
+      "blur", "brightness", "contrast", "grayscale", "hueRotate", "invert", "saturate", "sepia", "dropShadow",
+      "backdropBlur", "backdropBrightness", "backdropContrast", "backdropGrayscale",
+      "backdropHueRotate", "backdropInvert", "backdropOpacity", "backdropSaturate", "backdropSepia",
+    ],
+    motion: [
+      "transitionProperty", "transitionDuration", "transitionTiming", "transitionDelay", "animation",
+      "scale", "scaleX", "scaleY", "rotate", "translateX", "translateY", "skewX", "skewY", "transformOrigin",
+    ],
+  }), [])
+
+  const sectionHasValues = React.useCallback(
+    (section: string) => SECTION_KEYS[section]?.some((k) => !!state[k]) ?? false,
+    [state, SECTION_KEYS],
+  )
+
+  const clearSection = React.useCallback(
+    (section: string) => {
+      isUserChange.current = true
+      setState((prev) => {
+        const next = { ...prev }
+        for (const k of SECTION_KEYS[section] ?? []) {
+          next[k] = ""
+        }
+        return next
+      })
+    },
+    [SECTION_KEYS],
+  )
+
   if (!selectedElement) return null
 
   const nativeDisplay = getNativeDisplay(selectedElement.tagName)
@@ -2953,7 +3037,7 @@ export function VisualEditor({
         <TooltipProvider delayDuration={200}>
         <div className="divide-y">
           {/* ── Layout ────────────────────────────────────── */}
-          <ControlSection icon={Layout} title="Layout">
+          <ControlSection icon={Layout} title="Layout" defaultOpen hasValues={sectionHasValues("layout")} onClear={() => clearSection("layout")}>
             <ControlRow label="Display">
               <div className="flex flex-wrap gap-0.5">
                 {(() => {
@@ -3487,7 +3571,7 @@ export function VisualEditor({
           {effectiveDisplay !== "hidden" && effectiveDisplay !== "contents" && (
           <>
           {/* ── Spacing ──────────────────────────────────── */}
-          <ControlSection icon={Box} title="Spacing">
+          <ControlSection icon={Box} title="Spacing" hasValues={sectionHasValues("spacing")} onClear={() => clearSection("spacing")}>
             {(() => {
               const isInline = effectiveDisplay === "inline"
               const isBlockDisplay = effectiveDisplay === "block" || effectiveDisplay === "inline-block"
@@ -3658,7 +3742,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Typography ───────────────────────────────── */}
-          <ControlSection icon={Type} title="Typography">
+          <ControlSection icon={Type} title="Typography" hasValues={sectionHasValues("typography")} onClear={() => clearSection("typography")}>
             <ControlRow label="Family">
               <div className="flex gap-0.5">
                 {FONT_FAMILY_OPTIONS.map((opt) => (
@@ -3878,7 +3962,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Colours ──────────────────────────────────── */}
-          <ControlSection icon={Palette} title="Colours">
+          <ControlSection icon={Palette} title="Colours" hasValues={sectionHasValues("colours")} onClear={() => clearSection("colours")}>
             <ColorPicker
               label="Text"
               prefix="text"
@@ -3987,7 +4071,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Borders ──────────────────────────────────── */}
-          <ControlSection icon={Square} title="Borders">
+          <ControlSection icon={Square} title="Borders" hasValues={sectionHasValues("borders")} onClear={() => clearSection("borders")}>
             {/* Radius — all */}
             <ControlRow label="Radius">
               <Select value={state.borderRadius || "__none__"} onValueChange={(v) => update("borderRadius", v === "__none__" ? "" : v)}>
@@ -4129,7 +4213,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Effects ──────────────────────────────────── */}
-          <ControlSection icon={Sparkles} title="Effects">
+          <ControlSection icon={Sparkles} title="Effects" hasValues={sectionHasValues("effects")} onClear={() => clearSection("effects")}>
             <ControlRow label="Shadow">
               <div className="flex flex-wrap gap-0.5">
                 {SHADOW_OPTIONS.map((opt) => (
@@ -4171,7 +4255,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Filters ──────────────────────────────────── */}
-          <ControlSection icon={SlidersHorizontal} title="Filters">
+          <ControlSection icon={SlidersHorizontal} title="Filters" hasValues={sectionHasValues("filters")} onClear={() => clearSection("filters")}>
             <ControlRow label="Blur">
               <div className="flex flex-wrap gap-0.5">
                 {BLUR_OPTIONS.map((opt) => (
@@ -4333,7 +4417,7 @@ export function VisualEditor({
           </ControlSection>
 
           {/* ── Transitions & Animation ──────────────────── */}
-          <ControlSection icon={Move} title="Motion">
+          <ControlSection icon={Move} title="Motion" hasValues={sectionHasValues("motion")} onClear={() => clearSection("motion")}>
             <ControlRow label="Transition">
               <div className="flex flex-wrap gap-0.5">
                 {TRANSITION_PROPERTY_OPTIONS.map((opt) => (
