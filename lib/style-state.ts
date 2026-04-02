@@ -1005,6 +1005,10 @@ export function mergeClasses(
     }
   }
 
+  // Prefixes for arbitrary value classes that the editor manages
+  // (these can't be in MANAGED_PREFIXES since the full class isn't known ahead of time)
+  const ARBITRARY_MANAGED_PREFIXES = ["rotate-x-", "rotate-y-", "-rotate-x-", "-rotate-y-", "skew-x-[", "skew-y-[", "-skew-x-[", "-skew-y-["]
+
   const kept = original.filter((c) => {
     if (editorSet.has(c)) return false
     if (!hasPrefix(c, context)) return true
@@ -1019,6 +1023,11 @@ export function mergeClasses(
     // same group, remove the old one (handles arbitrary values)
     for (const gp of activeGroupPrefixes) {
       if (stripped.startsWith(gp)) return false
+    }
+
+    // Remove arbitrary value classes that the editor manages
+    for (const ap of ARBITRARY_MANAGED_PREFIXES) {
+      if (stripped.startsWith(ap)) return false
     }
 
     return true
