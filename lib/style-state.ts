@@ -343,6 +343,8 @@ export interface ControlState {
   scaleX: string
   scaleY: string
   rotate: string
+  rotateX: string
+  rotateY: string
   translateX: string
   translateY: string
   skewX: string
@@ -562,6 +564,8 @@ export function classesToControlState(classes: string[], context: StyleContext =
     scaleX: findMatch(classes, SCALE_X_OPTIONS),
     scaleY: findMatch(classes, SCALE_Y_OPTIONS),
     rotate: findMatch(classes, ROTATE_OPTIONS),
+    rotateX: classes.find((c) => c.match(/^-?rotate-x-/)) ?? "",
+    rotateY: classes.find((c) => c.match(/^-?rotate-y-/)) ?? "",
     translateX: findMatch(classes, TRANSLATE_X_OPTIONS),
     translateY: findMatch(classes, TRANSLATE_Y_OPTIONS),
     skewX: findMatch(classes, SKEW_X_OPTIONS),
@@ -910,6 +914,8 @@ export function controlStateToClasses(state: ControlState, context: StyleContext
   push(state.scaleX)
   push(state.scaleY)
   push(state.rotate)
+  push(state.rotateX)
+  push(state.rotateY)
   push(state.translateX)
   push(state.translateY)
   push(state.skewX)
@@ -963,7 +969,7 @@ export const PROPERTY_GROUP_PREFIXES = [
   "duration-", "delay-", "ease-",
   "animate-",
   "scale-", "scale-x-", "scale-y-",
-  "rotate-",
+  "rotate-", "rotate-x-", "rotate-y-", "-rotate-x-", "-rotate-y-",
   "translate-x-", "translate-y-",
   "-translate-x-", "-translate-y-",
   "skew-x-", "skew-y-",

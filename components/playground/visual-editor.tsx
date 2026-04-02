@@ -64,7 +64,7 @@ import { getCssPrefix } from "@/lib/style-context"
 import type { ControlState } from "@/lib/style-state"
 import { classesToControlState, controlStateToClasses, mergeClasses } from "@/lib/style-state"
 
-import { IconToggle, TextToggle, PositionGrid, ObjectPositionGrid, SpacingValueInput, BoxModelControl, ColorPicker, ZIndexInput, GridNumberPicker, GapControl, ContentDistributionPicker, TransformOriginGrid, SteppedSlider, ScaleControl, TranslateControl } from "@/components/playground/style-controls"
+import { IconToggle, TextToggle, PositionGrid, ObjectPositionGrid, SpacingValueInput, BoxModelControl, ColorPicker, ZIndexInput, GridNumberPicker, GapControl, ContentDistributionPicker, TransformOriginGrid, SteppedSlider, ScaleControl, TranslateControl, SkewControl, RotateControl } from "@/components/playground/style-controls"
 import { ContextPicker } from "@/components/playground/context-picker"
 import { AppliedClassesSection } from "@/components/playground/applied-classes"
 import { EditPanelRow } from "@/components/playground/edit-panel-row"
@@ -252,7 +252,7 @@ export function VisualEditor({
     ],
     motion: [
       "transitionProperty", "transitionDuration", "transitionTiming", "transitionDelay", "animation",
-      "scale", "scaleX", "scaleY", "rotate", "translateX", "translateY", "skewX", "skewY", "transformOrigin",
+      "scale", "scaleX", "scaleY", "rotate", "rotateX", "rotateY", "translateX", "translateY", "skewX", "skewY", "transformOrigin",
     ],
   }), [])
 
@@ -1655,7 +1655,7 @@ export function VisualEditor({
               <EditSubSection>
                 <EditSubSectionTitle>Animation</EditSubSectionTitle>
                 <EditSubSectionContent>
-                  {(state.scale || state.scaleX || state.scaleY || state.rotate || state.translateX || state.translateY || state.skewX || state.skewY) ? (
+                  {(state.scale || state.scaleX || state.scaleY || state.rotate || state.rotateX || state.rotateY || state.translateX || state.translateY || state.skewX || state.skewY) ? (
                     <p className="text-xs text-muted-foreground">
                       Disabled —{" "}
                       <button
@@ -1663,7 +1663,7 @@ export function VisualEditor({
                         className="text-xs font-medium text-destructive hover:underline"
                         onClick={() => {
                           isUserChange.current = true
-                          setState((prev) => ({ ...prev, scale: "", scaleX: "", scaleY: "", rotate: "", translateX: "", translateY: "", skewX: "", skewY: "", transformOrigin: "" }))
+                          setState((prev) => ({ ...prev, scale: "", scaleX: "", scaleY: "", rotate: "", rotateX: "", rotateY: "", translateX: "", translateY: "", skewX: "", skewY: "", transformOrigin: "" }))
                         }}
                       >
                         clear transforms
@@ -1715,9 +1715,20 @@ export function VisualEditor({
                         onTranslateXChange={(v) => update("translateX", v)}
                         onTranslateYChange={(v) => update("translateY", v)}
                       />
-                      <SteppedSlider label="Skew X" values={["0", "1", "2", "3", "6", "12"]} prefix="skew-x" value={state.skewX} onChange={(v) => update("skewX", v)} suffix="°" />
-                      <SteppedSlider label="Skew Y" values={["0", "1", "2", "3", "6", "12"]} prefix="skew-y" value={state.skewY} onChange={(v) => update("skewY", v)} suffix="°" />
-                      <SteppedSlider label="Rotate" values={["0", "1", "2", "3", "6", "12", "45", "90", "180"]} prefix="rotate" value={state.rotate} onChange={(v) => update("rotate", v)} suffix="°" />
+                      <SkewControl
+                        skewX={state.skewX}
+                        skewY={state.skewY}
+                        onSkewXChange={(v) => update("skewX", v)}
+                        onSkewYChange={(v) => update("skewY", v)}
+                      />
+                      <RotateControl
+                        rotate={state.rotate}
+                        rotateX={state.rotateX}
+                        rotateY={state.rotateY}
+                        onRotateChange={(v) => update("rotate", v)}
+                        onRotateXChange={(v) => update("rotateX", v)}
+                        onRotateYChange={(v) => update("rotateY", v)}
+                      />
                       <EditPanelRow label="Origin" variant="nested">
                         <TransformOriginGrid
                           value={state.transformOrigin}

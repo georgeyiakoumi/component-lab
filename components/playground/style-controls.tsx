@@ -436,8 +436,8 @@ function ScaleControl({
         <SteppedSlider label="Scale" values={scaleValues} prefix="scale" value={scale} onChange={onScaleChange} suffix="%" hideLabel />
       ) : (
         <>
-          <SteppedSlider label="Scale X" values={scaleValues} prefix="scale-x" value={scaleX} onChange={onScaleXChange} suffix="%" />
-          <SteppedSlider label="Scale Y" values={scaleValues} prefix="scale-y" value={scaleY} onChange={onScaleYChange} suffix="%" />
+          <SteppedSlider label="X" values={scaleValues} prefix="scale-x" value={scaleX} onChange={onScaleXChange} suffix="%" />
+          <SteppedSlider label="Y" values={scaleValues} prefix="scale-y" value={scaleY} onChange={onScaleYChange} suffix="%" />
         </>
       )}
     </div>
@@ -494,8 +494,8 @@ function TranslateControl({
         <TranslateAxisControl label="Translate" axis="x" value={translateX} onChange={handleLinkedChange} />
       ) : (
         <>
-          <TranslateAxisControl label="Translate X" axis="x" value={translateX} onChange={onTranslateXChange} />
-          <TranslateAxisControl label="Translate Y" axis="y" value={translateY} onChange={onTranslateYChange} />
+          <TranslateAxisControl label="X" axis="x" value={translateX} onChange={onTranslateXChange} />
+          <TranslateAxisControl label="Y" axis="y" value={translateY} onChange={onTranslateYChange} />
         </>
       )}
     </div>
@@ -555,75 +555,336 @@ function TranslateAxisControl({
   const displayValue = hasValue ? (isNegative ? `-${rawValue}` : rawValue) : "–"
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="flex items-center gap-1">
         <p className="flex-1 text-xs font-medium text-foreground">
           {label}
           <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
         </p>
         {hasValue && (
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={() => { onChange(""); setNegative(false) }}
-          >
+          <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => { onChange(""); setNegative(false) }}>
             <X className="size-3" />
           </button>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-1">
-        <ToggleGroup
-          type="single"
-          size="sm"
-          value={mode}
-          onValueChange={(v) => { if (v) handleModeChange(v as TranslateMode) }}
-          className="gap-0"
-        >
-          <ToggleGroupItem value="numbers" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
-            #
-          </ToggleGroupItem>
-          <ToggleGroupItem value="fractions" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
-            ½
-          </ToggleGroupItem>
-          <ToggleGroupItem value="full" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
-            full
-          </ToggleGroupItem>
-        </ToggleGroup>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex h-6 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors",
-            negative
-              ? "bg-blue-500/10 text-blue-500"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          )}
-          onClick={handleNegativeToggle}
-        >
-          ±
-        </button>
+      {mode !== "full" && (
+        <div className="flex items-center gap-1.5">
+          <Slider
+            className="flex-1"
+            value={[value ? Math.max(0, (mode === "fractions" ? TRANSLATE_FRACTIONS : TRANSLATE_NUMBERS).indexOf(rawValue as never)) : 0]}
+            min={0}
+            max={(mode === "fractions" ? TRANSLATE_FRACTIONS : TRANSLATE_NUMBERS).length - 1}
+            step={1}
+            onValueChange={([idx]) => {
+              const vals = mode === "fractions" ? TRANSLATE_FRACTIONS : TRANSLATE_NUMBERS
+              onChange(buildClass(vals[idx], negative))
+            }}
+          />
+          <ToggleGroup type="single" size="sm" value={mode} onValueChange={(v) => { if (v) handleModeChange(v as TranslateMode) }} className="gap-0 shrink-0">
+            <ToggleGroupItem value="numbers" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">#</ToggleGroupItem>
+            <ToggleGroupItem value="fractions" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">½</ToggleGroupItem>
+            <ToggleGroupItem value="full" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">full</ToggleGroupItem>
+          </ToggleGroup>
+          <button type="button" className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors", negative ? "bg-blue-500/10 text-blue-500" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={handleNegativeToggle}>±</button>
+        </div>
+      )}
+      {mode === "full" && (
+        <div className="flex items-center gap-1.5">
+          <p className="flex-1 text-xs text-muted-foreground">{negative ? "-" : ""}translate-{axis}-full</p>
+          <ToggleGroup type="single" size="sm" value={mode} onValueChange={(v) => { if (v) handleModeChange(v as TranslateMode) }} className="gap-0 shrink-0">
+            <ToggleGroupItem value="numbers" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">#</ToggleGroupItem>
+            <ToggleGroupItem value="fractions" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">½</ToggleGroupItem>
+            <ToggleGroupItem value="full" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">full</ToggleGroupItem>
+          </ToggleGroup>
+          <button type="button" className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors", negative ? "bg-blue-500/10 text-blue-500" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={handleNegativeToggle}>±</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Rotate control with link/unlink + deg/rad ──────────────────── */
+
+const ROTATE_DEG_VALUES = ["0", "1", "2", "3", "6", "12", "45", "90", "180"] as const
+const ROTATE_RAD_VALUES = ["0", "0.1", "0.2", "0.3", "0.5", "0.8", "1", "1.57", "3.14"] as const
+
+type RotateUnit = "deg" | "rad"
+
+function RotateControl({
+  rotate,
+  rotateX,
+  rotateY,
+  onRotateChange,
+  onRotateXChange,
+  onRotateYChange,
+}: {
+  rotate: string
+  rotateX: string
+  rotateY: string
+  onRotateChange: (v: string) => void
+  onRotateXChange: (v: string) => void
+  onRotateYChange: (v: string) => void
+}) {
+  const [linked, setLinked] = React.useState(!rotateX && !rotateY)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking — clear X/Y
+      onRotateXChange("")
+      onRotateYChange("")
+      setLinked(true)
+    } else {
+      setLinked(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">Rotate</p>
+        <div className="flex gap-0.5">
+          <IconToggle value="linked" icon={Link2} tooltip="Uniform rotate (Z axis)" isActive={linked} onClick={handleToggleLink} />
+          <IconToggle value="unlinked" icon={Unlink2} tooltip="Independent X/Y/Z" isActive={!linked} onClick={handleToggleLink} />
+        </div>
       </div>
-      {mode === "numbers" && (
+      {linked ? (
+        <RotateAxisControl label="Rotate" prefix="rotate" value={rotate} onChange={onRotateChange} />
+      ) : (
+        <>
+          <RotateAxisControl label="Z" prefix="rotate" value={rotate} onChange={onRotateChange} />
+          <RotateAxisControl label="X" prefix="rotate-x" value={rotateX} onChange={onRotateXChange} />
+          <RotateAxisControl label="Y" prefix="rotate-y" value={rotateY} onChange={onRotateYChange} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function RotateAxisControl({
+  label,
+  prefix,
+  value,
+  onChange,
+}: {
+  label: string
+  prefix: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const isArbitrary = value.includes("[")
+  const isNegative = value.startsWith("-")
+  const rawValue = isArbitrary
+    ? value.replace(/.*\[/, "").replace(/\].*/, "").replace(/deg|rad/, "")
+    : isNegative ? value.replace(`-${prefix}-`, "") : value.replace(`${prefix}-`, "")
+
+  const detectUnit = (): RotateUnit => {
+    if (isArbitrary && value.includes("rad")) return "rad"
+    return "deg"
+  }
+
+  const [negative, setNegative] = React.useState(isNegative)
+  const [unit, setUnit] = React.useState<RotateUnit>(detectUnit)
+
+  const isAxisRotate = prefix === "rotate-x" || prefix === "rotate-y"
+
+  const buildClass = (raw: string, neg: boolean, u: RotateUnit) => {
+    if (!raw) return ""
+    if (isAxisRotate || u === "rad") {
+      const unitStr = u === "rad" ? "rad" : "deg"
+      return neg ? `-${prefix}-[${raw}${unitStr}]` : `${prefix}-[${raw}${unitStr}]`
+    }
+    return neg ? `-${prefix}-${raw}` : `${prefix}-${raw}`
+  }
+
+  const handleNegativeToggle = () => {
+    const newNeg = !negative
+    setNegative(newNeg)
+    if (value) onChange(buildClass(rawValue, newNeg, unit))
+  }
+
+  const handleUnitChange = (newUnit: RotateUnit) => {
+    setUnit(newUnit)
+    onChange("")
+  }
+
+  const currentValues = unit === "rad" ? ROTATE_RAD_VALUES : ROTATE_DEG_VALUES
+  const hasValue = !!value
+  const currentIndex = hasValue ? currentValues.indexOf(rawValue as never) : -1
+  const unitSuffix = unit === "rad" ? "rad" : "°"
+  const displayValue = hasValue ? (isNegative ? `-${rawValue}${unitSuffix}` : `${rawValue}${unitSuffix}`) : "–"
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">
+          {label}
+          <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
+        </p>
+        {hasValue && (
+          <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => { onChange(""); setNegative(false) }}>
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
         <Slider
-          value={[value ? Math.max(0, TRANSLATE_NUMBERS.indexOf(rawValue as typeof TRANSLATE_NUMBERS[number])) : 0]}
+          className="flex-1"
+          value={[Math.max(0, currentIndex)]}
           min={0}
-          max={TRANSLATE_NUMBERS.length - 1}
+          max={currentValues.length - 1}
           step={1}
           onValueChange={([idx]) => {
-            onChange(buildClass(TRANSLATE_NUMBERS[idx], negative))
+            onChange(buildClass(currentValues[idx], negative, unit))
           }}
         />
+        <ToggleGroup type="single" size="sm" value={unit} onValueChange={(v) => { if (v) handleUnitChange(v as RotateUnit) }} className="gap-0 shrink-0">
+          <ToggleGroupItem value="deg" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">deg</ToggleGroupItem>
+          <ToggleGroupItem value="rad" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">rad</ToggleGroupItem>
+        </ToggleGroup>
+        <button type="button" className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors", negative ? "bg-blue-500/10 text-blue-500" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={handleNegativeToggle}>±</button>
+      </div>
+    </div>
+  )
+}
+
+/* ── Skew control with link/unlink ───────────────────────────────── */
+
+const SKEW_DEG_VALUES = ["0", "1", "2", "3", "6", "12"] as const
+
+function SkewControl({
+  skewX,
+  skewY,
+  onSkewXChange,
+  onSkewYChange,
+}: {
+  skewX: string
+  skewY: string
+  onSkewXChange: (v: string) => void
+  onSkewYChange: (v: string) => void
+}) {
+  const hasIndependentValues = skewX !== skewY.replace("skew-y-", "skew-x-").replace("-skew-y-", "-skew-x-")
+  const [linked, setLinked] = React.useState(!hasIndependentValues && !skewX && !skewY ? true : !hasIndependentValues)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking — sync Y to X
+      onSkewYChange(skewX ? skewX.replace("skew-x-", "skew-y-").replace("-skew-x-", "-skew-y-") : "")
+      setLinked(true)
+    } else {
+      setLinked(false)
+    }
+  }
+
+  const handleLinkedChange = (v: string) => {
+    onSkewXChange(v)
+    onSkewYChange(v ? v.replace("skew-x-", "skew-y-").replace("-skew-x-", "-skew-y-") : "")
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">Skew</p>
+        <div className="flex gap-0.5">
+          <IconToggle value="linked" icon={Link2} tooltip="Uniform skew" isActive={linked} onClick={handleToggleLink} />
+          <IconToggle value="unlinked" icon={Unlink2} tooltip="Independent X/Y" isActive={!linked} onClick={handleToggleLink} />
+        </div>
+      </div>
+      {linked ? (
+        <SkewAxisControl label="Skew" axis="x" value={skewX} onChange={handleLinkedChange} />
+      ) : (
+        <>
+          <SkewAxisControl label="X" axis="x" value={skewX} onChange={onSkewXChange} />
+          <SkewAxisControl label="Y" axis="y" value={skewY} onChange={onSkewYChange} />
+        </>
       )}
-      {mode === "fractions" && (
+    </div>
+  )
+}
+
+const SKEW_RAD_VALUES = ["0", "0.1", "0.2", "0.3", "0.5", "0.8", "1"] as const
+
+type SkewUnit = "deg" | "rad"
+
+function SkewAxisControl({
+  label,
+  axis,
+  value,
+  onChange,
+}: {
+  label: string
+  axis: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const isNegative = value.startsWith("-")
+  const isArbitrary = value.includes("[")
+  const rawValue = isArbitrary
+    ? value.replace(/.*\[/, "").replace(/\].*/, "").replace("rad", "")
+    : isNegative ? value.replace(`-skew-${axis}-`, "") : value.replace(`skew-${axis}-`, "")
+
+  const detectUnit = (): SkewUnit => {
+    if (isArbitrary && value.includes("rad")) return "rad"
+    return "deg"
+  }
+
+  const [negative, setNegative] = React.useState(isNegative)
+  const [unit, setUnit] = React.useState<SkewUnit>(detectUnit)
+
+  const buildClass = (raw: string, neg: boolean, u: SkewUnit) => {
+    if (!raw) return ""
+    if (u === "rad") {
+      return neg ? `-skew-${axis}-[${raw}rad]` : `skew-${axis}-[${raw}rad]`
+    }
+    return neg ? `-skew-${axis}-${raw}` : `skew-${axis}-${raw}`
+  }
+
+  const handleNegativeToggle = () => {
+    const newNeg = !negative
+    setNegative(newNeg)
+    if (value) onChange(buildClass(rawValue, newNeg, unit))
+  }
+
+  const handleUnitChange = (newUnit: SkewUnit) => {
+    setUnit(newUnit)
+    onChange("")
+  }
+
+  const currentValues = unit === "rad" ? SKEW_RAD_VALUES : SKEW_DEG_VALUES
+  const hasValue = !!value
+  const currentIndex = hasValue ? currentValues.indexOf(rawValue as never) : -1
+  const unitSuffix = unit === "rad" ? "rad" : "°"
+  const displayValue = hasValue ? (isNegative ? `-${rawValue}${unitSuffix}` : `${rawValue}${unitSuffix}`) : "–"
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">
+          {label}
+          <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
+        </p>
+        {hasValue && (
+          <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => { onChange(""); setNegative(false) }}>
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
         <Slider
-          value={[value ? Math.max(0, TRANSLATE_FRACTIONS.indexOf(rawValue as typeof TRANSLATE_FRACTIONS[number])) : 0]}
+          className="flex-1"
+          value={[Math.max(0, currentIndex)]}
           min={0}
-          max={TRANSLATE_FRACTIONS.length - 1}
+          max={currentValues.length - 1}
           step={1}
           onValueChange={([idx]) => {
-            onChange(buildClass(TRANSLATE_FRACTIONS[idx], negative))
+            onChange(buildClass(currentValues[idx], negative, unit))
           }}
         />
-      )}
+        <ToggleGroup type="single" size="sm" value={unit} onValueChange={(v) => { if (v) handleUnitChange(v as SkewUnit) }} className="gap-0 shrink-0">
+          <ToggleGroupItem value="deg" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">deg</ToggleGroupItem>
+          <ToggleGroupItem value="rad" className="h-5 px-1.5 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">rad</ToggleGroupItem>
+        </ToggleGroup>
+        <button type="button" className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors", negative ? "bg-blue-500/10 text-blue-500" : "text-muted-foreground hover:bg-muted hover:text-foreground")} onClick={handleNegativeToggle}>±</button>
+      </div>
     </div>
   )
 }
@@ -1481,4 +1742,6 @@ export {
   ScaleControl,
   TranslateControl,
   TranslateAxisControl,
+  SkewControl,
+  RotateControl,
 }
