@@ -64,7 +64,7 @@ import { getCssPrefix } from "@/lib/style-context"
 import type { ControlState } from "@/lib/style-state"
 import { classesToControlState, controlStateToClasses, mergeClasses } from "@/lib/style-state"
 
-import { IconToggle, TextToggle, PositionGrid, ObjectPositionGrid, SpacingValueInput, BoxModelControl, ColorPicker, ZIndexInput, GridNumberPicker, GapControl, ContentDistributionPicker, TransformOriginGrid, SteppedSlider } from "@/components/playground/style-controls"
+import { IconToggle, TextToggle, PositionGrid, ObjectPositionGrid, SpacingValueInput, BoxModelControl, ColorPicker, ZIndexInput, GridNumberPicker, GapControl, ContentDistributionPicker, TransformOriginGrid, SteppedSlider, ScaleControl, TranslateControl } from "@/components/playground/style-controls"
 import { ContextPicker } from "@/components/playground/context-picker"
 import { AppliedClassesSection } from "@/components/playground/applied-classes"
 import { EditPanelRow } from "@/components/playground/edit-panel-row"
@@ -1701,34 +1701,23 @@ export function VisualEditor({
                     </p>
                   ) : (
                     <>
-                      <SteppedSlider label="Scale" values={["0", "50", "75", "90", "95", "100", "105", "110", "125", "150"]} prefix="scale" value={state.scale} onChange={(v) => update("scale", v)} suffix="%" />
-                      <SteppedSlider label="Scale X" values={["0", "50", "75", "90", "95", "100", "105", "110", "125", "150"]} prefix="scale-x" value={state.scaleX} onChange={(v) => update("scaleX", v)} suffix="%" />
-                      <SteppedSlider label="Scale Y" values={["0", "50", "75", "90", "95", "100", "105", "110", "125", "150"]} prefix="scale-y" value={state.scaleY} onChange={(v) => update("scaleY", v)} suffix="%" />
-                      <SteppedSlider label="Rotate" values={["0", "1", "2", "3", "6", "12", "45", "90", "180"]} prefix="rotate" value={state.rotate} onChange={(v) => update("rotate", v)} suffix="°" />
-                      <EditPanelRow label="Translate X" variant="nested">
-                        <Select value={state.translateX || "__none__"} onValueChange={(v) => update("translateX", v === "__none__" ? "" : v)}>
-                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">–</SelectItem>
-                            {TRANSLATE_X_OPTIONS.map((opt) => (
-                              <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("translate-x-", "").replace("-translate-x-", "-")}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </EditPanelRow>
-                      <EditPanelRow label="Translate Y" variant="nested">
-                        <Select value={state.translateY || "__none__"} onValueChange={(v) => update("translateY", v === "__none__" ? "" : v)}>
-                          <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">–</SelectItem>
-                            {TRANSLATE_Y_OPTIONS.map((opt) => (
-                              <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("translate-y-", "").replace("-translate-y-", "-")}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </EditPanelRow>
+                      <ScaleControl
+                        scale={state.scale}
+                        scaleX={state.scaleX}
+                        scaleY={state.scaleY}
+                        onScaleChange={(v) => update("scale", v)}
+                        onScaleXChange={(v) => update("scaleX", v)}
+                        onScaleYChange={(v) => update("scaleY", v)}
+                      />
+                      <TranslateControl
+                        translateX={state.translateX}
+                        translateY={state.translateY}
+                        onTranslateXChange={(v) => update("translateX", v)}
+                        onTranslateYChange={(v) => update("translateY", v)}
+                      />
                       <SteppedSlider label="Skew X" values={["0", "1", "2", "3", "6", "12"]} prefix="skew-x" value={state.skewX} onChange={(v) => update("skewX", v)} suffix="°" />
                       <SteppedSlider label="Skew Y" values={["0", "1", "2", "3", "6", "12"]} prefix="skew-y" value={state.skewY} onChange={(v) => update("skewY", v)} suffix="°" />
+                      <SteppedSlider label="Rotate" values={["0", "1", "2", "3", "6", "12", "45", "90", "180"]} prefix="rotate" value={state.rotate} onChange={(v) => update("rotate", v)} suffix="°" />
                       <EditPanelRow label="Origin" variant="nested">
                         <TransformOriginGrid
                           value={state.transformOrigin}

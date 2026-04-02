@@ -321,6 +321,7 @@ function SteppedSlider({
   value,
   onChange,
   suffix,
+  hideLabel,
 }: {
   label: string
   /** The discrete values (without prefix), e.g. ["0", "75", "100", ...] */
@@ -331,6 +332,8 @@ function SteppedSlider({
   onChange: (v: string) => void
   /** Display suffix, e.g. "ms" or "°" or "%" */
   suffix?: string
+  /** Hide the label row (when used inside another control that provides its own) */
+  hideLabel?: boolean
 }) {
   const currentIndex = value ? values.indexOf(value.replace(`${prefix}-`, "")) : -1
   const hasValue = currentIndex >= 0
@@ -338,21 +341,23 @@ function SteppedSlider({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-1">
-        <p className="flex-1 text-xs font-medium text-foreground">
-          {label}
-          <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
-        </p>
-        {hasValue && (
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={() => onChange("")}
-          >
-            <X className="size-3" />
-          </button>
-        )}
-      </div>
+      {!hideLabel && (
+        <div className="flex items-center gap-1">
+          <p className="flex-1 text-xs font-medium text-foreground">
+            {label}
+            <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
+          </p>
+          {hasValue && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => onChange("")}
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
       <Slider
         value={[Math.max(0, currentIndex)]}
         min={0}
@@ -362,6 +367,263 @@ function SteppedSlider({
           onChange(`${prefix}-${values[idx]}`)
         }}
       />
+    </div>
+  )
+}
+
+/* ── Scale control with link/unlink ──────────────────────────────── */
+
+import { Link2, Unlink2 } from "lucide-react"
+
+function ScaleControl({
+  scale,
+  scaleX,
+  scaleY,
+  onScaleChange,
+  onScaleXChange,
+  onScaleYChange,
+}: {
+  scale: string
+  scaleX: string
+  scaleY: string
+  onScaleChange: (v: string) => void
+  onScaleXChange: (v: string) => void
+  onScaleYChange: (v: string) => void
+}) {
+  const [linked, setLinked] = React.useState(!scaleX && !scaleY)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking — clear X/Y, keep uniform scale
+      onScaleXChange("")
+      onScaleYChange("")
+      setLinked(true)
+    } else {
+      // Unlinking — copy scale to both X and Y
+      if (scale) {
+        onScaleXChange(scale.replace("scale-", "scale-x-"))
+        onScaleYChange(scale.replace("scale-", "scale-y-"))
+        onScaleChange("")
+      }
+      setLinked(false)
+    }
+  }
+
+  const scaleValues = ["0", "50", "75", "90", "95", "100", "105", "110", "125", "150"] as const
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">
+          Scale
+          {linked && scale && (
+            <span className="ml-1 font-normal text-muted-foreground">
+              {scale.replace("scale-", "") + "%"}
+            </span>
+          )}
+        </p>
+        {linked && scale && (
+          <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => onScaleChange("")}>
+            <X className="size-3" />
+          </button>
+        )}
+        <div className="flex gap-0.5">
+          <IconToggle value="linked" icon={Link2} tooltip="Uniform scale" isActive={linked} onClick={handleToggleLink} />
+          <IconToggle value="unlinked" icon={Unlink2} tooltip="Independent X/Y" isActive={!linked} onClick={handleToggleLink} />
+        </div>
+      </div>
+      {linked ? (
+        <SteppedSlider label="Scale" values={scaleValues} prefix="scale" value={scale} onChange={onScaleChange} suffix="%" hideLabel />
+      ) : (
+        <>
+          <SteppedSlider label="Scale X" values={scaleValues} prefix="scale-x" value={scaleX} onChange={onScaleXChange} suffix="%" />
+          <SteppedSlider label="Scale Y" values={scaleValues} prefix="scale-y" value={scaleY} onChange={onScaleYChange} suffix="%" />
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ── Translate control with mode toggle ──────────────────────────── */
+
+const TRANSLATE_NUMBERS = ["0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16", "20", "24", "28", "32", "36", "40", "44", "48", "52", "56", "60", "64", "72", "80", "96"] as const
+const TRANSLATE_FRACTIONS = ["1/2", "1/3", "2/3", "1/4", "3/4"] as const
+
+type TranslateMode = "numbers" | "fractions" | "full"
+
+function TranslateControl({
+  translateX,
+  translateY,
+  onTranslateXChange,
+  onTranslateYChange,
+}: {
+  translateX: string
+  translateY: string
+  onTranslateXChange: (v: string) => void
+  onTranslateYChange: (v: string) => void
+}) {
+  const hasIndependentValues = translateX !== translateY
+  const [linked, setLinked] = React.useState(!hasIndependentValues && !translateX && !translateY ? true : !hasIndependentValues)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking — set both to X's value (or clear both)
+      onTranslateYChange(translateX ? translateX.replace("translate-x-", "translate-y-").replace("-translate-x-", "-translate-y-") : "")
+      setLinked(true)
+    } else {
+      setLinked(false)
+    }
+  }
+
+  // When linked, sync Y to match X
+  const handleLinkedChange = (v: string) => {
+    onTranslateXChange(v)
+    onTranslateYChange(v ? v.replace("translate-x-", "translate-y-").replace("-translate-x-", "-translate-y-") : "")
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">Translate</p>
+        <div className="flex gap-0.5">
+          <IconToggle value="linked" icon={Link2} tooltip="Uniform translate" isActive={linked} onClick={handleToggleLink} />
+          <IconToggle value="unlinked" icon={Unlink2} tooltip="Independent X/Y" isActive={!linked} onClick={handleToggleLink} />
+        </div>
+      </div>
+      {linked ? (
+        <TranslateAxisControl label="Translate" axis="x" value={translateX} onChange={handleLinkedChange} />
+      ) : (
+        <>
+          <TranslateAxisControl label="Translate X" axis="x" value={translateX} onChange={onTranslateXChange} />
+          <TranslateAxisControl label="Translate Y" axis="y" value={translateY} onChange={onTranslateYChange} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function TranslateAxisControl({
+  label,
+  axis,
+  value,
+  onChange,
+}: {
+  label: string
+  /** "x" or "y" */
+  axis: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  // Detect current mode and negativity from value
+  const isNegative = value.startsWith("-")
+  const rawValue = isNegative ? value.replace(`-translate-${axis}-`, "") : value.replace(`translate-${axis}-`, "")
+
+  const detectMode = (): TranslateMode => {
+    if (!value) return "numbers"
+    if (rawValue === "full") return "full"
+    if (TRANSLATE_FRACTIONS.includes(rawValue as typeof TRANSLATE_FRACTIONS[number])) return "fractions"
+    return "numbers"
+  }
+
+  const [mode, setMode] = React.useState<TranslateMode>(detectMode)
+  const [negative, setNegative] = React.useState(isNegative)
+
+  const buildClass = (raw: string, neg: boolean) => {
+    if (!raw) return ""
+    return neg ? `-translate-${axis}-${raw}` : `translate-${axis}-${raw}`
+  }
+
+  const handleModeChange = (newMode: TranslateMode) => {
+    setMode(newMode)
+    if (newMode === "full") {
+      onChange(buildClass("full", negative))
+    } else {
+      // Clear current value when switching modes
+      onChange("")
+    }
+  }
+
+  const handleNegativeToggle = () => {
+    const newNeg = !negative
+    setNegative(newNeg)
+    if (value) {
+      onChange(buildClass(rawValue, newNeg))
+    }
+  }
+
+  const hasValue = !!value
+  const displayValue = hasValue ? (isNegative ? `-${rawValue}` : rawValue) : "–"
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="flex-1 text-xs font-medium text-foreground">
+          {label}
+          <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
+        </p>
+        {hasValue && (
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={() => { onChange(""); setNegative(false) }}
+          >
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <ToggleGroup
+          type="single"
+          size="sm"
+          value={mode}
+          onValueChange={(v) => { if (v) handleModeChange(v as TranslateMode) }}
+          className="gap-0"
+        >
+          <ToggleGroupItem value="numbers" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
+            #
+          </ToggleGroupItem>
+          <ToggleGroupItem value="fractions" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
+            ½
+          </ToggleGroupItem>
+          <ToggleGroupItem value="full" className="h-6 px-2 text-xs data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-500">
+            full
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-6 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors",
+            negative
+              ? "bg-blue-500/10 text-blue-500"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+          onClick={handleNegativeToggle}
+        >
+          ±
+        </button>
+      </div>
+      {mode === "numbers" && (
+        <Slider
+          value={[value ? Math.max(0, TRANSLATE_NUMBERS.indexOf(rawValue as typeof TRANSLATE_NUMBERS[number])) : 0]}
+          min={0}
+          max={TRANSLATE_NUMBERS.length - 1}
+          step={1}
+          onValueChange={([idx]) => {
+            onChange(buildClass(TRANSLATE_NUMBERS[idx], negative))
+          }}
+        />
+      )}
+      {mode === "fractions" && (
+        <Slider
+          value={[value ? Math.max(0, TRANSLATE_FRACTIONS.indexOf(rawValue as typeof TRANSLATE_FRACTIONS[number])) : 0]}
+          min={0}
+          max={TRANSLATE_FRACTIONS.length - 1}
+          step={1}
+          onValueChange={([idx]) => {
+            onChange(buildClass(TRANSLATE_FRACTIONS[idx], negative))
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1216,4 +1478,7 @@ export {
   SpatialGrid,
   TransformOriginGrid,
   SteppedSlider,
+  ScaleControl,
+  TranslateControl,
+  TranslateAxisControl,
 }
