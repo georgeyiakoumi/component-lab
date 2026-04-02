@@ -770,6 +770,22 @@ export default function CustomComponentPage() {
                 {selectedNodeId ? (() => {
                   const matchedSc = findSubComponentForNodeId(selectedNodeId)
                   const isMain = selectedNodeId === "main" || (!matchedSc && selectedNodeId === componentTree.assemblyTree.id)
+
+                  // Find the parent node in the assembly tree to determine parent display
+                  function findParentNode(tree: import("@/lib/component-tree").ElementNode, targetId: string): import("@/lib/component-tree").ElementNode | null {
+                    for (const child of tree.children) {
+                      if (child.id === targetId || child.tag === matchedSc?.name) return tree
+                      const found = findParentNode(child, targetId)
+                      if (found) return found
+                    }
+                    return null
+                  }
+                  const parentNode = !isMain ? findParentNode(componentTree.assemblyTree, selectedNodeId) : null
+                  // Resolve parent: if parentNode's tag matches a sub-component, use that SC's classes
+                  const parentSc = parentNode ? componentTree.subComponents.find((sc) => sc.name === parentNode.tag) : null
+                  const resolvedParentClasses = parentSc ? parentSc.classes : parentNode ? (parentNode.id === componentTree.assemblyTree.id ? (componentTree.classes ?? []) : parentNode.classes) : undefined
+                  const resolvedParentTag = parentSc ? parentSc.baseElement : parentNode ? (parentNode.id === componentTree.assemblyTree.id ? componentTree.baseElement : parentNode.tag) : undefined
+
                   return (
                   <VisualEditor
                     key={selectedNodeId}
@@ -813,8 +829,8 @@ export default function CustomComponentPage() {
                         : undefined
                     }
                     subComponentNames={componentTree.subComponents.map((sc) => sc.name)}
-                    parentClasses={!isMain ? (componentTree.classes ?? []) : undefined}
-                    parentTag={!isMain ? componentTree.baseElement : undefined}
+                    parentClasses={resolvedParentClasses}
+                    parentTag={resolvedParentTag}
                   />
                   )
                 })() : (
