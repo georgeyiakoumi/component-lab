@@ -407,7 +407,7 @@ function LinkedControlHeader({
   /** Called when clear button is clicked — clears all values */
   onClear?: () => void
 }) {
-  const hasValue = !value.split(",").every((v) => v.trim() === "–" || v.trim().endsWith(":–"))
+  const hasValue = value.length > 0 && value !== "–"
 
   return (
     <div className="flex items-center gap-1">

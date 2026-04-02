@@ -1701,6 +1701,12 @@ export function VisualEditor({
                     </p>
                   ) : (
                     <>
+                      <EditPanelRow label="Origin" variant="nested">
+                        <TransformOriginGrid
+                          value={state.transformOrigin}
+                          onChange={(v) => update("transformOrigin", v)}
+                        />
+                      </EditPanelRow>
                       <ScaleControl
                         scale={state.scale}
                         scaleX={state.scaleX}
@@ -1729,12 +1735,6 @@ export function VisualEditor({
                         onRotateXChange={(v) => update("rotateX", v)}
                         onRotateYChange={(v) => update("rotateY", v)}
                       />
-                      <EditPanelRow label="Origin" variant="nested">
-                        <TransformOriginGrid
-                          value={state.transformOrigin}
-                          onChange={(v) => update("transformOrigin", v)}
-                        />
-                      </EditPanelRow>
                     </>
                   )}
                 </EditSubSectionContent>
