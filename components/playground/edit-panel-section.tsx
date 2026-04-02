@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils"
 interface EditSectionProps {
   /** Lucide icon component */
   icon: React.ElementType
+  /** Section title */
+  title: string
   /** Whether the section starts open (default: false) */
   defaultOpen?: boolean
   /** Whether any values are set in this section — shows indicator dot */
@@ -21,20 +23,13 @@ interface EditSectionProps {
 
 function EditSection({
   icon: Icon,
+  title,
   defaultOpen = false,
   hasValues,
   onClear,
   children,
 }: EditSectionProps) {
   const [open, setOpen] = React.useState(defaultOpen)
-
-  // Extract title and action from children for the header
-  const title = React.Children.toArray(children).find(
-    (child) => React.isValidElement(child) && child.type === EditSectionTitle,
-  )
-  const rest = React.Children.toArray(children).filter(
-    (child) => !(React.isValidElement(child) && child.type === EditSectionTitle),
-  )
 
   return (
     <div>
@@ -43,7 +38,7 @@ function EditSection({
         className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         onClick={() => setOpen((v) => !v)}
       >
-        <Icon className="size-3.5" />
+        <Icon className="size-3" />
         <span className="flex-1 text-left">{title}</span>
         {hasValues && (
           <span className="size-1.5 rounded-full bg-blue-500" />
@@ -65,7 +60,7 @@ function EditSection({
           <ChevronRight className="size-3" />
         )}
       </button>
-      {open && <div className="space-y-4 px-3 pb-3">{rest}</div>}
+      {open && <div className="space-y-4 px-3 pb-3">{children}</div>}
     </div>
   )
 }
@@ -130,7 +125,7 @@ function EditSubSectionContent({ children }: { children: React.ReactNode }) {
 
 function EditNestedGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-2 border-l-2 border-border/50 pl-3">
+    <div className="space-y-5 border-l-2 border-border/50 pl-3">
       {children}
     </div>
   )
@@ -157,8 +152,7 @@ function EditPanelSection({
   onClear,
 }: EditPanelSectionProps) {
   return (
-    <EditSection icon={icon} defaultOpen={defaultOpen} hasValues={hasValues} onClear={onClear}>
-      <EditSectionTitle>{title}</EditSectionTitle>
+    <EditSection icon={icon} title={title} defaultOpen={defaultOpen} hasValues={hasValues} onClear={onClear}>
       {children}
     </EditSection>
   )

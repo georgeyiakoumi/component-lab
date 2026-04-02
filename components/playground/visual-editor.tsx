@@ -69,7 +69,6 @@ import { Switch } from "@/components/ui/switch"
 import {
   EditPanelSection,
   EditSection,
-  EditSectionTitle,
   EditSectionContent,
   EditSubSectionWrapper,
   EditSubSection,
@@ -3174,8 +3173,7 @@ export function VisualEditor({
         <TooltipProvider delayDuration={200}>
         <div className="space-y-1">
           {/* ── Layout ────────────────────────────────────── */}
-          <EditSection icon={Layout} defaultOpen hasValues={sectionHasValues("layout")} onClear={() => clearSection("layout")}>
-            <EditSectionTitle>Layout</EditSectionTitle>
+          <EditSection icon={Layout} title="Layout" defaultOpen hasValues={sectionHasValues("layout")} onClear={() => clearSection("layout")}>
 
             {/* ── Display ── */}
             <EditSubSectionWrapper>
@@ -3218,6 +3216,59 @@ export function VisualEditor({
                           <IconToggle value="flex-nowrap" icon={X} tooltip="flex-nowrap (default)" isActive={!state.flexWrap || state.flexWrap === "flex-nowrap"} onClick={() => update("flexWrap", "")} />
                           <IconToggle value="flex-wrap" icon={WrapText} tooltip="flex-wrap" isActive={state.flexWrap === "flex-wrap"} onClick={(v) => update("flexWrap", v)} />
                           <TextToggle value="flex-wrap-reverse" label="reverse" tooltip="flex-wrap-reverse" isActive={state.flexWrap === "flex-wrap-reverse"} onClick={(v) => update("flexWrap", v)} />
+                        </div>
+                      </EditPanelRow>
+                    </EditNestedGroup>
+                  )}
+
+                  {/* Grid: columns, rows, flow, auto, justify items, align content nested under Display */}
+                  {isGrid && (
+                    <EditNestedGroup>
+                      <EditPanelRow label="Columns" variant="nested">
+                        <GridNumberPicker value={state.gridCols} prefix="grid-cols" max={12} allowCustom
+                          extras={[{ value: "grid-cols-none", label: "auto" }, { value: "grid-cols-subgrid", label: "subgrid" }]}
+                          onChange={(v) => update("gridCols", v)} />
+                      </EditPanelRow>
+                      <EditPanelRow label="Rows" variant="nested">
+                        <GridNumberPicker value={state.gridRows} prefix="grid-rows" max={12} allowCustom
+                          extras={[{ value: "grid-rows-none", label: "auto" }, { value: "grid-rows-subgrid", label: "subgrid" }]}
+                          onChange={(v) => update("gridRows", v)} />
+                      </EditPanelRow>
+                      <EditPanelRow label="Flow" variant="nested">
+                        <div className="flex flex-wrap gap-0.5">
+                          <TextToggle value="grid-flow-row" label="row" tooltip="grid-flow-row (default)" isActive={!state.gridFlow || state.gridFlow === "grid-flow-row"} onClick={() => update("gridFlow", "")} />
+                          <TextToggle value="grid-flow-col" label="col" tooltip="grid-flow-col" isActive={state.gridFlow === "grid-flow-col"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-dense" label="dense" tooltip="grid-flow-dense" isActive={state.gridFlow === "grid-flow-dense"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-row-dense" label="row+dense" tooltip="grid-flow-row-dense" isActive={state.gridFlow === "grid-flow-row-dense"} onClick={(v) => update("gridFlow", v)} />
+                          <TextToggle value="grid-flow-col-dense" label="col+dense" tooltip="grid-flow-col-dense" isActive={state.gridFlow === "grid-flow-col-dense"} onClick={(v) => update("gridFlow", v)} />
+                        </div>
+                      </EditPanelRow>
+                      <EditPanelRow label="Auto rows" variant="nested">
+                        <div className="flex flex-wrap gap-0.5">
+                          {AUTO_ROWS_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("auto-rows-", "")} tooltip={opt} isActive={state.autoRows === opt} onClick={(v) => update("autoRows", state.autoRows === v ? "" : v)} />
+                          ))}
+                        </div>
+                      </EditPanelRow>
+                      <EditPanelRow label="Auto cols" variant="nested">
+                        <div className="flex flex-wrap gap-0.5">
+                          {AUTO_COLS_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("auto-cols-", "")} tooltip={opt} isActive={state.autoCols === opt} onClick={(v) => update("autoCols", state.autoCols === v ? "" : v)} />
+                          ))}
+                        </div>
+                      </EditPanelRow>
+                      <EditPanelRow label="Justify items" variant="nested">
+                        <div className="flex flex-wrap gap-0.5">
+                          {JUSTIFY_ITEMS_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("justify-items-", "")} tooltip={opt} isActive={state.justifyItems === opt} onClick={(v) => update("justifyItems", state.justifyItems === v ? "" : v)} />
+                          ))}
+                        </div>
+                      </EditPanelRow>
+                      <EditPanelRow label="Align content" variant="nested">
+                        <div className="flex flex-wrap gap-0.5">
+                          {ALIGN_CONTENT_OPTIONS.map((opt) => (
+                            <TextToggle key={opt} value={opt} label={opt.replace("content-", "")} tooltip={opt} isActive={state.alignContent === opt} onClick={(v) => update("alignContent", state.alignContent === v ? "" : v)} />
+                          ))}
                         </div>
                       </EditPanelRow>
                     </EditNestedGroup>
@@ -3330,62 +3381,9 @@ export function VisualEditor({
                     </EditSubSectionWrapper>
                   )}
 
-                  {/* ── Grid container ── */}
+                  {/* ── Grid: alignment + gap (separate from grid config above) ── */}
                   {isGrid && (
                     <EditSubSectionWrapper>
-                      <EditSubSection>
-                        <EditSubSectionTitle>Grid</EditSubSectionTitle>
-                        <EditSubSectionContent>
-                          <EditPanelRow label="Columns" variant="nested">
-                            <GridNumberPicker value={state.gridCols} prefix="grid-cols" max={12} allowCustom
-                              extras={[{ value: "grid-cols-none", label: "auto" }, { value: "grid-cols-subgrid", label: "subgrid" }]}
-                              onChange={(v) => update("gridCols", v)} />
-                          </EditPanelRow>
-                          <EditPanelRow label="Rows" variant="nested">
-                            <GridNumberPicker value={state.gridRows} prefix="grid-rows" max={12} allowCustom
-                              extras={[{ value: "grid-rows-none", label: "auto" }, { value: "grid-rows-subgrid", label: "subgrid" }]}
-                              onChange={(v) => update("gridRows", v)} />
-                          </EditPanelRow>
-                          <EditPanelRow label="Flow" variant="nested">
-                            <div className="flex flex-wrap gap-0.5">
-                              <TextToggle value="grid-flow-row" label="row" tooltip="grid-flow-row (default)" isActive={!state.gridFlow || state.gridFlow === "grid-flow-row"} onClick={() => update("gridFlow", "")} />
-                              <TextToggle value="grid-flow-col" label="col" tooltip="grid-flow-col" isActive={state.gridFlow === "grid-flow-col"} onClick={(v) => update("gridFlow", v)} />
-                              <TextToggle value="grid-flow-dense" label="dense" tooltip="grid-flow-dense" isActive={state.gridFlow === "grid-flow-dense"} onClick={(v) => update("gridFlow", v)} />
-                              <TextToggle value="grid-flow-row-dense" label="row+dense" tooltip="grid-flow-row-dense" isActive={state.gridFlow === "grid-flow-row-dense"} onClick={(v) => update("gridFlow", v)} />
-                              <TextToggle value="grid-flow-col-dense" label="col+dense" tooltip="grid-flow-col-dense" isActive={state.gridFlow === "grid-flow-col-dense"} onClick={(v) => update("gridFlow", v)} />
-                            </div>
-                          </EditPanelRow>
-                          <EditPanelRow label="Auto rows" variant="nested">
-                            <div className="flex flex-wrap gap-0.5">
-                              {AUTO_ROWS_OPTIONS.map((opt) => (
-                                <TextToggle key={opt} value={opt} label={opt.replace("auto-rows-", "")} tooltip={opt} isActive={state.autoRows === opt} onClick={(v) => update("autoRows", state.autoRows === v ? "" : v)} />
-                              ))}
-                            </div>
-                          </EditPanelRow>
-                          <EditPanelRow label="Auto cols" variant="nested">
-                            <div className="flex flex-wrap gap-0.5">
-                              {AUTO_COLS_OPTIONS.map((opt) => (
-                                <TextToggle key={opt} value={opt} label={opt.replace("auto-cols-", "")} tooltip={opt} isActive={state.autoCols === opt} onClick={(v) => update("autoCols", state.autoCols === v ? "" : v)} />
-                              ))}
-                            </div>
-                          </EditPanelRow>
-                          <EditPanelRow label="Justify items" variant="nested">
-                            <div className="flex flex-wrap gap-0.5">
-                              {JUSTIFY_ITEMS_OPTIONS.map((opt) => (
-                                <TextToggle key={opt} value={opt} label={opt.replace("justify-items-", "")} tooltip={opt} isActive={state.justifyItems === opt} onClick={(v) => update("justifyItems", state.justifyItems === v ? "" : v)} />
-                              ))}
-                            </div>
-                          </EditPanelRow>
-                          <EditPanelRow label="Align content" variant="nested">
-                            <div className="flex flex-wrap gap-0.5">
-                              {ALIGN_CONTENT_OPTIONS.map((opt) => (
-                                <TextToggle key={opt} value={opt} label={opt.replace("content-", "")} tooltip={opt} isActive={state.alignContent === opt} onClick={(v) => update("alignContent", state.alignContent === v ? "" : v)} />
-                              ))}
-                            </div>
-                          </EditPanelRow>
-                        </EditSubSectionContent>
-                      </EditSubSection>
-
                       <EditSubSection>
                         <EditSubSectionTitle>Alignment</EditSubSectionTitle>
                         <EditSubSectionContent>
