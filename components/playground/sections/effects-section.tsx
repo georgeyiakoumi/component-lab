@@ -63,15 +63,22 @@ export function EffectsSection({
         <EditSubSection>
           <EditSubSectionTitle>Opacity</EditSubSectionTitle>
           <EditSubSectionContent>
-            <SteppedSlider
-              label=""
-              hideLabel
-              values={OPACITY_OPTIONS.map((o) => o.replace("opacity-", ""))}
-              prefix="opacity"
-              value={state.opacity}
-              onChange={(v) => update("opacity", v)}
-              suffix="%"
-            />
+            <EditPanelRow
+              label="Opacity"
+              variant="nested"
+              value={state.opacity ? `${state.opacity.replace("opacity-", "")}%` : undefined}
+              onClear={state.opacity ? () => update("opacity", "") : undefined}
+            >
+              <SteppedSlider
+                label=""
+                hideLabel
+                values={OPACITY_OPTIONS.map((o) => o.replace("opacity-", ""))}
+                prefix="opacity"
+                value={state.opacity}
+                onChange={(v) => update("opacity", v)}
+                suffix="%"
+              />
+            </EditPanelRow>
           </EditSubSectionContent>
         </EditSubSection>
       </EditSubSectionWrapper>
@@ -124,7 +131,12 @@ export function EffectsSection({
               </div>
             </EditPanelRow>
             {/* Placement */}
-            <EditPanelRow label="Position" variant="nested">
+            <EditPanelRow
+              label="Position"
+              variant="nested"
+              value={state.maskPosition ? state.maskPosition.replace("mask-", "") : undefined}
+              onClear={state.maskPosition ? () => update("maskPosition", "") : undefined}
+            >
               <SpatialGrid options={MASK_POSITION_GRID} value={state.maskPosition} onChange={(v) => update("maskPosition", v)} labelPrefix="mask-" />
             </EditPanelRow>
             <EditPanelRow label="Size" variant="nested">

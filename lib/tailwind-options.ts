@@ -76,42 +76,66 @@ export const OBJECT_POSITION_OPTIONS = [
   "object-left-top", "object-right-top", "object-left-bottom", "object-right-bottom",
 ]
 export const OVERFLOW_OPTIONS = ["overflow-visible", "overflow-hidden", "overflow-scroll", "overflow-auto"]
-export const SPACING_SCALE_FULL = ["0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"] as const
+export const SPACING_SCALE_FULL = [
+  "0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9",
+  "10", "11", "12", "14", "16", "20", "24", "28", "32", "36", "40", "44", "48",
+  "52", "56", "60", "64", "72", "80", "96",
+] as const
 export const SPACE_Y_OPTIONS = SPACING_SCALE_FULL.map((v) => `space-y-${v}`)
 export const SPACE_X_OPTIONS = SPACING_SCALE_FULL.map((v) => `space-x-${v}`)
 export const SPACE_X_REVERSE = "space-x-reverse"
 export const SPACE_Y_REVERSE = "space-y-reverse"
 
+// Spacing scale numbers used by w-*, h-*, size-*
+const SIZING_NUMBERS = [
+  "0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9",
+  "10", "11", "12", "14", "16", "20", "24", "28", "32", "36", "40", "44", "48",
+  "52", "56", "60", "64", "72", "80", "96",
+]
+
+// Fractions supported by w-*, h-*, size-*
+const SIZING_FRACTIONS = [
+  "1/2",
+  "1/3", "2/3",
+  "1/4", "2/4", "3/4",
+  "1/5", "2/5", "3/5", "4/5",
+  "1/6", "2/6", "3/6", "4/6", "5/6",
+  "1/12", "2/12", "3/12", "4/12", "5/12", "6/12", "7/12", "8/12", "9/12", "10/12", "11/12",
+]
+
 export const WIDTH_OPTIONS = [
-  "w-0", "w-0.5", "w-1", "w-1.5", "w-2", "w-2.5", "w-3", "w-3.5", "w-4", "w-5", "w-6", "w-7", "w-8", "w-9",
-  "w-10", "w-11", "w-12", "w-14", "w-16", "w-20", "w-24", "w-28", "w-32", "w-36", "w-40", "w-44", "w-48",
-  "w-52", "w-56", "w-60", "w-64", "w-72", "w-80", "w-96",
+  ...SIZING_NUMBERS.map((n) => `w-${n}`),
+  ...SIZING_FRACTIONS.map((f) => `w-${f}`),
   "w-auto", "w-full", "w-screen", "w-svw", "w-lvw", "w-dvw", "w-min", "w-max", "w-fit",
-  "w-1/2", "w-1/3", "w-2/3", "w-1/4", "w-3/4", "w-1/5", "w-2/5", "w-3/5", "w-4/5",
 ]
 export const HEIGHT_OPTIONS = [
-  "h-0", "h-0.5", "h-1", "h-1.5", "h-2", "h-2.5", "h-3", "h-3.5", "h-4", "h-5", "h-6", "h-7", "h-8", "h-9",
-  "h-10", "h-11", "h-12", "h-14", "h-16", "h-20", "h-24", "h-28", "h-32", "h-36", "h-40", "h-44", "h-48",
-  "h-52", "h-56", "h-60", "h-64", "h-72", "h-80", "h-96",
+  ...SIZING_NUMBERS.map((n) => `h-${n}`),
+  ...SIZING_FRACTIONS.map((f) => `h-${f}`),
   "h-auto", "h-full", "h-screen", "h-svh", "h-lvh", "h-dvh", "h-min", "h-max", "h-fit",
-  "h-1/2", "h-1/3", "h-2/3", "h-1/4", "h-3/4", "h-1/5", "h-2/5", "h-3/5", "h-4/5",
 ]
-export const MIN_WIDTH_OPTIONS = ["min-w-0", "min-w-full", "min-w-min", "min-w-max", "min-w-fit"]
+export const MIN_WIDTH_OPTIONS = [
+  ...SIZING_NUMBERS.map((n) => `min-w-${n}`),
+  ...SIZING_FRACTIONS.map((f) => `min-w-${f}`),
+  "min-w-full", "min-w-min", "min-w-max", "min-w-fit",
+]
 export const MAX_WIDTH_OPTIONS = [
-  "max-w-none", "max-w-0", "max-w-xs", "max-w-sm", "max-w-md", "max-w-lg", "max-w-xl",
+  ...SIZING_NUMBERS.map((n) => `max-w-${n}`),
+  "max-w-none", "max-w-xs", "max-w-sm", "max-w-md", "max-w-lg", "max-w-xl",
   "max-w-2xl", "max-w-3xl", "max-w-4xl", "max-w-5xl", "max-w-6xl", "max-w-7xl",
   "max-w-full", "max-w-min", "max-w-max", "max-w-fit", "max-w-prose", "max-w-screen-sm",
   "max-w-screen-md", "max-w-screen-lg", "max-w-screen-xl", "max-w-screen-2xl",
 ]
-export const MIN_HEIGHT_OPTIONS = ["min-h-0", "min-h-full", "min-h-screen", "min-h-svh", "min-h-lvh", "min-h-dvh", "min-h-min", "min-h-max", "min-h-fit"]
+export const MIN_HEIGHT_OPTIONS = [
+  ...SIZING_NUMBERS.map((n) => `min-h-${n}`),
+  "min-h-full", "min-h-screen", "min-h-svh", "min-h-lvh", "min-h-dvh", "min-h-min", "min-h-max", "min-h-fit",
+]
 export const MAX_HEIGHT_OPTIONS = [
-  "max-h-none", "max-h-0", "max-h-full", "max-h-screen", "max-h-svh", "max-h-lvh", "max-h-dvh", "max-h-min", "max-h-max", "max-h-fit",
-  ...SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px" && v !== "0.5").map((v) => `max-h-${v}`),
+  ...SIZING_NUMBERS.map((n) => `max-h-${n}`),
+  "max-h-none", "max-h-full", "max-h-screen", "max-h-svh", "max-h-lvh", "max-h-dvh", "max-h-min", "max-h-max", "max-h-fit",
 ]
 export const SIZE_OPTIONS = [
-  "size-0", "size-0.5", "size-1", "size-1.5", "size-2", "size-2.5", "size-3", "size-3.5",
-  "size-4", "size-5", "size-6", "size-7", "size-8", "size-9", "size-10", "size-11", "size-12",
-  "size-14", "size-16", "size-20", "size-24", "size-28", "size-32", "size-36", "size-40",
+  ...SIZING_NUMBERS.map((n) => `size-${n}`),
+  ...SIZING_FRACTIONS.map((f) => `size-${f}`),
   "size-auto", "size-full", "size-min", "size-max", "size-fit",
 ]
 
@@ -189,17 +213,12 @@ export const ALIGN_OPTIONS = [
 ]
 export const GAP_OPTIONS = GAP_SLIDER_VALUES.map((v) => `gap-${v}`)
 
-export const PADDING_SCALE = [
-  "p-0", "p-px", "p-0.5", "p-1", "p-1.5", "p-2", "p-2.5", "p-3", "p-3.5",
-  "p-4", "p-5", "p-6", "p-7", "p-8", "p-9", "p-10", "p-11", "p-12", "p-14", "p-16",
-]
+export const PADDING_SCALE = SPACING_SCALE_FULL.map((v) => `p-${v}`)
 export const MARGIN_SCALE = [
   "m-auto",
-  "m-0", "m-px", "m-0.5", "m-1", "m-1.5", "m-2", "m-2.5", "m-3", "m-3.5",
-  "m-4", "m-5", "m-6", "m-7", "m-8", "m-9", "m-10", "m-11", "m-12", "m-14", "m-16",
-  // Negative margins
-  "-m-0.5", "-m-1", "-m-1.5", "-m-2", "-m-2.5", "-m-3", "-m-3.5",
-  "-m-4", "-m-5", "-m-6", "-m-7", "-m-8", "-m-9", "-m-10", "-m-11", "-m-12", "-m-14", "-m-16",
+  ...SPACING_SCALE_FULL.map((v) => `m-${v}`),
+  // Negative margins (0 and px excluded from negatives)
+  ...SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px").map((v) => `-m-${v}`),
 ]
 
 export const PADDING_X_SCALE = SPACING_SCALE_FULL.map((v) => `px-${v}`)
@@ -216,21 +235,35 @@ export const MARGIN_Y_SCALE = [
 ]
 
 export const PADDING_SIDES = {
-  paddingTop: ["pt-0", "pt-1", "pt-2", "pt-3", "pt-4", "pt-5", "pt-6", "pt-8", "pt-10", "pt-12"],
-  paddingRight: ["pr-0", "pr-1", "pr-2", "pr-3", "pr-4", "pr-5", "pr-6", "pr-8", "pr-10", "pr-12"],
-  paddingBottom: ["pb-0", "pb-1", "pb-2", "pb-3", "pb-4", "pb-5", "pb-6", "pb-8", "pb-10", "pb-12"],
-  paddingLeft: ["pl-0", "pl-1", "pl-2", "pl-3", "pl-4", "pl-5", "pl-6", "pl-8", "pl-10", "pl-12"],
+  paddingTop: SPACING_SCALE_FULL.map((v) => `pt-${v}`),
+  paddingRight: SPACING_SCALE_FULL.map((v) => `pr-${v}`),
+  paddingBottom: SPACING_SCALE_FULL.map((v) => `pb-${v}`),
+  paddingLeft: SPACING_SCALE_FULL.map((v) => `pl-${v}`),
 } as const
 
+const negSpacing = SPACING_SCALE_FULL.filter((v) => v !== "0" && v !== "px")
+
 export const MARGIN_SIDES = {
-  marginTop: ["mt-auto", "mt-0", "mt-0.5", "mt-1", "mt-1.5", "mt-2", "mt-2.5", "mt-3", "mt-3.5", "mt-4", "mt-5", "mt-6", "mt-7", "mt-8", "mt-9", "mt-10", "mt-11", "mt-12", "mt-14", "mt-16",
-    "-mt-0.5", "-mt-1", "-mt-1.5", "-mt-2", "-mt-2.5", "-mt-3", "-mt-3.5", "-mt-4", "-mt-5", "-mt-6", "-mt-8", "-mt-10", "-mt-12"],
-  marginRight: ["mr-auto", "mr-0", "mr-0.5", "mr-1", "mr-1.5", "mr-2", "mr-2.5", "mr-3", "mr-3.5", "mr-4", "mr-5", "mr-6", "mr-7", "mr-8", "mr-9", "mr-10", "mr-11", "mr-12", "mr-14", "mr-16",
-    "-mr-0.5", "-mr-1", "-mr-1.5", "-mr-2", "-mr-2.5", "-mr-3", "-mr-3.5", "-mr-4", "-mr-5", "-mr-6", "-mr-8", "-mr-10", "-mr-12"],
-  marginBottom: ["mb-auto", "mb-0", "mb-0.5", "mb-1", "mb-1.5", "mb-2", "mb-2.5", "mb-3", "mb-3.5", "mb-4", "mb-5", "mb-6", "mb-7", "mb-8", "mb-9", "mb-10", "mb-11", "mb-12", "mb-14", "mb-16",
-    "-mb-0.5", "-mb-1", "-mb-1.5", "-mb-2", "-mb-2.5", "-mb-3", "-mb-3.5", "-mb-4", "-mb-5", "-mb-6", "-mb-8", "-mb-10", "-mb-12"],
-  marginLeft: ["ml-auto", "ml-0", "ml-0.5", "ml-1", "ml-1.5", "ml-2", "ml-2.5", "ml-3", "ml-3.5", "ml-4", "ml-5", "ml-6", "ml-7", "ml-8", "ml-9", "ml-10", "ml-11", "ml-12", "ml-14", "ml-16",
-    "-ml-0.5", "-ml-1", "-ml-1.5", "-ml-2", "-ml-2.5", "-ml-3", "-ml-3.5", "-ml-4", "-ml-5", "-ml-6", "-ml-8", "-ml-10", "-ml-12"],
+  marginTop: [
+    "mt-auto",
+    ...SPACING_SCALE_FULL.map((v) => `mt-${v}`),
+    ...negSpacing.map((v) => `-mt-${v}`),
+  ],
+  marginRight: [
+    "mr-auto",
+    ...SPACING_SCALE_FULL.map((v) => `mr-${v}`),
+    ...negSpacing.map((v) => `-mr-${v}`),
+  ],
+  marginBottom: [
+    "mb-auto",
+    ...SPACING_SCALE_FULL.map((v) => `mb-${v}`),
+    ...negSpacing.map((v) => `-mb-${v}`),
+  ],
+  marginLeft: [
+    "ml-auto",
+    ...SPACING_SCALE_FULL.map((v) => `ml-${v}`),
+    ...negSpacing.map((v) => `-ml-${v}`),
+  ],
 } as const
 
 /* ── Typography ──────────────────────────────────────────────────── */

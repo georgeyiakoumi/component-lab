@@ -59,6 +59,14 @@ interface LayoutSectionProps extends SectionProps, SectionCallbacks {
   setState: React.Dispatch<React.SetStateAction<ControlState>>
 }
 
+/** Format justify + align into a compact display string like "center, start" */
+function formatAlignment(justify: string, align: string): string | undefined {
+  const j = justify ? justify.replace("justify-", "") : ""
+  const a = align ? align.replace("items-", "") : ""
+  if (!j && !a) return undefined
+  return [j, a].filter(Boolean).join(", ")
+}
+
 export function LayoutSection({
   state,
   update,
@@ -130,7 +138,12 @@ export function LayoutSection({
                   )}
                 </EditPanelRow>
 
-                <EditPanelRow label="Alignment" variant="nested">
+                <EditPanelRow
+                  label="Alignment"
+                  variant="nested"
+                  value={formatAlignment(state.justify, state.align)}
+                  onClear={(state.justify || state.align) ? () => { update("justify", ""); update("align", "") } : undefined}
+                >
                   <PositionGrid justify={state.justify} align={state.align} display={effectiveDisplay} direction={state.direction}
                     onJustifyChange={(v) => update("justify", v)} onAlignChange={(v) => update("align", v)} />
                 </EditPanelRow>
@@ -278,8 +291,15 @@ export function LayoutSection({
                 <EditSubSection>
                   <EditSubSectionTitle>Alignment</EditSubSectionTitle>
                   <EditSubSectionContent>
-                    <PositionGrid justify={state.justify} align={state.align} display={effectiveDisplay}
-                      onJustifyChange={(v) => update("justify", v)} onAlignChange={(v) => update("align", v)} />
+                    <EditPanelRow
+                      label="Position"
+                      variant="nested"
+                      value={formatAlignment(state.justify, state.align)}
+                      onClear={(state.justify || state.align) ? () => { update("justify", ""); update("align", "") } : undefined}
+                    >
+                      <PositionGrid justify={state.justify} align={state.align} display={effectiveDisplay}
+                        onJustifyChange={(v) => update("justify", v)} onAlignChange={(v) => update("align", v)} />
+                    </EditPanelRow>
                   </EditSubSectionContent>
                 </EditSubSection>
 
@@ -376,29 +396,38 @@ export function LayoutSection({
             {showPosition && (
               <EditSubSectionWrapper>
                 <EditSubSection>
-                  <EditSubSectionTitle>Object fit</EditSubSectionTitle>
+                  <EditSubSectionTitle>Object</EditSubSectionTitle>
                   <EditSubSectionContent>
-                    <Select
-                      value={state.objectFit || "__none__"}
-                      onValueChange={(v) => update("objectFit", v === "__none__" ? "" : v)}
+                    <EditPanelRow
+                      label="Fit"
+                      variant="nested"
+                      value={state.objectFit ? state.objectFit.replace("object-", "") : undefined}
+                      onClear={state.objectFit ? () => update("objectFit", "") : undefined}
                     >
-                      <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">–</SelectItem>
-                        {OBJECT_FIT_OPTIONS.map((opt) => (
-                          <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("object-", "")}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </EditSubSectionContent>
-                </EditSubSection>
-                <EditSubSection>
-                  <EditSubSectionTitle>Object position</EditSubSectionTitle>
-                  <EditSubSectionContent>
-                    <ObjectPositionGrid
-                      value={state.objectPosition}
-                      onChange={(v) => update("objectPosition", v)}
-                    />
+                      <Select
+                        value={state.objectFit || "__none__"}
+                        onValueChange={(v) => update("objectFit", v === "__none__" ? "" : v)}
+                      >
+                        <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">–</SelectItem>
+                          {OBJECT_FIT_OPTIONS.map((opt) => (
+                            <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("object-", "")}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </EditPanelRow>
+                    <EditPanelRow
+                      label="Position"
+                      variant="nested"
+                      value={state.objectPosition ? state.objectPosition.replace("object-", "") : undefined}
+                      onClear={state.objectPosition ? () => update("objectPosition", "") : undefined}
+                    >
+                      <ObjectPositionGrid
+                        value={state.objectPosition}
+                        onChange={(v) => update("objectPosition", v)}
+                      />
+                    </EditPanelRow>
                   </EditSubSectionContent>
                 </EditSubSection>
               </EditSubSectionWrapper>

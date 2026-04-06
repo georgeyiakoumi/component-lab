@@ -99,7 +99,12 @@ export function TypographySection({
               </div>
             </EditPanelRow>
 
-            <EditPanelRow label="Size" variant="nested">
+            <EditPanelRow
+              label="Size"
+              variant="nested"
+              value={state.fontSize ? state.fontSize.replace("text-", "") : undefined}
+              onClear={state.fontSize ? () => update("fontSize", "") : undefined}
+            >
               <SteppedSlider
                 label=""
                 hideLabel
@@ -110,7 +115,12 @@ export function TypographySection({
               />
             </EditPanelRow>
 
-            <EditPanelRow label="Weight" variant="nested">
+            <EditPanelRow
+              label="Weight"
+              variant="nested"
+              value={state.fontWeight ? state.fontWeight.replace("font-", "") : undefined}
+              onClear={state.fontWeight ? () => update("fontWeight", "") : undefined}
+            >
               <SteppedSlider
                 label=""
                 hideLabel
@@ -247,7 +257,12 @@ export function TypographySection({
         <EditSubSection>
           <EditSubSectionTitle>Spacing</EditSubSectionTitle>
           <EditSubSectionContent>
-            <EditPanelRow label="Line height" variant="nested">
+            <EditPanelRow
+              label="Line height"
+              variant="nested"
+              value={state.lineHeight ? state.lineHeight.replace("leading-", "") : undefined}
+              onClear={state.lineHeight ? () => update("lineHeight", "") : undefined}
+            >
               <SteppedSlider
                 label=""
                 hideLabel
@@ -258,7 +273,12 @@ export function TypographySection({
               />
             </EditPanelRow>
 
-            <EditPanelRow label="Letter spacing" variant="nested">
+            <EditPanelRow
+              label="Letter spacing"
+              variant="nested"
+              value={state.letterSpacing ? state.letterSpacing.replace("tracking-", "") : undefined}
+              onClear={state.letterSpacing ? () => update("letterSpacing", "") : undefined}
+            >
               <SteppedSlider
                 label=""
                 hideLabel
@@ -269,7 +289,12 @@ export function TypographySection({
               />
             </EditPanelRow>
 
-            <EditPanelRow label="Line clamp" variant="nested">
+            <EditPanelRow
+              label="Line clamp"
+              variant="nested"
+              value={state.lineClamp ? state.lineClamp.replace("line-clamp-", "") : undefined}
+              onClear={state.lineClamp ? () => update("lineClamp", "") : undefined}
+            >
               <SteppedSlider
                 label=""
                 hideLabel

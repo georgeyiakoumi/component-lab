@@ -1,31 +1,25 @@
 "use client"
 
-import { Box } from "lucide-react"
+import { Box, ArrowLeftFromLine } from "lucide-react"
 
-import type { ControlState } from "@/lib/style-state"
-import { SPACING_SCALE_FULL, WIDTH_OPTIONS, HEIGHT_OPTIONS, MIN_WIDTH_OPTIONS, MAX_WIDTH_OPTIONS, MIN_HEIGHT_OPTIONS, MAX_HEIGHT_OPTIONS, SIZE_OPTIONS } from "@/lib/tailwind-options"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SPACING_SCALE_FULL } from "@/lib/tailwind-options"
 
-import { TextToggle, SpacingValueInput, BoxModelControl } from "@/components/playground/style-controls"
+import { IconToggle, SteppedSlider, PaddingControl, MarginControl } from "@/components/playground/style-controls"
 import { EditPanelRow } from "@/components/playground/edit-panel-row"
-import { EditPanelSection } from "@/components/playground/edit-panel-section"
+import { EditSection } from "@/components/playground/edit-panel-section"
 
 import type { SectionProps, SectionCallbacks } from "./types"
 
 interface SpacingSectionProps extends SectionProps, SectionCallbacks {
   effectiveDisplay: string
   isFlex: boolean
-  isGrid: boolean
-  showPaddingSides: boolean
-  showMarginSides: boolean
-  onTogglePaddingSides: () => void
-  onToggleMarginSides: () => void
+}
+
+/** Format space-x/y value + reverse flag into display string */
+function formatSpaceValue(value: string, prefix: string, reverse: boolean): string | undefined {
+  const raw = value ? value.replace(`${prefix}-`, "") : ""
+  if (!raw && !reverse) return undefined
+  return `${raw}${reverse ? " (reversed)" : ""}`
 }
 
 export function SpacingSection({
@@ -35,172 +29,86 @@ export function SpacingSection({
   clearSection,
   effectiveDisplay,
   isFlex,
-  isGrid,
-  showPaddingSides,
-  showMarginSides,
-  onTogglePaddingSides,
-  onToggleMarginSides,
 }: SpacingSectionProps) {
-  const isInline = effectiveDisplay === "inline"
   const isBlockDisplay = effectiveDisplay === "block" || effectiveDisplay === "inline-block"
-  const acceptsSize = !isInline && effectiveDisplay !== "hidden" && effectiveDisplay !== "contents"
   const isFlexRow = isFlex && (state.direction === "flex-row" || state.direction === "flex-row-reverse" || !state.direction)
   const isFlexCol = isFlex && (state.direction === "flex-col" || state.direction === "flex-col-reverse")
 
   return (
-    <EditPanelSection icon={Box} title="Spacing" hasValues={sectionHasValues("spacing")} onClear={() => clearSection("spacing")}>
-      {/* Padding */}
-      <EditPanelRow label="Padding">
-        <BoxModelControl
-          label="Padding"
-          allPrefix="p"
-          allValue={state.padding}
-          onAllChange={(v) => update("padding", v)}
-          sides={[
-            { prefix: "pt", label: "Top", value: state.paddingTop, onChange: (v) => update("paddingTop", v) },
-            { prefix: "pr", label: "Right", value: state.paddingRight, onChange: (v) => update("paddingRight", v) },
-            { prefix: "pb", label: "Bottom", value: state.paddingBottom, onChange: (v) => update("paddingBottom", v) },
-            { prefix: "pl", label: "Left", value: state.paddingLeft, onChange: (v) => update("paddingLeft", v) },
-          ]}
-          expanded={showPaddingSides}
-          onToggleExpand={onTogglePaddingSides}
-        />
-        {/* Padding axes */}
-        <div className="mt-1 flex gap-2 pl-6">
-          <SpacingValueInput prefix="px" value={state.paddingX} onChange={(v) => update("paddingX", v)} />
-          <SpacingValueInput prefix="py" value={state.paddingY} onChange={(v) => update("paddingY", v)} />
-        </div>
-      </EditPanelRow>
+    <EditSection icon={Box} title="Spacing" hasValues={sectionHasValues("spacing")} onClear={() => clearSection("spacing")}>
 
-      {/* Margin */}
-      <EditPanelRow label="Margin">
-        <BoxModelControl
-          label="Margin"
-          allPrefix="m"
-          allValue={state.margin}
-          onAllChange={(v) => update("margin", v)}
-          sides={[
-            { prefix: "mt", label: "Top", value: state.marginTop, onChange: (v) => update("marginTop", v) },
-            { prefix: "mr", label: "Right", value: state.marginRight, onChange: (v) => update("marginRight", v) },
-            { prefix: "mb", label: "Bottom", value: state.marginBottom, onChange: (v) => update("marginBottom", v) },
-            { prefix: "ml", label: "Left", value: state.marginLeft, onChange: (v) => update("marginLeft", v) },
-          ]}
-          expanded={showMarginSides}
-          onToggleExpand={onToggleMarginSides}
-          allowNegative
-          allowAuto
-        />
-        {/* Margin axes */}
-        <div className="mt-1 flex gap-2 pl-6">
-          <SpacingValueInput prefix="mx" value={state.marginX} onChange={(v) => update("marginX", v)} allowNegative allowAuto />
-          <SpacingValueInput prefix="my" value={state.marginY} onChange={(v) => update("marginY", v)} allowNegative allowAuto />
-        </div>
-      </EditPanelRow>
+      <PaddingControl
+        padding={state.padding}
+        paddingTop={state.paddingTop}
+        paddingRight={state.paddingRight}
+        paddingBottom={state.paddingBottom}
+        paddingLeft={state.paddingLeft}
+        onPaddingChange={(v) => update("padding", v)}
+        onPaddingTopChange={(v) => update("paddingTop", v)}
+        onPaddingRightChange={(v) => update("paddingRight", v)}
+        onPaddingBottomChange={(v) => update("paddingBottom", v)}
+        onPaddingLeftChange={(v) => update("paddingLeft", v)}
+      />
 
-      {/* Space between — conditional on display/direction */}
+      <MarginControl
+        margin={state.margin}
+        marginTop={state.marginTop}
+        marginRight={state.marginRight}
+        marginBottom={state.marginBottom}
+        marginLeft={state.marginLeft}
+        onMarginChange={(v) => update("margin", v)}
+        onMarginTopChange={(v) => update("marginTop", v)}
+        onMarginRightChange={(v) => update("marginRight", v)}
+        onMarginBottomChange={(v) => update("marginBottom", v)}
+        onMarginLeftChange={(v) => update("marginLeft", v)}
+      />
+
+      {/* Space between — only one axis based on direction */}
       {isFlexRow && (
-        <EditPanelRow label="Space-X">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={state.spaceX ? state.spaceX.replace("space-x-", "") : "__none__"} onValueChange={(v) => update("spaceX", v === "__none__" ? "" : `space-x-${v}`)}>
-              <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
-              </SelectContent>
-            </Select>
-            <TextToggle value="space-x-reverse" label="rev" tooltip="space-x-reverse" isActive={!!state.spaceXReverse} onClick={() => update("spaceXReverse", state.spaceXReverse ? "" : "space-x-reverse")} />
+        <EditPanelRow
+          label="Space between"
+          variant="nested"
+          value={formatSpaceValue(state.spaceX, "space-x", !!state.spaceXReverse)}
+          onClear={(state.spaceX || state.spaceXReverse) ? () => { update("spaceX", ""); update("spaceXReverse", "") } : undefined}
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SteppedSlider
+                label=""
+                hideLabel
+                values={SPACING_SCALE_FULL}
+                prefix="space-x"
+                value={state.spaceX}
+                onChange={(v) => update("spaceX", v)}
+              />
+            </div>
+            <IconToggle value="space-x-reverse" icon={ArrowLeftFromLine} tooltip="space-x-reverse" isActive={!!state.spaceXReverse} onClick={() => update("spaceXReverse", state.spaceXReverse ? "" : "space-x-reverse")} />
           </div>
         </EditPanelRow>
       )}
       {(isBlockDisplay || isFlexCol) && (
-        <EditPanelRow label="Space-Y">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={state.spaceY ? state.spaceY.replace("space-y-", "") : "__none__"} onValueChange={(v) => update("spaceY", v === "__none__" ? "" : `space-y-${v}`)}>
-              <SelectTrigger className="h-6 w-20 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {SPACING_SCALE_FULL.map((v) => (<SelectItem key={v} value={String(v)} className="text-xs">{v}</SelectItem>))}
-              </SelectContent>
-            </Select>
-            <TextToggle value="space-y-reverse" label="rev" tooltip="space-y-reverse" isActive={!!state.spaceYReverse} onClick={() => update("spaceYReverse", state.spaceYReverse ? "" : "space-y-reverse")} />
+        <EditPanelRow
+          label="Space between"
+          variant="nested"
+          value={formatSpaceValue(state.spaceY, "space-y", !!state.spaceYReverse)}
+          onClear={(state.spaceY || state.spaceYReverse) ? () => { update("spaceY", ""); update("spaceYReverse", "") } : undefined}
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SteppedSlider
+                label=""
+                hideLabel
+                values={SPACING_SCALE_FULL}
+                prefix="space-y"
+                value={state.spaceY}
+                onChange={(v) => update("spaceY", v)}
+              />
+            </div>
+            <IconToggle value="space-y-reverse" icon={ArrowLeftFromLine} tooltip="space-y-reverse" isActive={!!state.spaceYReverse} onClick={() => update("spaceYReverse", state.spaceYReverse ? "" : "space-y-reverse")} />
           </div>
         </EditPanelRow>
       )}
 
-      {/* Width / Height — not for inline */}
-      {acceptsSize && (
-        <>
-          <EditPanelRow label="Width">
-            <Select value={state.width || "__none__"} onValueChange={(v) => update("width", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {WIDTH_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("w-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Height">
-            <Select value={state.height || "__none__"} onValueChange={(v) => update("height", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {HEIGHT_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("h-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Size">
-            <Select value={state.size || "__none__"} onValueChange={(v) => update("size", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {SIZE_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("size-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Min W">
-            <Select value={state.minWidth || "__none__"} onValueChange={(v) => update("minWidth", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {MIN_WIDTH_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("min-w-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Max W">
-            <Select value={state.maxWidth || "__none__"} onValueChange={(v) => update("maxWidth", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {MAX_WIDTH_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("max-w-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Min H">
-            <Select value={state.minHeight || "__none__"} onValueChange={(v) => update("minHeight", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {MIN_HEIGHT_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("min-h-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-
-          <EditPanelRow label="Max H">
-            <Select value={state.maxHeight || "__none__"} onValueChange={(v) => update("maxHeight", v === "__none__" ? "" : v)}>
-              <SelectTrigger className="h-6 w-24 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">–</SelectItem>
-                {MAX_HEIGHT_OPTIONS.map((v) => (<SelectItem key={v} value={v} className="text-xs">{v.replace("max-h-", "")}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </EditPanelRow>
-        </>
-      )}
-    </EditPanelSection>
+    </EditSection>
   )
 }

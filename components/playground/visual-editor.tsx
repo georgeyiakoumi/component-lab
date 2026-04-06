@@ -20,6 +20,7 @@ import { ContextPicker } from "@/components/playground/context-picker"
 import {
   ChildPlacementSection,
   LayoutSection,
+  SizeSection,
   SpacingSection,
   TypographySection,
   ColoursSection,
@@ -77,8 +78,6 @@ export function VisualEditor({
   const [state, setState] = React.useState<ControlState>(() =>
     classesToControlState(selectedElement?.currentClasses ?? [], "default"),
   )
-  const [showPaddingSides, setShowPaddingSides] = React.useState(false)
-  const [showMarginSides, setShowMarginSides] = React.useState(false)
 
   // Original classes that the editor does not manage
   const originalClasses = React.useRef<string[]>([])
@@ -92,8 +91,6 @@ export function VisualEditor({
     const classes = selectedElement?.currentClasses ?? []
     originalClasses.current = classes
     setState(classesToControlState(classes, combinedPrefix))
-    setShowPaddingSides(false)
-    setShowMarginSides(false)
   }, [selectedElement, combinedPrefix])
 
   // Emit class changes only when user interacts with controls
@@ -151,17 +148,19 @@ export function VisualEditor({
       "justifyItems",
       "position", "overflow", "zIndex", "inset", "insetX", "insetY", "top", "right", "bottom", "left",
       "visibility", "aspectRatio", "float", "clear", "isolation", "objectFit", "objectPosition",
-      "spaceY", "spaceX", "spaceXReverse", "spaceYReverse",
-      "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight", "size",
     ],
     childPlacement: [
       "justifySelf", "alignSelf", "order",
       "flexShorthand", "flexGrow", "flexShrink", "flexBasis",
       "colSpan", "rowSpan", "colStart", "colEnd", "rowStart", "rowEnd",
     ],
+    size: [
+      "width", "height", "size", "minWidth", "maxWidth", "minHeight", "maxHeight",
+    ],
     spacing: [
       "padding", "paddingX", "paddingY", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
       "margin", "marginX", "marginY", "marginTop", "marginRight", "marginBottom", "marginLeft",
+      "spaceY", "spaceX", "spaceXReverse", "spaceYReverse",
     ],
     typography: [
       "fontSize", "fontWeight", "fontFamily", "fontStyle", "textAlign",
@@ -294,6 +293,14 @@ export function VisualEditor({
           {/* ── Remaining sections hidden when display is hidden/contents ── */}
           {effectiveDisplay !== "hidden" && effectiveDisplay !== "contents" && (
           <>
+            <SizeSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+              effectiveDisplay={effectiveDisplay}
+            />
+
             <SpacingSection
               state={state}
               update={update}
@@ -301,11 +308,6 @@ export function VisualEditor({
               clearSection={clearSection}
               effectiveDisplay={effectiveDisplay}
               isFlex={isFlex}
-              isGrid={isGrid}
-              showPaddingSides={showPaddingSides}
-              showMarginSides={showMarginSides}
-              onTogglePaddingSides={() => setShowPaddingSides((v) => !v)}
-              onToggleMarginSides={() => setShowMarginSides((v) => !v)}
             />
 
             <TypographySection

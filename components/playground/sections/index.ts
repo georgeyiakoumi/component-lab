@@ -1,5 +1,6 @@
 export { ChildPlacementSection } from "./child-placement-section"
 export { LayoutSection } from "./layout-section"
+export { SizeSection } from "./size-section"
 export { SpacingSection } from "./spacing-section"
 export { TypographySection } from "./typography-section"
 export { ColoursSection } from "./colours-section"

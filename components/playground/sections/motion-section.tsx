@@ -117,7 +117,12 @@ export function MotionSection({
               </p>
             ) : (
               <>
-                <EditPanelRow label="Origin" variant="nested">
+                <EditPanelRow
+                  label="Origin"
+                  variant="nested"
+                  value={state.transformOrigin ? state.transformOrigin.replace("origin-", "") : undefined}
+                  onClear={state.transformOrigin ? () => update("transformOrigin", "") : undefined}
+                >
                   <TransformOriginGrid
                     value={state.transformOrigin}
                     onChange={(v) => update("transformOrigin", v)}

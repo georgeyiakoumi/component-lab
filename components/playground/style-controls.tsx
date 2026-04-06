@@ -432,18 +432,6 @@ function SteppedSlider({
             onChange(`${prefix}-${values[idx]}`)
           }}
         />
-        {hideLabel && hasValue && (
-          <>
-            <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{displayValue}</span>
-            <button
-              type="button"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
-              onClick={() => onChange("")}
-            >
-              <X className="size-3" />
-            </button>
-          </>
-        )}
       </div>
     </div>
   )
@@ -668,6 +656,266 @@ function BorderWidthControl({
           ))}
         </>
       )}
+    </div>
+  )
+}
+
+/* ── Padding control with link/unlink ────────────────────────────── */
+
+const SPACING_VALUES_FULL = [
+  "0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9",
+  "10", "11", "12", "14", "16", "20", "24", "28", "32", "36", "40", "44", "48",
+  "52", "56", "60", "64", "72", "80", "96",
+] as const
+
+function PaddingControl({
+  padding, paddingTop, paddingRight, paddingBottom, paddingLeft,
+  onPaddingChange, onPaddingTopChange, onPaddingRightChange, onPaddingBottomChange, onPaddingLeftChange,
+}: {
+  padding: string
+  paddingTop: string
+  paddingRight: string
+  paddingBottom: string
+  paddingLeft: string
+  onPaddingChange: (v: string) => void
+  onPaddingTopChange: (v: string) => void
+  onPaddingRightChange: (v: string) => void
+  onPaddingBottomChange: (v: string) => void
+  onPaddingLeftChange: (v: string) => void
+}) {
+  const [linked, setLinked] = React.useState(!paddingTop && !paddingRight && !paddingBottom && !paddingLeft)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking → clear per-side, keep 'all'
+      onPaddingTopChange(""); onPaddingRightChange(""); onPaddingBottomChange(""); onPaddingLeftChange("")
+      setLinked(true)
+    } else {
+      setLinked(false)
+    }
+  }
+
+  const parseVal = (v: string, pfx: string) => v ? v.replace(`${pfx}-`, "") : ""
+  const headerValue = linked
+    ? parseVal(padding, "p")
+    : [
+        paddingTop ? `T:${parseVal(paddingTop, "pt")}` : null,
+        paddingRight ? `R:${parseVal(paddingRight, "pr")}` : null,
+        paddingBottom ? `B:${parseVal(paddingBottom, "pb")}` : null,
+        paddingLeft ? `L:${parseVal(paddingLeft, "pl")}` : null,
+      ].filter(Boolean).join(", ")
+
+  return (
+    <div className="space-y-2">
+      <LinkedControlHeader
+        label="Padding"
+        value={headerValue}
+        linked={linked}
+        onToggleLink={handleToggleLink}
+        onClear={() => {
+          onPaddingChange("")
+          onPaddingTopChange(""); onPaddingRightChange(""); onPaddingBottomChange(""); onPaddingLeftChange("")
+        }}
+      />
+      {linked ? (
+        <SteppedSlider
+          label=""
+          hideLabel
+          values={SPACING_VALUES_FULL}
+          prefix="p"
+          value={padding}
+          onChange={onPaddingChange}
+        />
+      ) : (
+        <>
+          {([
+            { side: "top" as const, val: paddingTop, prefix: "pt", onChange: onPaddingTopChange },
+            { side: "right" as const, val: paddingRight, prefix: "pr", onChange: onPaddingRightChange },
+            { side: "bottom" as const, val: paddingBottom, prefix: "pb", onChange: onPaddingBottomChange },
+            { side: "left" as const, val: paddingLeft, prefix: "pl", onChange: onPaddingLeftChange },
+          ]).map(({ side, val, prefix, onChange }) => (
+            <div key={side} className="flex items-center gap-1.5">
+              <SideIcon side={side} />
+              <div className="flex-1">
+                <SteppedSlider
+                  label=""
+                  hideLabel
+                  values={SPACING_VALUES_FULL}
+                  prefix={prefix}
+                  value={val}
+                  onChange={onChange}
+                />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ── Margin control with link/unlink ─────────────────────────────── */
+
+function MarginControl({
+  margin, marginTop, marginRight, marginBottom, marginLeft,
+  onMarginChange, onMarginTopChange, onMarginRightChange, onMarginBottomChange, onMarginLeftChange,
+}: {
+  margin: string
+  marginTop: string
+  marginRight: string
+  marginBottom: string
+  marginLeft: string
+  onMarginChange: (v: string) => void
+  onMarginTopChange: (v: string) => void
+  onMarginRightChange: (v: string) => void
+  onMarginBottomChange: (v: string) => void
+  onMarginLeftChange: (v: string) => void
+}) {
+  const [linked, setLinked] = React.useState(!marginTop && !marginRight && !marginBottom && !marginLeft)
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      onMarginTopChange(""); onMarginRightChange(""); onMarginBottomChange(""); onMarginLeftChange("")
+      setLinked(true)
+    } else {
+      setLinked(false)
+    }
+  }
+
+  const parseVal = (v: string, pfx: string) => {
+    if (!v) return ""
+    const neg = v.startsWith("-")
+    const core = neg ? v.slice(1) : v
+    const raw = core.replace(`${pfx}-`, "")
+    return neg ? `-${raw}` : raw
+  }
+  const headerValue = linked
+    ? parseVal(margin, "m")
+    : [
+        marginTop ? `T:${parseVal(marginTop, "mt")}` : null,
+        marginRight ? `R:${parseVal(marginRight, "mr")}` : null,
+        marginBottom ? `B:${parseVal(marginBottom, "mb")}` : null,
+        marginLeft ? `L:${parseVal(marginLeft, "ml")}` : null,
+      ].filter(Boolean).join(", ")
+
+  return (
+    <div className="space-y-2">
+      <LinkedControlHeader
+        label="Margin"
+        value={headerValue}
+        linked={linked}
+        onToggleLink={handleToggleLink}
+        onClear={() => {
+          onMarginChange("")
+          onMarginTopChange(""); onMarginRightChange(""); onMarginBottomChange(""); onMarginLeftChange("")
+        }}
+      />
+      {linked ? (
+        <MarginAxisSlider prefix="m" value={margin} onChange={onMarginChange} />
+      ) : (
+        <>
+          {([
+            { side: "top" as const, val: marginTop, prefix: "mt", onChange: onMarginTopChange },
+            { side: "right" as const, val: marginRight, prefix: "mr", onChange: onMarginRightChange },
+            { side: "bottom" as const, val: marginBottom, prefix: "mb", onChange: onMarginBottomChange },
+            { side: "left" as const, val: marginLeft, prefix: "ml", onChange: onMarginLeftChange },
+          ]).map(({ side, val, prefix, onChange }) => (
+            <div key={side} className="flex items-center gap-1.5">
+              <SideIcon side={side} />
+              <div className="flex-1">
+                <MarginAxisSlider prefix={prefix} value={val} onChange={onChange} />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Margin axis slider: handles numeric scale + negative toggle + auto keyword.
+ * Uses a DropdownMenu for the negative toggle and 'auto' shortcut.
+ */
+function MarginAxisSlider({
+  prefix,
+  value,
+  onChange,
+}: {
+  prefix: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const isAuto = value === `${prefix}-auto`
+  const isNegative = value.startsWith("-")
+  const rawValue = isAuto
+    ? "auto"
+    : isNegative
+      ? value.replace(`-${prefix}-`, "")
+      : value.replace(`${prefix}-`, "")
+
+  const [negative, setNegative] = React.useState(isNegative)
+
+  const buildClass = (raw: string, neg: boolean) => {
+    if (!raw) return ""
+    if (raw === "auto") return `${prefix}-auto`
+    return neg ? `-${prefix}-${raw}` : `${prefix}-${raw}`
+  }
+
+  const hasValue = !!value
+  const currentIndex = !isAuto && hasValue ? SPACING_VALUES_FULL.indexOf(rawValue as typeof SPACING_VALUES_FULL[number]) : -1
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {isAuto ? (
+        <p className="flex-1 text-xs text-muted-foreground">auto</p>
+      ) : (
+        <Slider
+          className="flex-1"
+          active={hasValue}
+          value={[Math.max(0, currentIndex)]}
+          min={0}
+          max={SPACING_VALUES_FULL.length - 1}
+          step={1}
+          onValueChange={([idx]) => onChange(buildClass(SPACING_VALUES_FULL[idx], negative))}
+        />
+      )}
+      {hasValue && (
+        <span className="shrink-0 text-right text-xs tabular-nums text-muted-foreground min-w-[2.5rem]">
+          {isNegative ? "-" : ""}{rawValue}
+        </span>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+            <SlidersHorizontal className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-36">
+          <DropdownMenuCheckboxItem
+            className="text-xs"
+            checked={negative}
+            onCheckedChange={(checked) => {
+              const newNeg = !!checked
+              setNegative(newNeg)
+              if (value && !isAuto) onChange(buildClass(rawValue, newNeg))
+            }}
+          >
+            Negative
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            className="text-xs"
+            checked={isAuto}
+            onCheckedChange={(checked) => {
+              if (checked) onChange(`${prefix}-auto`)
+              else onChange("")
+            }}
+          >
+            auto
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
@@ -917,6 +1165,226 @@ function TranslateAxisControl({
             >
               Negative
             </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  )
+}
+
+/* ── Size control (width + height) with link/unlink + mode toggle ── */
+
+const SIZE_NUMBERS = ["0", "px", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16", "20", "24", "28", "32", "36", "40", "44", "48", "52", "56", "60", "64", "72", "80", "96"] as const
+const SIZE_FRACTIONS = ["1/2", "1/3", "2/3", "1/4", "2/4", "3/4", "1/5", "2/5", "3/5", "4/5", "1/6", "2/6", "3/6", "4/6", "5/6", "1/12", "2/12", "3/12", "4/12", "5/12", "6/12", "7/12", "8/12", "9/12", "10/12", "11/12"] as const
+
+// Axis-specific keyword lists (per v3 docs)
+const W_KEYWORDS = ["auto", "full", "screen", "svw", "lvw", "dvw", "min", "max", "fit"] as const
+const H_KEYWORDS = ["auto", "full", "screen", "svh", "lvh", "dvh", "min", "max", "fit"] as const
+const SIZE_KEYWORDS = ["auto", "full", "min", "max", "fit"] as const
+const MIN_W_KEYWORDS = ["full", "min", "max", "fit"] as const
+const MAX_W_KEYWORDS = ["none", "xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "full", "min", "max", "fit", "prose", "screen-sm", "screen-md", "screen-lg", "screen-xl", "screen-2xl"] as const
+const MIN_H_KEYWORDS = ["full", "screen", "svh", "lvh", "dvh", "min", "max", "fit"] as const
+const MAX_H_KEYWORDS = ["none", "full", "screen", "svh", "lvh", "dvh", "min", "max", "fit"] as const
+
+type SizeAxis = "w" | "h" | "size" | "min-w" | "max-w" | "min-h" | "max-h"
+type SizeMode = "numbers" | "fractions"
+
+function SizeControl({
+  width,
+  height,
+  size,
+  onWidthChange,
+  onHeightChange,
+  onSizeChange,
+}: {
+  width: string
+  height: string
+  size: string
+  onWidthChange: (v: string) => void
+  onHeightChange: (v: string) => void
+  onSizeChange: (v: string) => void
+}) {
+  // Linked state means we use `size-*`, unlinked means `w-*` + `h-*`
+  const [linked, setLinked] = React.useState(!!size || (!width && !height))
+
+  const handleToggleLink = () => {
+    if (!linked) {
+      // Linking → copy width to size, clear width/height
+      if (width) {
+        const raw = width.replace("w-", "")
+        // w-* viewport keywords (svw/lvw/dvw) aren't valid for size-*, so skip
+        const viewportKws = ["svw", "lvw", "dvw"]
+        if (!viewportKws.includes(raw)) {
+          onSizeChange(`size-${raw}`)
+        } else {
+          onSizeChange("")
+        }
+      }
+      onWidthChange("")
+      onHeightChange("")
+      setLinked(true)
+    } else {
+      // Unlinking → copy size to both w and h
+      if (size) {
+        const raw = size.replace("size-", "")
+        onWidthChange(`w-${raw}`)
+        onHeightChange(`h-${raw}`)
+      }
+      onSizeChange("")
+      setLinked(false)
+    }
+  }
+
+  const parseValue = (v: string, prefix: string) => v ? v.replace(`${prefix}-`, "") : ""
+  const headerValue = linked
+    ? parseValue(size, "size")
+    : [width ? `W:${parseValue(width, "w")}` : null, height ? `H:${parseValue(height, "h")}` : null].filter(Boolean).join(", ")
+
+  return (
+    <div className="space-y-2">
+      <LinkedControlHeader
+        label="Size"
+        value={headerValue}
+        linked={linked}
+        onToggleLink={handleToggleLink}
+        onClear={() => {
+          onWidthChange(""); onHeightChange(""); onSizeChange("")
+        }}
+      />
+      {linked ? (
+        <SizeAxisControl axis="size" value={size} onChange={onSizeChange} hideLabel />
+      ) : (
+        <>
+          <SizeAxisControl label="W" axis="w" value={width} onChange={onWidthChange} inline hideLabel />
+          <SizeAxisControl label="H" axis="h" value={height} onChange={onHeightChange} inline hideLabel />
+        </>
+      )}
+    </div>
+  )
+}
+
+function SizeAxisControl({
+  label,
+  axis,
+  value,
+  onChange,
+  hideLabel,
+  inline,
+}: {
+  label?: string
+  /** "w" | "h" | "size" | "min-w" | "max-w" | "min-h" | "max-h" */
+  axis: SizeAxis
+  value: string
+  onChange: (v: string) => void
+  hideLabel?: boolean
+  inline?: boolean
+}) {
+  const prefix = axis
+  const rawValue = value ? value.replace(`${prefix}-`, "") : ""
+
+  // Axis-specific keyword list
+  const keywords: readonly string[] =
+    axis === "w" ? W_KEYWORDS :
+    axis === "h" ? H_KEYWORDS :
+    axis === "min-w" ? MIN_W_KEYWORDS :
+    axis === "max-w" ? MAX_W_KEYWORDS :
+    axis === "min-h" ? MIN_H_KEYWORDS :
+    axis === "max-h" ? MAX_H_KEYWORDS :
+    SIZE_KEYWORDS
+
+  // min-w, max-w, min-h, max-h don't support fractions per v3 docs
+  const supportsFractions = axis === "w" || axis === "h" || axis === "size"
+
+  const isKeyword = keywords.includes(rawValue)
+  const isFraction = SIZE_FRACTIONS.includes(rawValue as typeof SIZE_FRACTIONS[number])
+
+  const detectMode = (): SizeMode => {
+    if (isFraction) return "fractions"
+    return "numbers"
+  }
+
+  const [mode, setMode] = React.useState<SizeMode>(detectMode)
+
+  const buildClass = (raw: string) => (raw ? `${prefix}-${raw}` : "")
+
+  const handleModeChange = (newMode: SizeMode) => {
+    setMode(newMode)
+    // Clear value when switching modes
+    onChange("")
+  }
+
+  const handleKeywordSelect = (keyword: string) => {
+    onChange(buildClass(keyword))
+  }
+
+  const hasValue = !!value
+  // When the current value is a keyword, the slider is inactive — show it at min position
+  const currentValues = mode === "fractions" ? SIZE_FRACTIONS : SIZE_NUMBERS
+  const currentIndex = !isKeyword && hasValue ? currentValues.indexOf(rawValue as never) : -1
+  const sliderActive = hasValue && !isKeyword && currentIndex >= 0
+  const displayValue = hasValue ? rawValue : ""
+
+  return (
+    <div className={hideLabel ? undefined : "space-y-1"}>
+      {!hideLabel && (
+        <div className="flex items-center gap-1">
+          <p className="flex-1 text-xs font-medium text-foreground">
+            {label}
+            <span className="ml-1 font-normal text-muted-foreground">{displayValue}</span>
+          </p>
+          {hasValue && (
+            <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => onChange("")}>
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
+      <div className="flex items-center gap-1.5">
+        {inline && label && <span className="shrink-0 text-xs font-medium text-muted-foreground w-4">{label}</span>}
+        {isKeyword ? (
+          <p className="flex-1 text-xs text-muted-foreground">{rawValue}</p>
+        ) : (
+          <Slider
+            className="flex-1"
+            active={sliderActive}
+            value={[Math.max(0, currentIndex)]}
+            min={0}
+            max={currentValues.length - 1}
+            step={1}
+            onValueChange={([idx]) => {
+              onChange(buildClass(currentValues[idx]))
+            }}
+          />
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+              <SlidersHorizontal className="size-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36">
+            {supportsFractions && (
+              <>
+                <DropdownMenuRadioGroup value={mode} onValueChange={(v) => handleModeChange(v as SizeMode)}>
+                  <DropdownMenuRadioItem value="numbers" className="text-xs">Numbers</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="fractions" className="text-xs">Fractions</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {keywords.map((kw) => (
+              <DropdownMenuCheckboxItem
+                key={kw}
+                className="text-xs"
+                checked={rawValue === kw}
+                onCheckedChange={(checked) => {
+                  if (checked) handleKeywordSelect(kw)
+                  else onChange("")
+                }}
+              >
+                {kw}
+              </DropdownMenuCheckboxItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -2331,4 +2799,8 @@ export {
   RotateControl,
   BorderRadiusControl,
   BorderWidthControl,
+  SizeControl,
+  SizeAxisControl,
+  PaddingControl,
+  MarginControl,
 }
