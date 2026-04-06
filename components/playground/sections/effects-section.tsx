@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react"
 
-import { SHADOW_OPTIONS, TEXT_SHADOW_OPTIONS, MIX_BLEND_OPTIONS, BG_BLEND_OPTIONS, MASK_CLIP_OPTIONS, MASK_COMPOSITE_OPTIONS, MASK_IMAGE_OPTIONS, MASK_MODE_OPTIONS, MASK_ORIGIN_OPTIONS, MASK_POSITION_GRID, MASK_REPEAT_OPTIONS, MASK_SIZE_OPTIONS, MASK_TYPE_OPTIONS } from "@/lib/tailwind-options"
+import { SHADOW_OPTIONS, TEXT_SHADOW_OPTIONS, MIX_BLEND_OPTIONS, BG_BLEND_OPTIONS, OPACITY_OPTIONS, MASK_CLIP_OPTIONS, MASK_COMPOSITE_OPTIONS, MASK_IMAGE_OPTIONS, MASK_MODE_OPTIONS, MASK_ORIGIN_OPTIONS, MASK_POSITION_GRID, MASK_REPEAT_OPTIONS, MASK_SIZE_OPTIONS, MASK_TYPE_OPTIONS } from "@/lib/tailwind-options"
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { TextToggle, ColorPicker, SpatialGrid } from "@/components/playground/style-controls"
+import { TextToggle, ColorPicker, SpatialGrid, SteppedSlider } from "@/components/playground/style-controls"
 import { EditPanelRow } from "@/components/playground/edit-panel-row"
 import {
   EditSection,
@@ -54,6 +54,24 @@ export function EffectsSection({
                 <TextToggle key={opt} value={opt} label={opt === "text-shadow" ? "base" : opt.replace("text-shadow-", "")} tooltip={opt} isActive={state.textShadow === opt} onClick={(v) => update("textShadow", state.textShadow === v ? "" : v)} />
               ))}
             </div>
+          </EditSubSectionContent>
+        </EditSubSection>
+      </EditSubSectionWrapper>
+
+      {/* ── Opacity ── */}
+      <EditSubSectionWrapper>
+        <EditSubSection>
+          <EditSubSectionTitle>Opacity</EditSubSectionTitle>
+          <EditSubSectionContent>
+            <SteppedSlider
+              label=""
+              hideLabel
+              values={OPACITY_OPTIONS.map((o) => o.replace("opacity-", ""))}
+              prefix="opacity"
+              value={state.opacity}
+              onChange={(v) => update("opacity", v)}
+              suffix="%"
+            />
           </EditSubSectionContent>
         </EditSubSection>
       </EditSubSectionWrapper>

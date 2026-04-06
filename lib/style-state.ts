@@ -384,22 +384,33 @@ export function findMatch(classes: string[], options: string[]): string {
 export const COLOR_SUFFIXES = new Set([
   "inherit", "current", "transparent", "black", "white",
   // shadcn tokens
-  "foreground", "primary", "secondary", "secondary-foreground",
-  "muted", "muted-foreground", "accent", "accent-foreground",
-  "destructive", "destructive-foreground", "background",
-  "card", "card-foreground", "popover", "popover-foreground",
+  "foreground", "background",
+  "card", "card-foreground",
+  "popover", "popover-foreground",
+  "primary", "primary-foreground",
+  "secondary", "secondary-foreground",
+  "muted", "muted-foreground",
+  "accent", "accent-foreground",
+  "destructive", "destructive-foreground",
   "border", "input", "ring",
-  "primary-foreground",
+  "chart-1", "chart-2", "chart-3", "chart-4", "chart-5",
+  "sidebar", "sidebar-foreground",
+  "sidebar-primary", "sidebar-primary-foreground",
+  "sidebar-accent", "sidebar-accent-foreground",
+  "sidebar-border", "sidebar-ring",
 ])
 
 /** Check if a class suffix is a valid Tailwind colour (token, special, or palette shade) */
 export function isColorSuffix(suffix: string): boolean {
-  if (COLOR_SUFFIXES.has(suffix)) return true
+  // Strip optional /opacity modifier (e.g. "slate-400/50" → "slate-400")
+  const slashIdx = suffix.lastIndexOf("/")
+  const base = slashIdx === -1 ? suffix : suffix.slice(0, slashIdx)
+  if (COLOR_SUFFIXES.has(base)) return true
   // Check for palette: {color}-{shade}
-  const lastDash = suffix.lastIndexOf("-")
+  const lastDash = base.lastIndexOf("-")
   if (lastDash === -1) return false
-  const color = suffix.slice(0, lastDash)
-  const shade = suffix.slice(lastDash + 1)
+  const color = base.slice(0, lastDash)
+  const shade = base.slice(lastDash + 1)
   return !!TW_SWATCH_COLORS[color]?.[shade]
 }
 
@@ -1071,8 +1082,13 @@ export function mergeClasses(
     const stripped = stripPrefix(c, context)
     if (!stripped) return true
 
-    // Check exact match in managed set
-    if (managed.has(stripped)) return false
+    // Strip any /opacity suffix for managed-set lookup
+    // (e.g. "bg-slate-400/50" → "bg-slate-400")
+    const slashIdx = stripped.lastIndexOf("/")
+    const baseStripped = slashIdx === -1 ? stripped : stripped.slice(0, slashIdx)
+
+    // Check exact match in managed set (with or without opacity)
+    if (managed.has(stripped) || managed.has(baseStripped)) return false
 
     // Check property group prefix — if the editor is emitting a class in the
     // same group, remove the old one (handles arbitrary values)

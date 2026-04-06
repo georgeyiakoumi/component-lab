@@ -172,7 +172,7 @@ export function VisualEditor({
     ],
     colours: [
       "textColor", "bgColor", "borderColor", "ringColor", "ringOffsetColor", "outlineColor",
-      "opacity", "gradientDirection", "gradientFrom", "gradientVia", "gradientTo",
+      "gradientDirection", "gradientFrom", "gradientVia", "gradientTo",
     ],
     borders: [
       "borderRadius", "borderRadiusTL", "borderRadiusTR", "borderRadiusBR", "borderRadiusBL",
@@ -180,7 +180,7 @@ export function VisualEditor({
       "ringWidth", "ringOffsetWidth", "outlineWidth", "outlineStyle", "outlineOffset",
       "divideX", "divideY", "divideStyle", "divideReverse",
     ],
-    effects: ["shadow", "shadowColor", "textShadow", "mixBlend", "bgBlend", "maskClip", "maskComposite", "maskImage", "maskMode", "maskOrigin", "maskPosition", "maskRepeat", "maskSize", "maskType"],
+    effects: ["shadow", "shadowColor", "textShadow", "opacity", "mixBlend", "bgBlend", "maskClip", "maskComposite", "maskImage", "maskMode", "maskOrigin", "maskPosition", "maskRepeat", "maskSize", "maskType"],
     filters: [
       "blur", "brightness", "contrast", "grayscale", "hueRotate", "invert", "saturate", "sepia", "dropShadow",
       "backdropBlur", "backdropBrightness", "backdropContrast", "backdropGrayscale",

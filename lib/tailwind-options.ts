@@ -298,22 +298,35 @@ export function generateTwColorClasses(prefix: string): string[] {
 /** shadcn semantic token options for text colour */
 export const SHADCN_TEXT_TOKENS = [
   { label: "Foreground", value: "text-foreground" },
-  { label: "Primary", value: "text-primary" },
-  { label: "Secondary FG", value: "text-secondary-foreground" },
-  { label: "Muted FG", value: "text-muted-foreground" },
-  { label: "Destructive", value: "text-destructive" },
-  { label: "Accent FG", value: "text-accent-foreground" },
+  { label: "Card foreground", value: "text-card-foreground" },
+  { label: "Popover foreground", value: "text-popover-foreground" },
+  { label: "Primary foreground", value: "text-primary-foreground" },
+  { label: "Secondary foreground", value: "text-secondary-foreground" },
+  { label: "Muted foreground", value: "text-muted-foreground" },
+  { label: "Accent foreground", value: "text-accent-foreground" },
+  { label: "Destructive foreground", value: "text-destructive-foreground" },
+  { label: "Sidebar foreground", value: "text-sidebar-foreground" },
+  { label: "Sidebar primary foreground", value: "text-sidebar-primary-foreground" },
+  { label: "Sidebar accent foreground", value: "text-sidebar-accent-foreground" },
 ]
 
 export const SHADCN_BG_TOKENS = [
   { label: "Background", value: "bg-background" },
+  { label: "Card", value: "bg-card" },
+  { label: "Popover", value: "bg-popover" },
   { label: "Primary", value: "bg-primary" },
   { label: "Secondary", value: "bg-secondary" },
   { label: "Muted", value: "bg-muted" },
   { label: "Accent", value: "bg-accent" },
   { label: "Destructive", value: "bg-destructive" },
-  { label: "Card", value: "bg-card" },
-  { label: "Popover", value: "bg-popover" },
+  { label: "Sidebar", value: "bg-sidebar" },
+  { label: "Sidebar primary", value: "bg-sidebar-primary" },
+  { label: "Sidebar accent", value: "bg-sidebar-accent" },
+  { label: "Chart 1", value: "bg-chart-1" },
+  { label: "Chart 2", value: "bg-chart-2" },
+  { label: "Chart 3", value: "bg-chart-3" },
+  { label: "Chart 4", value: "bg-chart-4" },
+  { label: "Chart 5", value: "bg-chart-5" },
 ]
 
 export const SHADCN_BORDER_TOKENS = [
@@ -321,13 +334,23 @@ export const SHADCN_BORDER_TOKENS = [
   { label: "Input", value: "border-input" },
   { label: "Ring", value: "border-ring" },
   { label: "Primary", value: "border-primary" },
+  { label: "Secondary", value: "border-secondary" },
+  { label: "Muted", value: "border-muted" },
+  { label: "Accent", value: "border-accent" },
   { label: "Destructive", value: "border-destructive" },
+  { label: "Card", value: "border-card" },
+  { label: "Popover", value: "border-popover" },
+  { label: "Sidebar Border", value: "border-sidebar-border" },
+  { label: "Sidebar Ring", value: "border-sidebar-ring" },
 ]
 
 export const SHADCN_RING_TOKENS = [
   { label: "Ring", value: "ring-ring" },
   { label: "Primary", value: "ring-primary" },
+  { label: "Secondary", value: "ring-secondary" },
+  { label: "Accent", value: "ring-accent" },
   { label: "Destructive", value: "ring-destructive" },
+  { label: "Sidebar Ring", value: "ring-sidebar-ring" },
 ]
 
 export const TEXT_COLOR_OPTIONS = [

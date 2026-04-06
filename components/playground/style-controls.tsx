@@ -9,6 +9,8 @@ import {
   ChevronUp,
   ChevronRight,
   Check,
+  LayoutGrid,
+  List,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -45,6 +47,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import {
   Select,
@@ -65,32 +68,77 @@ import { EditPanelRow } from "@/components/playground/edit-panel-row"
 
 /** Maps token class to its CSS bg class for display */
 const SHADCN_SWATCH_MAP: Record<string, string> = {
-  // text tokens
+  // text tokens (swatch rendered with matching bg class)
+  "text-background": "bg-background border",
   "text-foreground": "bg-foreground",
+  "text-card": "bg-card border",
+  "text-card-foreground": "bg-card-foreground",
+  "text-popover": "bg-popover border",
+  "text-popover-foreground": "bg-popover-foreground",
   "text-primary": "bg-primary",
+  "text-primary-foreground": "bg-primary-foreground border",
+  "text-secondary": "bg-secondary",
   "text-secondary-foreground": "bg-secondary-foreground",
+  "text-muted": "bg-muted",
   "text-muted-foreground": "bg-muted-foreground",
-  "text-destructive": "bg-destructive",
+  "text-accent": "bg-accent",
   "text-accent-foreground": "bg-accent-foreground",
+  "text-destructive": "bg-destructive",
+  "text-destructive-foreground": "bg-destructive-foreground border",
+  "text-sidebar": "bg-sidebar border",
+  "text-sidebar-foreground": "bg-sidebar-foreground",
+  "text-sidebar-primary": "bg-sidebar-primary",
+  "text-sidebar-primary-foreground": "bg-sidebar-primary-foreground border",
+  "text-sidebar-accent": "bg-sidebar-accent",
+  "text-sidebar-accent-foreground": "bg-sidebar-accent-foreground",
   // bg tokens
   "bg-background": "bg-background border",
-  "bg-primary": "bg-primary",
-  "bg-secondary": "bg-secondary",
-  "bg-muted": "bg-muted",
-  "bg-accent": "bg-accent",
-  "bg-destructive": "bg-destructive",
+  "bg-foreground": "bg-foreground",
   "bg-card": "bg-card border",
+  "bg-card-foreground": "bg-card-foreground",
   "bg-popover": "bg-popover border",
+  "bg-popover-foreground": "bg-popover-foreground",
+  "bg-primary": "bg-primary",
+  "bg-primary-foreground": "bg-primary-foreground border",
+  "bg-secondary": "bg-secondary",
+  "bg-secondary-foreground": "bg-secondary-foreground",
+  "bg-muted": "bg-muted",
+  "bg-muted-foreground": "bg-muted-foreground",
+  "bg-accent": "bg-accent",
+  "bg-accent-foreground": "bg-accent-foreground",
+  "bg-destructive": "bg-destructive",
+  "bg-destructive-foreground": "bg-destructive-foreground border",
+  "bg-sidebar": "bg-sidebar border",
+  "bg-sidebar-foreground": "bg-sidebar-foreground",
+  "bg-sidebar-primary": "bg-sidebar-primary",
+  "bg-sidebar-primary-foreground": "bg-sidebar-primary-foreground border",
+  "bg-sidebar-accent": "bg-sidebar-accent",
+  "bg-sidebar-accent-foreground": "bg-sidebar-accent-foreground",
+  "bg-chart-1": "bg-chart-1",
+  "bg-chart-2": "bg-chart-2",
+  "bg-chart-3": "bg-chart-3",
+  "bg-chart-4": "bg-chart-4",
+  "bg-chart-5": "bg-chart-5",
   // border tokens
   "border-border": "bg-border",
   "border-input": "bg-input",
   "border-ring": "bg-ring",
   "border-primary": "bg-primary",
+  "border-secondary": "bg-secondary",
+  "border-muted": "bg-muted",
+  "border-accent": "bg-accent",
   "border-destructive": "bg-destructive",
+  "border-card": "bg-card border",
+  "border-popover": "bg-popover border",
+  "border-sidebar-border": "bg-sidebar-border",
+  "border-sidebar-ring": "bg-sidebar-ring",
   // ring tokens
   "ring-ring": "bg-ring",
   "ring-primary": "bg-primary",
+  "ring-secondary": "bg-secondary",
+  "ring-accent": "bg-accent",
   "ring-destructive": "bg-destructive",
+  "ring-sidebar-ring": "bg-sidebar-ring",
 }
 
 /** Get the swatch for a shadcn token class */
@@ -384,6 +432,18 @@ function SteppedSlider({
             onChange(`${prefix}-${values[idx]}`)
           }}
         />
+        {hideLabel && hasValue && (
+          <>
+            <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{displayValue}</span>
+            <button
+              type="button"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={() => onChange("")}
+            >
+              <X className="size-3" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -1579,13 +1639,42 @@ function ColorPicker({
 }) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid")
 
-  // Parse current value for display
-  const hex = value ? getSwatchHex(value, prefix) : null
-  const tokenSwatch = value ? getShadcnTokenSwatch(value) : null
-  const displayLabel = value
-    ? value.startsWith(`${prefix}-`) ? value.slice(prefix.length + 1) : value
+  // Split "bg-slate-400/50" into base "bg-slate-400" and opacity "50"
+  const [baseValue, opacityStr] = React.useMemo(() => {
+    if (!value) return ["", ""]
+    const slashIdx = value.lastIndexOf("/")
+    if (slashIdx === -1) return [value, ""]
+    return [value.slice(0, slashIdx), value.slice(slashIdx + 1)]
+  }, [value])
+
+  const opacityNum = opacityStr ? parseInt(opacityStr, 10) : 100
+
+  // Helper: update just the colour part, preserving opacity
+  const setBase = (newBase: string) => {
+    if (!newBase) {
+      onChange("")
+      return
+    }
+    onChange(opacityStr && opacityNum < 100 ? `${newBase}/${opacityStr}` : newBase)
+  }
+
+  // Helper: update just the opacity part, preserving colour
+  const setOpacity = (newOpacity: number) => {
+    if (!baseValue) return
+    onChange(newOpacity >= 100 ? baseValue : `${baseValue}/${newOpacity}`)
+  }
+
+  // Parse current value for display (use base, not full value)
+  const hex = baseValue ? getSwatchHex(baseValue, prefix) : null
+  const tokenSwatch = baseValue ? getShadcnTokenSwatch(baseValue) : null
+  const displayLabel = baseValue
+    ? baseValue.startsWith(`${prefix}-`) ? baseValue.slice(prefix.length + 1) : baseValue
     : ""
+  const displayWithOpacity = displayLabel && opacityStr && opacityNum < 100
+    ? `${displayLabel} · ${opacityStr}%`
+    : displayLabel
 
   // Filter palette by search
   const filteredColors = search
@@ -1593,26 +1682,28 @@ function ColorPicker({
     : TW_COLOR_NAMES
 
   return (
-    <EditPanelRow label={label} className={className}>
+    <EditPanelRow label={label} variant="nested" className={className}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             className="flex h-7 w-full items-center gap-2 rounded-md border bg-transparent px-2 text-xs hover:bg-muted"
           >
-            {value ? (
+            {baseValue ? (
               <span
                 className={cn(
                   "size-4 shrink-0 rounded-sm border border-border/50",
                   tokenSwatch ? tokenSwatch.value : "",
                 )}
-                style={hex ? { backgroundColor: hex } : undefined}
+                style={hex ? { backgroundColor: hex, opacity: opacityNum / 100 } : { opacity: opacityNum / 100 }}
               />
             ) : (
               <span className="size-4 shrink-0 rounded-sm border border-dashed border-muted-foreground/40" />
             )}
-            <span className="flex-1 truncate text-left">{displayLabel}</span>
-            {value && (
+            <span className={cn("flex-1 truncate text-left", !baseValue && "text-muted-foreground/60")}>
+              {displayWithOpacity || "inherit"}
+            </span>
+            {baseValue && (
               <span
                 role="button"
                 tabIndex={0}
@@ -1625,8 +1716,8 @@ function ColorPicker({
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="end" side="top">
-          <div className="space-y-2 p-2">
+        <PopoverContent className="w-[300px] p-0" align="end" side="top">
+          <div className="p-2 space-y-2">
             {/* Search */}
             <Input
               placeholder="Search colours…"
@@ -1635,123 +1726,293 @@ function ColorPicker({
               onChange={(e) => setSearch(e.target.value)}
             />
 
-            <ScrollArea className="max-h-[300px]">
-              <div className="space-y-2 pr-2">
-                {/* Special values */}
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">Special</p>
-                  <div className="flex flex-wrap gap-1">
-                    {["inherit", "current", "transparent"].map((s) => {
-                      const cls = `${prefix}-${s}`
-                      return (
-                        <Badge
-                          key={s}
-                          variant={value === cls ? "default" : "outline"}
-                          className="cursor-pointer text-xs"
-                          onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
-                        >
-                          {s}
-                        </Badge>
-                      )
-                    })}
-                  </div>
+            {/* Special values always visible */}
+            <div className="flex flex-wrap gap-1">
+              {["inherit", "current", "transparent"].map((s) => {
+                const cls = `${prefix}-${s}`
+                return (
+                  <Badge
+                    key={s}
+                    variant={baseValue === cls ? "default" : "outline"}
+                    className="cursor-pointer text-xs"
+                    onClick={() => { setBase(baseValue === cls ? "" : cls); setOpen(false) }}
+                  >
+                    {s}
+                  </Badge>
+                )
+              })}
+            </div>
+
+            <Tabs defaultValue={shadcnTokens && shadcnTokens.length > 0 ? "shadcn" : "tailwind"} className="w-full">
+              <div className="flex items-center gap-1">
+                <TabsList className="h-7 p-0.5 flex-1">
+                  {shadcnTokens && shadcnTokens.length > 0 && (
+                    <TabsTrigger value="shadcn" className="text-xs px-2 py-0.5 flex-1">shadcn</TabsTrigger>
+                  )}
+                  <TabsTrigger value="tailwind" className="text-xs px-2 py-0.5 flex-1">Tailwind</TabsTrigger>
+                </TabsList>
+                <div className="flex h-7 items-center rounded-md border p-0.5">
+                  <button
+                    type="button"
+                    className={cn("flex size-5 items-center justify-center rounded-sm transition-colors", viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
+                    onClick={() => setViewMode("grid")}
+                    title="Grid view"
+                  >
+                    <LayoutGrid className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("flex size-5 items-center justify-center rounded-sm transition-colors", viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
+                    onClick={() => setViewMode("list")}
+                    title="List view"
+                  >
+                    <List className="size-3" />
+                  </button>
                 </div>
+              </div>
 
-                {/* shadcn tokens */}
-                {shadcnTokens && shadcnTokens.length > 0 && (!search || "shadcn".includes(search.toLowerCase())) && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">shadcn tokens</p>
-                    <div className="flex flex-wrap gap-1">
-                      {shadcnTokens.map((t) => (
-                        <Tooltip key={t.value}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className={cn(
-                                "size-6 rounded-md transition-all",
-                                SHADCN_SWATCH_MAP[t.value] ?? "bg-muted",
-                                value === t.value
-                                  ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
-                                  : "ring-1 ring-border hover:ring-foreground/30",
-                              )}
-                              onClick={() => { onChange(value === t.value ? "" : t.value); setOpen(false) }}
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-xs">
-                            {t.label}
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {/* shadcn tokens tab */}
+              {shadcnTokens && shadcnTokens.length > 0 && (
+                <TabsContent value="shadcn" className="mt-2">
+                  <ScrollArea className="h-[280px] pr-2">
+                    <div className="space-y-3">
+                      {(() => {
+                        // Group tokens by category, then sub-group by background vs foreground
+                        type Group = { key: string; label: string; filter: (v: string) => boolean }
+                        const groups: Group[] = [
+                          { key: "core", label: "Core", filter: (v) => !v.includes("card") && !v.includes("popover") && !v.includes("sidebar") && !v.includes("chart") },
+                          { key: "card", label: "Card & Popover", filter: (v) => v.includes("card") || v.includes("popover") },
+                          { key: "sidebar", label: "Sidebar", filter: (v) => v.includes("sidebar") },
+                          { key: "chart", label: "Chart", filter: (v) => v.includes("chart") },
+                        ]
+                        const searchLower = search.toLowerCase()
 
-                {/* Black & White */}
-                {(!search || "black white".includes(search.toLowerCase())) && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">Black & White</p>
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        { s: "black", hex: "#000000" },
-                        { s: "white", hex: "#ffffff" },
-                      ].map(({ s, hex: h }) => {
-                        const cls = `${prefix}-${s}`
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            className={cn(
-                              "size-6 rounded-md border transition-all",
-                              value === cls
-                                ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
-                                : "ring-1 ring-border hover:ring-foreground/30",
-                            )}
-                            style={{ backgroundColor: h }}
-                            onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
-                          />
+                        // Shorten token label for display in sub-groups
+                        // Foreground: "Primary foreground" → "Primary", "Foreground" → "Default"
+                        // Background: standalone "Background" → "Default"
+                        const shortenForeground = (label: string): string => {
+                          if (label === "Foreground") return "Default"
+                          return label.replace(/\s+foreground$/i, "")
+                        }
+                        const shortenBackground = (label: string): string => {
+                          if (label === "Background") return "Default"
+                          return label
+                        }
+
+                        const renderTokens = (tokens: { label: string; value: string }[], group: "none" | "bg" | "fg" = "none") => (
+                          viewMode === "grid" ? (
+                            <div className="flex flex-wrap gap-1">
+                              {tokens.map((t) => (
+                                <Tooltip key={t.value}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        "size-6 rounded-md transition-all",
+                                        SHADCN_SWATCH_MAP[t.value] ?? "bg-muted",
+                                        baseValue === t.value
+                                          ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                                          : "ring-1 ring-border hover:ring-foreground/30",
+                                      )}
+                                      onClick={() => { setBase(baseValue === t.value ? "" : t.value); setOpen(false) }}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="text-xs">
+                                    {group === "fg" ? shortenForeground(t.label) : group === "bg" ? shortenBackground(t.label) : t.label}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              {tokens.map((t) => (
+                                <button
+                                  key={t.value}
+                                  type="button"
+                                  className={cn(
+                                    "flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-xs transition-colors",
+                                    baseValue === t.value
+                                      ? "bg-muted text-foreground"
+                                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                                  )}
+                                  onClick={() => { setBase(baseValue === t.value ? "" : t.value); setOpen(false) }}
+                                >
+                                  <span
+                                    className={cn(
+                                      "size-4 shrink-0 rounded-sm border border-border/50",
+                                      SHADCN_SWATCH_MAP[t.value] ?? "bg-muted",
+                                    )}
+                                  />
+                                  <span className="flex-1">{group === "fg" ? shortenForeground(t.label) : group === "bg" ? shortenBackground(t.label) : t.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )
                         )
-                      })}
-                    </div>
-                  </div>
-                )}
 
-                {/* Full Tailwind palette */}
-                {filteredColors.map((colorName) => (
-                  <div key={colorName}>
-                    <p className="mb-1 text-xs font-medium capitalize text-muted-foreground">{colorName}</p>
-                    <div className="flex flex-wrap gap-0.5">
-                      {TW_SHADES.map((shade) => {
-                        const cls = `${prefix}-${colorName}-${shade}`
-                        const h = TW_SWATCH_COLORS[colorName]?.[shade] ?? "#888"
-                        return (
-                          <Tooltip key={shade}>
-                            <TooltipTrigger asChild>
+                        return groups.map((g) => {
+                          const groupTokens = shadcnTokens.filter((t) =>
+                            g.filter(t.value) && (!search || t.label.toLowerCase().includes(searchLower) || t.value.toLowerCase().includes(searchLower))
+                          )
+                          if (groupTokens.length === 0) return null
+
+                          // Split by design role: foreground tokens end in "-foreground"
+                          const foregroundTokens = groupTokens.filter((t) => t.value.endsWith("-foreground") || t.value.endsWith("foreground"))
+                          const backgroundTokens = groupTokens.filter((t) => !t.value.endsWith("-foreground") && !t.value.endsWith("foreground"))
+                          const hasBoth = foregroundTokens.length > 0 && backgroundTokens.length > 0
+
+                          return (
+                            <div key={g.key}>
+                              <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{g.label}</p>
+                              {hasBoth ? (
+                                <div className="space-y-2">
+                                  <div>
+                                    <div className="mb-1 flex items-center gap-2">
+                                      <span className="shrink-0 text-xs text-muted-foreground">Background</span>
+                                      <div className="h-px flex-1 bg-border" />
+                                    </div>
+                                    {renderTokens(backgroundTokens, "bg")}
+                                  </div>
+                                  <div>
+                                    <div className="mb-1 flex items-center gap-2">
+                                      <span className="shrink-0 text-xs text-muted-foreground">Foreground</span>
+                                      <div className="h-px flex-1 bg-border" />
+                                    </div>
+                                    {renderTokens(foregroundTokens, "fg")}
+                                  </div>
+                                </div>
+                              ) : (
+                                // Only foregrounds → strip "foreground" suffix from labels
+                                // Only backgrounds → strip "background" if standalone
+                                renderTokens(groupTokens, foregroundTokens.length > 0 ? "fg" : "bg")
+                              )}
+                            </div>
+                          )
+                        })
+                      })()}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
+
+              {/* Tailwind tab */}
+              <TabsContent value="tailwind" className="mt-2">
+                <ScrollArea className="h-[280px] pr-2">
+                  <div className="space-y-3">
+                    {/* Black & White */}
+                    {(!search || "black white".includes(search.toLowerCase())) && (
+                      <div>
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">Black & White</p>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            { s: "black", hex: "#000000" },
+                            { s: "white", hex: "#ffffff" },
+                          ].map(({ s, hex: h }) => {
+                            const cls = `${prefix}-${s}`
+                            return (
                               <button
+                                key={s}
                                 type="button"
                                 className={cn(
-                                  "size-5 rounded-sm transition-all",
-                                  value === cls
+                                  "size-6 rounded-md border transition-all",
+                                  baseValue === cls
                                     ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
-                                    : "hover:ring-1 hover:ring-foreground/30",
+                                    : "ring-1 ring-border hover:ring-foreground/30",
                                 )}
                                 style={{ backgroundColor: h }}
-                                onClick={() => { onChange(value === cls ? "" : cls); setOpen(false) }}
+                                onClick={() => { setBase(baseValue === cls ? "" : cls); setOpen(false) }}
                               />
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="text-xs">
-                              {colorName}-{shade}
-                            </TooltipContent>
-                          </Tooltip>
-                        )
-                      })}
-                    </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full Tailwind palette */}
+                    {filteredColors.map((colorName) => (
+                      <div key={colorName}>
+                        <p className="mb-1 text-xs font-medium capitalize text-muted-foreground">{colorName}</p>
+                        {viewMode === "grid" ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {TW_SHADES.map((shade) => {
+                              const cls = `${prefix}-${colorName}-${shade}`
+                              const h = TW_SWATCH_COLORS[colorName]?.[shade] ?? "#888"
+                              return (
+                                <Tooltip key={shade}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        "size-5 rounded-sm transition-all",
+                                        baseValue === cls
+                                          ? "ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+                                          : "hover:ring-1 hover:ring-foreground/30",
+                                      )}
+                                      style={{ backgroundColor: h }}
+                                      onClick={() => { setBase(baseValue === cls ? "" : cls); setOpen(false) }}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="text-xs">
+                                    {colorName}-{shade}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {TW_SHADES.map((shade) => {
+                              const cls = `${prefix}-${colorName}-${shade}`
+                              const h = TW_SWATCH_COLORS[colorName]?.[shade] ?? "#888"
+                              return (
+                                <button
+                                  key={shade}
+                                  type="button"
+                                  className={cn(
+                                    "flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-xs transition-colors",
+                                    baseValue === cls
+                                      ? "bg-muted text-foreground"
+                                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                                  )}
+                                  onClick={() => { setBase(baseValue === cls ? "" : cls); setOpen(false) }}
+                                >
+                                  <span
+                                    className="size-4 shrink-0 rounded-sm border border-border/50"
+                                    style={{ backgroundColor: h }}
+                                  />
+                                  <span className="flex-1">{colorName}-{shade}</span>
+                                  <span className="tabular-nums text-muted-foreground/60">{h}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Opacity slider (only when a colour is selected) */}
+      {baseValue && !["inherit", "current", "transparent"].some((s) => baseValue === `${prefix}-${s}`) && (
+        <div className="mt-1.5 flex items-center gap-2 px-0.5">
+          <span className="shrink-0 text-xs text-muted-foreground">Opacity</span>
+          <Slider
+            className="flex-1"
+            value={[opacityNum]}
+            min={0}
+            max={100}
+            step={5}
+            active={opacityNum < 100}
+            onValueChange={([v]) => setOpacity(v)}
+          />
+          <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{opacityNum}%</span>
+        </div>
+      )}
     </EditPanelRow>
   )
 }

@@ -46,6 +46,29 @@ function resolveColorHex(suffix: string): string | null {
   return TW_SWATCH_COLORS[color]?.[shade] ?? null
 }
 
+/** Convert hex to rgba with given alpha (0-1) */
+function hexToRgba(hex: string, alpha: number): string {
+  // Handle special values — wrap in color-mix for transparency
+  if (hex === "transparent" || hex === "inherit" || hex === "currentColor") return hex
+  const h = hex.replace("#", "")
+  const bigint = parseInt(h.length === 3
+    ? h.split("").map((c) => c + c).join("")
+    : h, 16)
+  const r = (bigint >> 16) & 255
+  const g = (bigint >> 8) & 255
+  const b = bigint & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Split a colour class value like "slate-400/50" into base + opacity percentage */
+function splitColorOpacity(suffix: string): { base: string; opacity: number } {
+  const slashIdx = suffix.lastIndexOf("/")
+  if (slashIdx === -1) return { base: suffix, opacity: 100 }
+  const base = suffix.slice(0, slashIdx)
+  const op = parseInt(suffix.slice(slashIdx + 1), 10)
+  return { base, opacity: isNaN(op) ? 100 : op }
+}
+
 /** Mapping from Tailwind prefix → CSS property */
 const COLOR_PREFIX_TO_CSS: Record<string, string> = {
   "text": "color",
@@ -104,14 +127,20 @@ function isNonColorSuffix(suffix: string): boolean {
 
 /** Known shadcn colour tokens */
 const SHADCN_TOKENS = new Set([
-  "foreground", "primary", "primary-foreground",
+  "foreground", "background",
+  "card", "card-foreground",
+  "popover", "popover-foreground",
+  "primary", "primary-foreground",
   "secondary", "secondary-foreground",
   "muted", "muted-foreground",
   "accent", "accent-foreground",
   "destructive", "destructive-foreground",
-  "background", "card", "card-foreground",
-  "popover", "popover-foreground",
   "border", "input", "ring",
+  "chart-1", "chart-2", "chart-3", "chart-4", "chart-5",
+  "sidebar", "sidebar-foreground",
+  "sidebar-primary", "sidebar-primary-foreground",
+  "sidebar-accent", "sidebar-accent-foreground",
+  "sidebar-border", "sidebar-ring",
 ])
 
 /**
@@ -152,17 +181,30 @@ export function resolveColorStyles(
         if (!cls.startsWith(`${prefix}-`)) continue
         const suffix = cls.slice(prefix.length + 1)
 
+        // Split off optional /opacity modifier
+        const { base, opacity } = splitColorOpacity(suffix)
+
         // Skip non-colour utilities
-        if (isNonColorSuffix(suffix)) break
+        if (isNonColorSuffix(base)) break
 
-        // Skip shadcn tokens — they work as regular classes
-        if (SHADCN_TOKENS.has(suffix)) break
+        // shadcn tokens: if no opacity, leave as class. If opacity, resolve via color-mix
+        if (SHADCN_TOKENS.has(base)) {
+          if (opacity < 100) {
+            const cssProp = COLOR_PREFIX_TO_CSS[prefix]
+            if (cssProp) {
+              // color-mix with hsl var (matches shadcn token format)
+              style[cssProp] = `color-mix(in srgb, hsl(var(--${base})) ${opacity}%, transparent)`
+              resolved = true
+            }
+          }
+          break
+        }
 
-        const hex = resolveColorHex(suffix)
+        const hex = resolveColorHex(base)
         if (hex) {
           const cssProp = COLOR_PREFIX_TO_CSS[prefix]
           if (cssProp) {
-            style[cssProp] = hex
+            style[cssProp] = opacity < 100 ? hexToRgba(hex, opacity / 100) : hex
             resolved = true
           }
           break
@@ -178,12 +220,12 @@ export function resolveColorStyles(
       for (const prefix of ["from", "via", "to"]) {
         if (!cls.startsWith(`${prefix}-`)) continue
         const suffix = cls.slice(prefix.length + 1)
-        const hex = resolveColorHex(suffix)
+        const { base, opacity } = splitColorOpacity(suffix)
+        const hex = resolveColorHex(base)
         if (hex) {
           const cssVar = GRADIENT_PREFIX_TO_CSS[prefix]
           if (cssVar) {
-            style[cssVar] = hex
-            // Also build gradient-stops
+            style[cssVar] = opacity < 100 ? hexToRgba(hex, opacity / 100) : hex
             resolved = true
           }
           break
