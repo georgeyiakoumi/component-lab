@@ -404,8 +404,10 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                     baseElement={sc.baseElement}
                     usecases={sc.usecases}
                     nestInside={sc.nestInside}
+                    namedGroup={sc.namedGroup}
+                    headingFont={sc.headingFont}
                     existingSubComponents={tree.subComponents.filter((s) => s.id !== sc.id)}
-                    onSave={(newName, newBaseElement, newUsecases, newNestInside) => {
+                    onSave={(newName, newBaseElement, newUsecases, newNestInside, newNamedGroup, newHeadingFont) => {
                       const newSubs = [...tree.subComponents]
                       const oldName = sc.name
                       newSubs[i] = {
@@ -415,6 +417,8 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                         baseElement: newBaseElement,
                         usecases: newUsecases ?? sc.usecases,
                         nestInside: newNestInside,
+                        namedGroup: newNamedGroup,
+                        headingFont: newHeadingFont,
                       }
 
                       let updatedAssembly = tree.assemblyTree
@@ -1117,6 +1121,8 @@ function EditSettingsDialog({
   baseElement: initialBaseElement,
   usecases: initialUsecases,
   nestInside: initialNestInside,
+  namedGroup: initialNamedGroup,
+  headingFont: initialHeadingFont,
   isCompound,
   existingSubComponents,
   onSave,
@@ -1125,6 +1131,8 @@ function EditSettingsDialog({
   baseElement: string
   usecases?: SubComponentUsecase[]
   nestInside?: string
+  namedGroup?: boolean
+  headingFont?: boolean
   isCompound?: boolean
   existingSubComponents?: SubComponentDef[]
   onSave: (
@@ -1132,6 +1140,8 @@ function EditSettingsDialog({
     baseElement: string,
     usecases?: SubComponentUsecase[],
     nestInside?: string,
+    namedGroup?: boolean,
+    headingFont?: boolean,
   ) => void
 }) {
   const [open, setOpen] = React.useState(false)
@@ -1139,15 +1149,9 @@ function EditSettingsDialog({
   const [baseElement, setBaseElement] = React.useState(initialBaseElement)
   const [usecases, setUsecases] = React.useState<SubComponentUsecase[]>(initialUsecases ?? [])
   const [nestInside, setNestInside] = React.useState(initialNestInside ?? "")
+  const [namedGroup, setNamedGroup] = React.useState<boolean>(initialNamedGroup ?? false)
+  const [headingFont, setHeadingFont] = React.useState<boolean>(initialHeadingFont ?? false)
   const isSubComponent = !isCompound
-
-  function toggleUsecase(uc: SubComponentUsecase) {
-    setUsecases((prev) => {
-      if (uc === "wrapper") return prev.includes("wrapper") ? [] : ["wrapper"]
-      const without = prev.filter((u) => u !== "wrapper" && u !== uc)
-      return prev.includes(uc) ? without : [...without, uc]
-    })
-  }
 
   React.useEffect(() => {
     if (open) {
@@ -1155,8 +1159,18 @@ function EditSettingsDialog({
       setBaseElement(initialBaseElement)
       setUsecases(initialUsecases ?? [])
       setNestInside(initialNestInside ?? "")
+      setNamedGroup(initialNamedGroup ?? false)
+      setHeadingFont(initialHeadingFont ?? false)
     }
-  }, [open, initialName, initialBaseElement, initialUsecases, initialNestInside])
+  }, [
+    open,
+    initialName,
+    initialBaseElement,
+    initialUsecases,
+    initialNestInside,
+    initialNamedGroup,
+    initialHeadingFont,
+  ])
 
   const pascalName = React.useMemo(() => {
     if (!editName.trim()) return ""
@@ -1252,6 +1266,30 @@ function EditSettingsDialog({
               </Select>
             </div>
           )}
+
+          {/* Conventions — sub-components only */}
+          {isSubComponent && (
+            <div className="space-y-2 rounded-md border bg-muted/40 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Named group</Label>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Adds <code className="rounded bg-muted px-1">group/{toDataSlot(initialName || editName || "name")}</code> so children can use <code className="rounded bg-muted px-1">group-data-[…]/name:</code> modifiers.
+                  </p>
+                </div>
+                <Switch checked={namedGroup} onCheckedChange={setNamedGroup} />
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label className="text-xs">Heading font</Label>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Adds <code className="rounded bg-muted px-1">cn-font-heading</code> for heading typography (uses <code className="rounded bg-muted px-1">--font-heading</code>).
+                  </p>
+                </div>
+                <Switch checked={headingFont} onCheckedChange={setHeadingFont} />
+              </div>
+            </div>
+          )}
         </div>
 
         <AlertDialogFooter>
@@ -1263,6 +1301,8 @@ function EditSettingsDialog({
                 baseElement,
                 isSubComponent ? usecases : undefined,
                 isSubComponent ? (nestInside || undefined) : undefined,
+                isSubComponent ? namedGroup : undefined,
+                isSubComponent ? headingFont : undefined,
               )
             }
             disabled={!pascalName}
@@ -1377,6 +1417,8 @@ function AddSubComponentDialog({
   const [baseElement, setBaseElement] = React.useState("div")
   const [usecases, setUsecases] = React.useState<SubComponentUsecase[]>([])
   const [nestInside, setNestInside] = React.useState("")
+  const [namedGroup, setNamedGroup] = React.useState<boolean>(false)
+  const [headingFont, setHeadingFont] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const pascalName = React.useMemo(() => {
@@ -1390,15 +1432,9 @@ function AddSubComponentDialog({
     setBaseElement("div")
     setUsecases([])
     setNestInside("")
+    setNamedGroup(false)
+    setHeadingFont(false)
     setError(null)
-  }
-
-  function toggleUsecase(uc: SubComponentUsecase) {
-    setUsecases((prev) => {
-      if (uc === "wrapper") return prev.includes("wrapper") ? [] : ["wrapper"]
-      const without = prev.filter((u) => u !== "wrapper" && u !== uc)
-      return prev.includes(uc) ? without : [...without, uc]
-    })
   }
 
   function handleAdd() {
@@ -1421,6 +1457,8 @@ function AddSubComponentDialog({
       props: [],
       variants: [],
       nestInside: nestInside || undefined,
+      namedGroup,
+      headingFont,
     }
 
     onAdd(sc)
@@ -1448,6 +1486,8 @@ function AddSubComponentDialog({
       props: [],
       variants: [],
       nestInside: nestInside || undefined,
+      namedGroup,
+      headingFont,
     }
 
     onAdd(sc)
@@ -1543,6 +1583,28 @@ function AddSubComponentDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Conventions */}
+          <div className="space-y-2 rounded-md border bg-muted/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-0.5">
+                <Label className="text-xs">Named group</Label>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Adds <code className="rounded bg-muted px-1">group/{toDataSlot(pascalName || "name")}</code> so children can use <code className="rounded bg-muted px-1">group-data-[…]/name:</code> modifiers.
+                </p>
+              </div>
+              <Switch checked={namedGroup} onCheckedChange={setNamedGroup} />
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-0.5">
+                <Label className="text-xs">Heading font</Label>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Adds <code className="rounded bg-muted px-1">cn-font-heading</code> for heading typography (uses <code className="rounded bg-muted px-1">--font-heading</code>).
+                </p>
+              </div>
+              <Switch checked={headingFont} onCheckedChange={setHeadingFont} />
+            </div>
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}

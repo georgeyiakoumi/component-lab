@@ -45,6 +45,13 @@ export interface SubComponentDef {
   variants: CustomVariantDef[]
   /** Name of the parent sub-component this nests inside, or undefined for root level */
   nestInside?: string
+  /** When true, emit `group/{kebab-name}` on the root element so children
+   *  can target this sub-component with `group-data-[...]/name:` modifiers.
+   *  Defaults to false — user opts in per sub-component. */
+  namedGroup?: boolean
+  /** When true, emit `cn-font-heading` on the root element. shadcn convention
+   *  for separating heading vs body fonts via `--font-heading` CSS variable. */
+  headingFont?: boolean
 }
 
 export interface ComponentTree {
@@ -90,6 +97,7 @@ export function toDataSlot(name: string): string {
     .toLowerCase()
 }
 
+
 export function createComponentTree(
   name: string,
   baseElement: string,
@@ -122,6 +130,8 @@ export function createSubComponent(
     classes: [],
     props: [],
     variants: [],
+    namedGroup: false,
+    headingFont: usecases.includes("heading"),
   }
 }
 
