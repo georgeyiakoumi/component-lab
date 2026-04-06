@@ -4,19 +4,48 @@ import * as React from "react"
 import { Code2, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { registry, type ComponentMeta } from "@/lib/registry"
+import { registry } from "@/lib/registry"
+import type { ComponentTree } from "@/lib/component-tree"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 interface StructurePanelProps {
   slug: string
+  /** Pass a ComponentTree for custom components (overrides registry lookup) */
+  customTree?: ComponentTree
+  onNodeClick?: (name: string) => void
   className?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
-export function StructurePanel({ slug, className }: StructurePanelProps) {
+export function StructurePanel({ slug, customTree, onNodeClick, className }: StructurePanelProps) {
+  // For custom components, build the outline from the tree
+  if (customTree) {
+    return (
+      <ScrollArea className={cn("h-full", className)}>
+        <div className="p-4">
+          <div className="space-y-1">
+            <TreeNode
+              name={customTree.name}
+              isRoot
+              isCompound={customTree.subComponents.length > 0}
+              onClick={onNodeClick}
+            />
+            {customTree.subComponents.length > 0 && (
+              <div className="ml-3 border-l border-border pl-3 space-y-0.5">
+                {customTree.subComponents.map((sub) => (
+                  <TreeNode key={sub.id} name={sub.name} onClick={onNodeClick} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </ScrollArea>
+    )
+  }
+
   const component = registry.find((c) => c.slug === slug)
 
   if (!component) {
@@ -36,13 +65,14 @@ export function StructurePanel({ slug, className }: StructurePanelProps) {
             name={component.name}
             isRoot
             isCompound={component.isCompound}
+            onClick={onNodeClick}
           />
 
           {/* ── Child nodes ────────────────────────────────── */}
           {component.isCompound && component.subComponents.length > 0 && (
             <div className="ml-3 border-l border-border pl-3 space-y-0.5">
               {component.subComponents.map((sub) => (
-                <TreeNode key={sub} name={sub} />
+                <TreeNode key={sub} name={sub} onClick={onNodeClick} />
               ))}
             </div>
           )}
@@ -77,13 +107,13 @@ interface TreeNodeProps {
   name: string
   isRoot?: boolean
   isCompound?: boolean
+  onClick?: (name: string) => void
 }
 
-function TreeNode({ name, isRoot, isCompound }: TreeNodeProps) {
+function TreeNode({ name, isRoot, isCompound, onClick }: TreeNodeProps) {
   const handleClick = React.useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log(`[StructurePanel] clicked: ${name}`)
-  }, [name])
+    onClick?.(name)
+  }, [name, onClick])
 
   return (
     <button
@@ -102,9 +132,6 @@ function TreeNode({ name, isRoot, isCompound }: TreeNodeProps) {
       <span className={cn(isRoot ? "text-foreground" : "text-muted-foreground")}>
         {name}
       </span>
-      {isRoot && isCompound && (
-        <span className="ml-auto text-xs text-muted-foreground">compound</span>
-      )}
     </button>
   )
 }

@@ -1,11 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
-import { GripVertical } from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
+import { PanelLeft } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { PlaygroundSidebar } from "@/components/playground/sidebar"
+import { DragHandle } from "@/components/playground/drag-handle"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { ComponentMeta } from "@/lib/registry"
 
 const MIN_WIDTH = 200
@@ -18,74 +25,80 @@ export default function PlaygroundLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [sidebarWidth, setSidebarWidth] = React.useState(DEFAULT_WIDTH)
-  const [isDragging, setIsDragging] = React.useState(false)
+  // Auto-collapse sidebar once a component is selected
+  const [sidebarOpen, setSidebarOpen] = React.useState(true)
+
+  // Collapse sidebar when navigating to a component page
+  React.useEffect(() => {
+    if (pathname !== "/playground") {
+      setSidebarOpen(false)
+    }
+  }, [pathname])
 
   function handleSelectComponent(component: ComponentMeta) {
     router.push(`/playground/${component.slug}` as `/playground/${string}`)
   }
 
-  const handleMouseDown = React.useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      setIsDragging(true)
-
-      const startX = e.clientX
-      const startWidth = sidebarWidth
-
-      function onMouseMove(moveEvent: MouseEvent) {
-        const delta = moveEvent.clientX - startX
-        const newWidth = Math.min(
-          MAX_WIDTH,
-          Math.max(MIN_WIDTH, startWidth + delta)
-        )
-        setSidebarWidth(newWidth)
-      }
-
-      function onMouseUp() {
-        setIsDragging(false)
-        document.removeEventListener("mousemove", onMouseMove)
-        document.removeEventListener("mouseup", onMouseUp)
-      }
-
-      document.addEventListener("mousemove", onMouseMove)
-      document.addEventListener("mouseup", onMouseUp)
-    },
-    [sidebarWidth]
-  )
+  function handleSelectCustomComponent(slug: string) {
+    router.push(`/playground/custom/${slug}`)
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      {/* ── Sidebar ──────────────────────────────────────────── */}
-      <div
-        className="shrink-0"
-        style={{ width: sidebarWidth }}
-      >
-        <PlaygroundSidebar onSelectComponent={handleSelectComponent} />
-      </div>
+      {/* ── Sidebar toggle (visible when collapsed) ────────── */}
+      {!sidebarOpen && (
+        <TooltipProvider delayDuration={300}>
+          <div className="flex shrink-0 flex-col border-r bg-background">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="m-1 size-8"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <PanelLeft className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                Show components
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      )}
 
-      {/* ── Resize handle ────────────────────────────────────── */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={cn(
-          "relative flex w-1.5 shrink-0 cursor-col-resize items-center justify-center border-x bg-muted/50 transition-colors hover:bg-blue-500/20",
-          isDragging && "bg-blue-500/20"
-        )}
-      >
-        <div className="absolute z-10 flex h-8 w-4 items-center justify-center rounded-sm border bg-background shadow-sm">
-          <GripVertical className="h-3 w-3 text-muted-foreground" />
-        </div>
-      </div>
+      {/* ── Sidebar ──────────────────────────────────────────── */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="shrink-0"
+            style={{ width: sidebarWidth }}
+          >
+            <PlaygroundSidebar
+              onSelectComponent={handleSelectComponent}
+              onSelectCustomComponent={handleSelectCustomComponent}
+              onCollapse={() => setSidebarOpen(false)}
+            />
+          </div>
+
+          {/* ── Resize handle ──────────────────────────────────── */}
+          <DragHandle
+            width={sidebarWidth}
+            minWidth={MIN_WIDTH}
+            maxWidth={MAX_WIDTH}
+            onWidthChange={setSidebarWidth}
+            side="left"
+          />
+        </>
+      )}
 
       {/* ── Main content area ────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
-
-      {/* Prevent text selection while dragging */}
-      {isDragging && (
-        <div className="fixed inset-0 z-50 cursor-col-resize" />
-      )}
     </div>
   )
 }

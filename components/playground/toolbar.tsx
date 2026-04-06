@@ -8,6 +8,13 @@ import {
   Smartphone,
   Moon,
   Sun,
+  Eye,
+  Pencil,
+  Layers,
+  Download,
+  Save,
+  Loader2,
+  Check,
 } from "lucide-react"
 import { ExportDialog } from "@/components/playground/export-dialog"
 
@@ -47,6 +54,8 @@ export const breakpoints: {
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
+export type PlaygroundMode = "inspect" | "edit" | "define" | "preview"
+
 export interface PropSelector {
   label: string
   options: readonly string[]
@@ -63,6 +72,14 @@ interface ToolbarProps {
   breakpoint?: Breakpoint
   onBreakpointChange?: (breakpoint: Breakpoint) => void
   propSelectors?: PropSelector[]
+  mode?: PlaygroundMode
+  onModeChange?: (mode: PlaygroundMode) => void
+  /** When true, shows Define/Preview toggle instead of Inspect/Edit */
+  isCustom?: boolean
+  /** Save state for custom components */
+  saveState?: "idle" | "saving" | "saved"
+  /** Manual save handler */
+  onSave?: () => void
   className?: string
 }
 
@@ -77,6 +94,11 @@ export function PlaygroundToolbar({
   breakpoint = "2xl",
   onBreakpointChange,
   propSelectors,
+  mode = "inspect",
+  onModeChange,
+  isCustom,
+  saveState,
+  onSave,
   className,
 }: ToolbarProps) {
   const hasSelectors = propSelectors && propSelectors.length > 0
@@ -102,79 +124,112 @@ export function PlaygroundToolbar({
           </span>
         </div>
 
-        {/* ── Spacer ─────────────────────────────────────────── */}
-        <div className="flex-1" />
-
-        {/* ── Prop selectors ──────────────────────────────────── */}
-        {hasSelectors && (
+        {/* ── Mode toggle ────────────────────────────────────── */}
+        {componentName && (
           <>
-            {propSelectors.map((selector) => (
-              <Select
-                key={selector.label}
-                value={selector.value}
-                onValueChange={selector.onChange}
-              >
-                <SelectTrigger className="h-8 w-[130px] text-xs">
-                  <SelectValue placeholder={selector.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  {selector.options.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
-
             <Separator orientation="vertical" className="mx-1.5 h-6" />
+            <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+              {isCustom ? (
+                <>
+                  <Button
+                    variant={mode === "define" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => onModeChange?.("define")}
+                  >
+                    <Layers className="size-3" />
+                    Define
+                  </Button>
+                  <Button
+                    variant={mode === "preview" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => onModeChange?.("preview")}
+                  >
+                    <Eye className="size-3" />
+                    Preview
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant={mode === "inspect" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => onModeChange?.("inspect")}
+                  >
+                    <Eye className="size-3" />
+                    Inspect
+                  </Button>
+                  <Button
+                    variant={mode === "edit" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => onModeChange?.("edit")}
+                  >
+                    <Pencil className="size-3" />
+                    Edit
+                  </Button>
+                </>
+              )}
+            </div>
           </>
         )}
 
-        {/* ── Breakpoint controls ─────────────────────────────── */}
-        <div className="flex items-center gap-0.5">
-          {breakpoints.map((bp) => {
-            const Icon = bp.icon
-            return (
-              <ToolbarButton
-                key={bp.key}
-                icon={<Icon className="size-4" />}
-                label={bp.label}
-                active={breakpoint === bp.key}
-                onClick={() => onBreakpointChange?.(bp.key)}
-              />
-            )
-          })}
-        </div>
+        {/* ── Spacer ─────────────────────────────────────────── */}
+        <div className="flex-1" />
 
-        <Separator orientation="vertical" className="mx-1.5 h-6" />
+        {/* ── Save (custom components only) ──────────────────── */}
+        {onSave && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSave}
+            disabled={saveState === "saving"}
+            className="gap-1.5"
+          >
+            {saveState === "saving" ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : saveState === "saved" ? (
+              <>
+                <Check className="size-3.5" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="size-3.5" />
+                Save
+              </>
+            )}
+          </Button>
+        )}
 
-        {/* ── Theme controls ──────────────────────────────────── */}
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            icon={<Sun className="size-4" />}
-            label="Light theme"
-            active={theme === "light"}
-            onClick={() => onThemeChange?.("light")}
-          />
-          <ToolbarButton
-            icon={<Moon className="size-4" />}
-            label="Dark theme"
-            active={theme === "dark"}
-            onClick={() => onThemeChange?.("dark")}
-          />
-        </div>
-
-        {/* ── Export ──────────────────────────────────────────── */}
-        {componentName && slug && source && (
-          <>
-            <Separator orientation="vertical" className="mx-1.5 h-6" />
+        {/* ── Export ─────────────────────────────────────────── */}
+        {componentName && (
+          slug && source ? (
             <ExportDialog
               slug={slug}
               source={source}
               componentName={componentName}
             />
-          </>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button variant="outline" size="sm" disabled className="gap-1.5 pointer-events-none">
+                    <Download className="size-3.5" />
+                    Export
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Design your component first to enable export</p>
+              </TooltipContent>
+            </Tooltip>
+          )
         )}
       </div>
     </TooltipProvider>

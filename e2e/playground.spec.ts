@@ -6,22 +6,48 @@ test.describe("Playground - Component Loading", () => {
     await expect(page.getByText("Button", { exact: true }).first()).toBeVisible()
   })
 
-  test("sidebar shows component categories", async ({ page }) => {
-    await page.goto("/playground/button")
+  test("sidebar shows component categories on index page", async ({ page }) => {
+    // Sidebar is open on the /playground index (no component selected)
+    await page.goto("/playground")
     await expect(page.getByText("Inputs")).toBeVisible()
     await expect(page.getByText("Layout")).toBeVisible()
   })
 
-  test("sidebar search filters components", async ({ page }) => {
-    await page.goto("/playground/button")
+  test("sidebar search filters components on index page", async ({ page }) => {
+    await page.goto("/playground")
     const search = page.getByPlaceholder(/search components/i)
     await search.fill("card")
     await expect(page.getByText("Card", { exact: true })).toBeVisible()
   })
 
+  test("sidebar auto-collapses when navigating to a component", async ({ page }) => {
+    await page.goto("/playground")
+    // Sidebar should be open initially
+    await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
+    // Click a component to navigate
+    await page.getByText("Inputs").click()
+    await page.getByText("Button", { exact: true }).first().click()
+    await page.waitForURL(/\/playground\/button/)
+    // Sidebar should have collapsed — search input no longer visible
+    await expect(page.getByPlaceholder(/search components/i)).not.toBeVisible()
+  })
+
+  test("collapsed sidebar can be reopened with PanelLeft button", async ({ page }) => {
+    await page.goto("/playground/button")
+    // Sidebar is collapsed — click the PanelLeft toggle button to reopen
+    const toggleButton = page.getByRole("button").filter({ has: page.locator("svg.lucide-panel-left") })
+    await toggleButton.click()
+    // Sidebar should now show search and categories
+    await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
+  })
+
   test("clicking sidebar component navigates", async ({ page }) => {
     await page.goto("/playground/button")
-    // Expand Inputs category
+    // Reopen sidebar first
+    const toggleButton = page.getByRole("button").filter({ has: page.locator("svg.lucide-panel-left") })
+    await toggleButton.click()
+    await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
+    // Expand Inputs category and click Checkbox
     await page.getByText("Inputs").click()
     await page.getByText("Checkbox").click()
     await expect(page).toHaveURL(/\/playground\/checkbox/)

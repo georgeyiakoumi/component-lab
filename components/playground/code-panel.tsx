@@ -19,15 +19,51 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface CodePanelProps {
   code: string
   language?: string
+  /** Line number to scroll to and highlight (1-based) */
+  highlightLine?: number | null
+  /** Range of lines to focus — dims everything outside this range */
+  focusRange?: { start: number; end: number } | null
   className?: string
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
-export function CodePanel({ code, language = "tsx", className }: CodePanelProps) {
+export function CodePanel({ code, language = "tsx", highlightLine, focusRange, className }: CodePanelProps) {
   const [highlightedHtml, setHighlightedHtml] = React.useState<string>("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [copied, setCopied] = React.useState(false)
+  const codeBodyRef = React.useRef<HTMLDivElement>(null)
+
+  // Scroll to and highlight the target line
+  React.useEffect(() => {
+    if (!highlightLine || !codeBodyRef.current) return
+
+    const lines = codeBodyRef.current.querySelectorAll(".line")
+    const targetLine = lines[highlightLine - 1] as HTMLElement | undefined
+    if (!targetLine) return
+
+    // Scroll into view
+    targetLine.scrollIntoView({ behavior: "smooth", block: "center" })
+
+    // Flash highlight
+    targetLine.style.backgroundColor = "rgba(59, 130, 246, 0.2)"
+    targetLine.style.transition = "background-color 0.3s"
+    const timer = setTimeout(() => {
+      targetLine.style.backgroundColor = ""
+    }, 2000)
+
+    return () => clearTimeout(timer)
+  }, [highlightLine])
+
+  // Build a CSS style string for focus range dimming
+  // Using a <style> tag approach instead of inline styles so it survives re-renders
+  const focusStyle = React.useMemo(() => {
+    if (!focusRange) return ""
+    const { start, end } = focusRange
+    // CSS nth-child selectors to dim lines outside the range
+    return `.code-panel-shiki .line { opacity: 0.2; transition: opacity 0.3s; }
+.code-panel-shiki .line:nth-child(n+${start}):nth-child(-n+${end}) { opacity: 1; }`
+  }, [focusRange])
 
   React.useEffect(() => {
     let cancelled = false
@@ -60,6 +96,9 @@ export function CodePanel({ code, language = "tsx", className }: CodePanelProps)
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
+      {/* Focus range dimming via CSS (survives re-renders) */}
+      {focusStyle && <style dangerouslySetInnerHTML={{ __html: focusStyle }} />}
+
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex h-10 shrink-0 items-center justify-between border-b px-3">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -90,7 +129,7 @@ export function CodePanel({ code, language = "tsx", className }: CodePanelProps)
       </div>
 
       {/* ── Code body ─────────────────────────────────────────── */}
-      <ScrollArea className="flex-1 bg-[#0d1117]">
+      <div className="flex-1 overflow-auto bg-[#0d1117]">
         {isLoading ? (
           <div className="space-y-2 p-4">
             <Skeleton className="h-4 w-3/4 bg-white/5" />
@@ -103,11 +142,12 @@ export function CodePanel({ code, language = "tsx", className }: CodePanelProps)
           </div>
         ) : (
           <div
-            className="code-panel-shiki text-sm font-mono p-4 [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_code]:[counter-reset:line] [&_.line]:table-row [&_.line]:[counter-increment:line] [&_.line::before]:table-cell [&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]"
+            ref={codeBodyRef}
+            className="code-panel-shiki min-w-max text-sm font-mono p-4 [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_code]:[counter-reset:line] [&_.line]:table-row [&_.line]:[counter-increment:line] [&_.line::before]:table-cell [&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]"
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         )}
-      </ScrollArea>
+      </div>
     </div>
   )
 }

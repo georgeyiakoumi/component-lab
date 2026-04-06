@@ -1,23 +1,32 @@
 "use client"
 
 import * as React from "react"
-import { Search, ChevronRight, Layers } from "lucide-react"
+import { Search, ChevronRight, Layers, PanelLeftClose, Plus, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
   categories,
+  registry,
   searchComponents,
   getComponentsByCategory,
   type ComponentMeta,
 } from "@/lib/registry"
+import {
+  getUserComponents,
+  deleteUserComponent,
+  type UserComponent,
+} from "@/lib/component-store"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 interface SidebarProps {
   onSelectComponent?: (component: ComponentMeta) => void
+  onSelectCustomComponent?: (slug: string) => void
+  onCollapse?: () => void
   selectedSlug?: string
   className?: string
 }
@@ -26,6 +35,8 @@ interface SidebarProps {
 
 export function PlaygroundSidebar({
   onSelectComponent,
+  onSelectCustomComponent,
+  onCollapse,
   selectedSlug,
   className,
 }: SidebarProps) {
@@ -33,6 +44,25 @@ export function PlaygroundSidebar({
   const [expandedCategories, setExpandedCategories] = React.useState<
     Set<string>
   >(new Set())
+  const [customComponents, setCustomComponents] = React.useState<UserComponent[]>([])
+
+  // Load custom components on mount and when store changes
+  React.useEffect(() => {
+    setCustomComponents(getUserComponents())
+  }, [])
+
+  const refreshCustomComponents = React.useCallback(() => {
+    setCustomComponents(getUserComponents())
+  }, [])
+
+  const handleDeleteCustom = React.useCallback(
+    (e: React.MouseEvent, slug: string) => {
+      e.stopPropagation()
+      deleteUserComponent(slug)
+      refreshCustomComponents()
+    },
+    [refreshCustomComponents],
+  )
 
   const grouped = React.useMemo(() => getComponentsByCategory(), [])
 
@@ -65,9 +95,17 @@ export function PlaygroundSidebar({
         <span className="text-sm font-semibold tracking-tight">
           Components
         </span>
-        <Badge variant="secondary" className="ml-auto text-[10px]">
-          {filteredComponents.length}
-        </Badge>
+        <div className="flex-1" />
+        {onCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0"
+            onClick={onCollapse}
+          >
+            <PanelLeftClose className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       <div className="border-b px-3 py-2">
@@ -85,6 +123,62 @@ export function PlaygroundSidebar({
       {/* ── Component list ─────────────────────────────────────── */}
       <ScrollArea className="flex-1">
         <div className="py-2">
+          {/* ── My Components ─────────────────────────────────── */}
+          {!isSearching && (
+            <div className="mb-2">
+              <div className="flex items-center gap-2 px-4 py-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  My Components
+                </span>
+                {customComponents.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {customComponents.length}
+                  </Badge>
+                )}
+                <a
+                  href="/playground/new"
+                  className="ml-auto rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  title="Create new component"
+                >
+                  <Plus className="size-3.5" />
+                </a>
+              </div>
+              <div className="space-y-0.5">
+                {customComponents.map((uc) => (
+                  <div
+                    key={uc.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectCustomComponent?.(uc.slug)}
+                    onKeyDown={(e) => { if (e.key === "Enter") onSelectCustomComponent?.(uc.slug) }}
+                    className={cn(
+                      "group flex w-full cursor-pointer items-center gap-2 rounded-md px-6 py-1.5 text-left text-sm transition-colors",
+                      selectedSlug === `custom/${uc.slug}`
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground/80 hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <span className="truncate">{uc.name}</span>
+                    <Badge
+                      variant="outline"
+                      className="h-4 shrink-0 px-1 text-xs font-normal"
+                    >
+                      custom
+                    </Badge>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteCustom(e, uc.slug)}
+                      className="shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mx-4 mt-2 border-b" />
+            </div>
+          )}
+
           {isSearching ? (
             /* ── Flat search results ──────────────────────────── */
             filteredComponents.length === 0 ? (
@@ -106,7 +200,16 @@ export function PlaygroundSidebar({
             )
           ) : (
             /* ── Grouped categories ──────────────────────────── */
-            categories.map((category) => {
+            <>
+            <div className="flex items-center gap-2 px-4 py-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                shadcn Components
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                {registry.length}
+              </Badge>
+            </div>
+            {categories.map((category) => {
               const components = grouped.get(category.name) ?? []
               if (components.length === 0) return null
 
@@ -129,7 +232,7 @@ export function PlaygroundSidebar({
                       )}
                     />
                     <span>{category.name}</span>
-                    <span className="ml-auto tabular-nums text-[10px] text-muted-foreground/60">
+                    <span className="ml-auto tabular-nums text-xs text-muted-foreground/60">
                       {components.length}
                     </span>
                   </button>
@@ -148,7 +251,8 @@ export function PlaygroundSidebar({
                   )}
                 </div>
               )
-            })
+            })}
+            </>
           )}
         </div>
       </ScrollArea>
@@ -184,14 +288,14 @@ function ComponentItem({
     >
       <span className="truncate">{component.name}</span>
       {showCategory && (
-        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground">
           {component.category}
         </span>
       )}
       {component.isCompound && !showCategory && (
         <Badge
           variant="outline"
-          className="ml-auto h-4 px-1 text-[9px] font-normal"
+          className="ml-auto h-4 px-1 text-xs font-normal"
         >
           compound
         </Badge>

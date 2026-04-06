@@ -1,0 +1,364 @@
+"use client"
+
+import * as React from "react"
+import { X } from "lucide-react"
+
+import type { ElementInfo } from "@/components/playground/element-selector"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  TooltipProvider,
+} from "@/components/ui/tooltip"
+
+import { getNativeDisplay, DISPLAY_OPTIONS } from "@/lib/tailwind-options"
+import type { StyleContext } from "@/lib/style-context"
+import { getCssPrefix } from "@/lib/style-context"
+import type { ControlState } from "@/lib/style-state"
+import { classesToControlState, controlStateToClasses, mergeClasses } from "@/lib/style-state"
+
+import { ContextPicker } from "@/components/playground/context-picker"
+import {
+  ChildPlacementSection,
+  LayoutSection,
+  SizeSection,
+  SpacingSection,
+  TypographySection,
+  ColoursSection,
+  BordersSection,
+  EffectsSection,
+  FiltersSection,
+  MotionSection,
+} from "@/components/playground/sections"
+
+/* ── Types ──────────────────────────────────────────────────────── */
+
+interface VariantOption {
+  variantName: string
+  optionValue: string
+}
+
+interface VisualEditorProps {
+  selectedElement: ElementInfo | null
+  onClassChange: (classes: string[]) => void
+  onDeselect: () => void
+  variants?: Array<{ name: string; options: string[] }>
+  props?: Array<{ name: string; type: string }>
+  parentVariants?: Array<{ name: string; options: string[]; parentName: string }>
+  subComponentNames?: string[]
+  parentClasses?: string[]
+  parentTag?: string
+}
+
+/* ── Main component ──────────────────────────────────────────────── */
+
+export function VisualEditor({
+  selectedElement,
+  onClassChange,
+  onDeselect,
+  variants,
+  props,
+  parentVariants,
+  subComponentNames,
+  parentClasses,
+  parentTag,
+}: VisualEditorProps) {
+  const [contexts, setContexts] = React.useState<string[]>([])
+
+  // Compute the combined CSS prefix from selected contexts
+  const combinedPrefix = React.useMemo(() => {
+    if (contexts.length === 0) return "default"
+    // Filter out variant contexts (they don't produce CSS prefixes)
+    const cssPrefixes = contexts
+      .map(getCssPrefix)
+      .filter((p) => p !== "default")
+    if (cssPrefixes.length === 0) return "default"
+    return cssPrefixes.join(":")
+  }, [contexts])
+
+  const [state, setState] = React.useState<ControlState>(() =>
+    classesToControlState(selectedElement?.currentClasses ?? [], "default"),
+  )
+
+  // Original classes that the editor does not manage
+  const originalClasses = React.useRef<string[]>([])
+
+  // Track whether state changes are from user interaction
+  const isUserChange = React.useRef(false)
+
+  // Sync state when selected element or context changes
+  React.useEffect(() => {
+    isUserChange.current = false
+    const classes = selectedElement?.currentClasses ?? []
+    originalClasses.current = classes
+    setState(classesToControlState(classes, combinedPrefix))
+  }, [selectedElement, combinedPrefix])
+
+  // Emit class changes only when user interacts with controls
+  React.useEffect(() => {
+    if (!isUserChange.current) return
+    onClassChange(mergeClasses(originalClasses.current, state, combinedPrefix, selectedElement?.tagName))
+  }, [state, combinedPrefix, onClassChange])
+
+  const FLEX_KEYS: (keyof ControlState)[] = [
+    "direction", "flexWrap", "alignContent",
+    "flexShorthand", "flexGrow", "flexShrink", "flexBasis",
+  ]
+  const GRID_KEYS: (keyof ControlState)[] = [
+    "gridCols", "gridRows", "gridFlow", "autoRows", "autoCols",
+    "justifyItems", "colSpan", "rowSpan", "colStart", "colEnd", "rowStart", "rowEnd",
+  ]
+
+  const update = React.useCallback(
+    <K extends keyof ControlState>(key: K, value: ControlState[K]) => {
+      isUserChange.current = true
+      setState((prev) => {
+        const next = { ...prev, [key]: value }
+
+        // When switching display mode, clear conflicting properties
+        if (key === "display") {
+          const isSwitchingToGrid = value === "grid" || value === "inline-grid"
+          const isSwitchingToFlex = value === "flex" || value === "inline-flex"
+          const wasGrid = prev.display === "grid" || prev.display === "inline-grid"
+          const wasFlex = prev.display === "flex" || prev.display === "inline-flex"
+
+          if (isSwitchingToGrid && wasFlex) {
+            for (const k of FLEX_KEYS) next[k] = ""
+          }
+          if (isSwitchingToFlex && wasGrid) {
+            for (const k of GRID_KEYS) next[k] = ""
+          }
+          // Switching to block/inline/hidden — clear both
+          if (!isSwitchingToGrid && !isSwitchingToFlex) {
+            if (wasFlex) for (const k of FLEX_KEYS) next[k] = ""
+            if (wasGrid) for (const k of GRID_KEYS) next[k] = ""
+          }
+        }
+
+        return next
+      })
+    },
+    [],
+  )
+
+  // Section key groups for hasValues / clear
+  const SECTION_KEYS: Record<string, (keyof ControlState)[]> = React.useMemo(() => ({
+    layout: [
+      "display", "direction", "justify", "align", "gap", "gapX", "gapY",
+      "flexWrap", "alignContent", "gridCols", "gridRows", "gridFlow", "autoRows", "autoCols",
+      "justifyItems",
+      "position", "overflow", "zIndex", "inset", "insetX", "insetY", "top", "right", "bottom", "left",
+      "visibility", "aspectRatio", "float", "clear", "isolation", "objectFit", "objectPosition",
+    ],
+    childPlacement: [
+      "justifySelf", "alignSelf", "order",
+      "flexShorthand", "flexGrow", "flexShrink", "flexBasis",
+      "colSpan", "rowSpan", "colStart", "colEnd", "rowStart", "rowEnd",
+    ],
+    size: [
+      "width", "height", "size", "minWidth", "maxWidth", "minHeight", "maxHeight",
+    ],
+    spacing: [
+      "padding", "paddingX", "paddingY", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "margin", "marginX", "marginY", "marginTop", "marginRight", "marginBottom", "marginLeft",
+      "spaceY", "spaceX", "spaceXReverse", "spaceYReverse",
+    ],
+    typography: [
+      "fontSize", "fontWeight", "fontFamily", "fontStyle", "textAlign",
+      "textDecoration", "textDecorationStyle", "textDecorationThickness", "textUnderlineOffset",
+      "textTransform", "textOverflow", "textWrap", "textIndent",
+      "lineHeight", "letterSpacing", "wordBreak", "whitespace", "hyphens", "lineClamp",
+      "verticalAlign", "listStyleType", "listStylePosition", "fontVariantNumeric",
+    ],
+    colours: [
+      "textColor", "bgColor", "borderColor", "ringColor", "ringOffsetColor", "outlineColor",
+      "gradientDirection", "gradientFrom", "gradientVia", "gradientTo",
+    ],
+    borders: [
+      "borderRadius", "borderRadiusTL", "borderRadiusTR", "borderRadiusBR", "borderRadiusBL",
+      "borderWidth", "borderWidthT", "borderWidthR", "borderWidthB", "borderWidthL", "borderStyle",
+      "ringWidth", "ringOffsetWidth", "outlineWidth", "outlineStyle", "outlineOffset",
+      "divideX", "divideY", "divideStyle", "divideReverse",
+    ],
+    effects: ["shadow", "shadowColor", "textShadow", "opacity", "mixBlend", "bgBlend", "maskClip", "maskComposite", "maskImage", "maskMode", "maskOrigin", "maskPosition", "maskRepeat", "maskSize", "maskType"],
+    filters: [
+      "blur", "brightness", "contrast", "grayscale", "hueRotate", "invert", "saturate", "sepia", "dropShadow",
+      "backdropBlur", "backdropBrightness", "backdropContrast", "backdropGrayscale",
+      "backdropHueRotate", "backdropInvert", "backdropOpacity", "backdropSaturate", "backdropSepia",
+    ],
+    motion: [
+      "transitionProperty", "transitionBehavior", "transitionDuration", "transitionTiming", "transitionDelay", "animation",
+      "scale", "scaleX", "scaleY", "rotate", "rotateX", "rotateY", "translateX", "translateY", "skewX", "skewY", "transformOrigin",
+    ],
+  }), [])
+
+  const sectionHasValues = React.useCallback(
+    (section: string) => SECTION_KEYS[section]?.some((k) => !!state[k]) ?? false,
+    [state, SECTION_KEYS],
+  )
+
+  const clearSection = React.useCallback(
+    (section: string) => {
+      isUserChange.current = true
+      setState((prev) => {
+        const next = { ...prev }
+        for (const k of SECTION_KEYS[section] ?? []) {
+          next[k] = ""
+        }
+        return next
+      })
+    },
+    [SECTION_KEYS],
+  )
+
+  if (!selectedElement) return null
+
+  const nativeDisplay = getNativeDisplay(selectedElement.tagName)
+  const effectiveDisplay = state.display || nativeDisplay
+  const isFlex = effectiveDisplay === "flex" || effectiveDisplay === "inline-flex"
+  const isGrid = effectiveDisplay === "grid" || effectiveDisplay === "inline-grid"
+
+  // Derive parent's effective display for child placement controls
+  const parentEffectiveDisplay = (() => {
+    if (!parentClasses) return undefined
+    const parentNative = parentTag ? getNativeDisplay(parentTag) : "block"
+    const plainMatch = parentClasses.find((c) => DISPLAY_OPTIONS.includes(c))
+    if (plainMatch) return plainMatch
+    for (const cls of parentClasses) {
+      const lastColon = cls.lastIndexOf(":")
+      if (lastColon !== -1) {
+        const unprefixed = cls.slice(lastColon + 1)
+        if (DISPLAY_OPTIONS.includes(unprefixed)) return unprefixed
+      }
+    }
+    return parentNative
+  })()
+  const parentIsFlex = parentEffectiveDisplay === "flex" || parentEffectiveDisplay === "inline-flex"
+  const parentIsGrid = parentEffectiveDisplay === "grid" || parentEffectiveDisplay === "inline-grid"
+
+  return (
+    <div className="flex h-full w-full min-w-96 flex-col overflow-hidden">
+      {/* ── Header with context selector ────────────────── */}
+      <div className="flex items-center gap-2 border-b px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium">
+            {"<"}
+            {selectedElement.tagName}
+            {">"}
+            {selectedElement.textContent && (
+              <span className="ml-1 font-normal text-muted-foreground">
+                {selectedElement.textContent.slice(0, 15)}
+              </span>
+            )}
+          </p>
+        </div>
+        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} parentVariants={parentVariants} subComponentNames={subComponentNames} />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0"
+          onClick={onDeselect}
+        >
+          <X className="size-3.5" />
+        </Button>
+      </div>
+
+      {/* ── Controls ─────────────────────────────────────── */}
+      <ScrollArea className="flex-1">
+        <TooltipProvider delayDuration={200}>
+        <div className="space-y-1">
+
+          <ChildPlacementSection
+            state={state}
+            update={update}
+            sectionHasValues={sectionHasValues}
+            clearSection={clearSection}
+            parentIsFlex={parentIsFlex}
+            parentIsGrid={parentIsGrid}
+            parentEffectiveDisplay={parentEffectiveDisplay}
+          />
+
+          <LayoutSection
+            state={state}
+            update={update}
+            sectionHasValues={sectionHasValues}
+            clearSection={clearSection}
+            effectiveDisplay={effectiveDisplay}
+            isFlex={isFlex}
+            isGrid={isGrid}
+            selectedElementTagName={selectedElement.tagName}
+            isUserChange={isUserChange}
+            setState={setState}
+          />
+
+          {/* ── Remaining sections hidden when display is hidden/contents ── */}
+          {effectiveDisplay !== "hidden" && effectiveDisplay !== "contents" && (
+          <>
+            <SizeSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+              effectiveDisplay={effectiveDisplay}
+            />
+
+            <SpacingSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+              effectiveDisplay={effectiveDisplay}
+              isFlex={isFlex}
+            />
+
+            <TypographySection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+            />
+
+            <ColoursSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+            />
+
+            <BordersSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+            />
+
+            <EffectsSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+            />
+
+            <FiltersSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+            />
+
+            <MotionSection
+              state={state}
+              update={update}
+              sectionHasValues={sectionHasValues}
+              clearSection={clearSection}
+              isUserChange={isUserChange}
+              setState={setState}
+            />
+          </>
+          )}
+        </div>
+        </TooltipProvider>
+      </ScrollArea>
+
+    </div>
+  )
+}
