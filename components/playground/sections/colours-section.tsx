@@ -36,10 +36,10 @@ export function ColoursSection({
   return (
     <EditSection icon={Palette} title="Colours" hasValues={sectionHasValues("colours")} onClear={() => clearSection("colours")}>
 
-      {/* ── Colour ── */}
+      {/* ── Core ── */}
       <EditSubSectionWrapper>
         <EditSubSection>
-          <EditSubSectionTitle>Colour</EditSubSectionTitle>
+          <EditSubSectionTitle>Core</EditSubSectionTitle>
           <EditSubSectionContent>
             <ColorPicker
               label="Text"

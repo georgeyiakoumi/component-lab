@@ -286,9 +286,7 @@ export const TEXT_UNDERLINE_OFFSET_OPTIONS = ["underline-offset-auto", "underlin
 export const TEXT_TRANSFORM_OPTIONS = ["uppercase", "lowercase", "capitalize", "normal-case"]
 export const TEXT_OVERFLOW_OPTIONS = ["truncate", "text-ellipsis", "text-clip"]
 export const TEXT_WRAP_OPTIONS = ["text-wrap", "text-nowrap", "text-balance", "text-pretty"]
-export const TEXT_INDENT_OPTIONS = [
-  "indent-0", "indent-px", "indent-0.5", "indent-1", "indent-1.5", "indent-2", "indent-4", "indent-6", "indent-8", "indent-10", "indent-12", "indent-16", "indent-20",
-]
+export const TEXT_INDENT_OPTIONS = SPACING_SCALE_FULL.map((v) => `indent-${v}`)
 export const LINE_HEIGHT_OPTIONS = [
   "leading-none", "leading-tight", "leading-snug", "leading-normal", "leading-relaxed", "leading-loose",
   "leading-3", "leading-4", "leading-5", "leading-6", "leading-7", "leading-8", "leading-9", "leading-10",

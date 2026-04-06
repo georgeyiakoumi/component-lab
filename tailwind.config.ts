@@ -66,6 +66,8 @@ const SPACING_PATTERNS = [
   ...SPACING_NUMBERS.map((n) => `max-w-${n}`),
   ...SPACING_NUMBERS.map((n) => `min-h-${n}`),
   ...SPACING_NUMBERS.map((n) => `max-h-${n}`),
+  // Text indent
+  ...SPACING_NUMBERS.map((n) => `indent-${n}`),
 ]
 
 const config: Config = {

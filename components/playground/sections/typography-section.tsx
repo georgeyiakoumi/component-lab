@@ -305,16 +305,20 @@ export function TypographySection({
               />
             </EditPanelRow>
 
-            <EditPanelRow label="Indent" variant="nested">
-              <Select value={state.textIndent || "__none__"} onValueChange={(v) => update("textIndent", v === "__none__" ? "" : v)}>
-                <SelectTrigger className="h-6 text-xs"><SelectValue placeholder="–" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">–</SelectItem>
-                  {TEXT_INDENT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt} value={opt} className="text-xs">{opt.replace("indent-", "")}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <EditPanelRow
+              label="Indent"
+              variant="nested"
+              value={state.textIndent ? state.textIndent.replace("indent-", "") : undefined}
+              onClear={state.textIndent ? () => update("textIndent", "") : undefined}
+            >
+              <SteppedSlider
+                label=""
+                hideLabel
+                values={TEXT_INDENT_OPTIONS.map((o) => o.replace("indent-", ""))}
+                prefix="indent"
+                value={state.textIndent}
+                onChange={(v) => update("textIndent", v)}
+              />
             </EditPanelRow>
           </EditSubSectionContent>
         </EditSubSection>
