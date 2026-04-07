@@ -49,6 +49,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
+import { ActiveSlider } from "@/components/playground/active-slider"
 import {
   Select,
   SelectContent,
@@ -421,7 +422,7 @@ function SteppedSlider({
       )}
       <div className="flex items-center gap-1.5">
         {inline && label && <span className="shrink-0 text-xs font-medium text-muted-foreground">{label}</span>}
-        <Slider
+        <ActiveSlider
           className="flex-1"
           active={hasValue}
           value={[Math.max(0, currentIndex)]}
@@ -870,7 +871,7 @@ function MarginAxisSlider({
       {isAuto ? (
         <p className="flex-1 text-xs text-muted-foreground">auto</p>
       ) : (
-        <Slider
+        <ActiveSlider
           className="flex-1"
           active={hasValue}
           value={[Math.max(0, currentIndex)]}
@@ -1344,7 +1345,7 @@ function SizeAxisControl({
         {isKeyword ? (
           <p className="flex-1 text-xs text-muted-foreground">{rawValue}</p>
         ) : (
-          <Slider
+          <ActiveSlider
             className="flex-1"
             active={sliderActive}
             value={[Math.max(0, currentIndex)]}
@@ -2469,7 +2470,7 @@ function ColorPicker({
       {baseValue && !["inherit", "current", "transparent"].some((s) => baseValue === `${prefix}-${s}`) && (
         <div className="mt-1.5 flex items-center gap-2 px-0.5">
           <span className="shrink-0 text-xs text-muted-foreground">Opacity</span>
-          <Slider
+          <ActiveSlider
             className="flex-1"
             value={[opacityNum]}
             min={0}
