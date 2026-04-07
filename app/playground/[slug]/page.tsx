@@ -29,10 +29,14 @@ import { useParsedComponent } from "@/lib/parser/use-parsed-component"
 import type { ComponentTreeV2 } from "@/lib/component-tree-v2"
 import {
   applyClassEditToTree,
-  type ApplyClassEditResult,
+  getCvaSlotsForDataSlot,
+  readBaseClassesForDataSlot,
+  type CvaEditSlot,
+  type CvaSlotInfo,
 } from "@/lib/parser/apply-class-edit"
 import { generateFromTreeV2 } from "@/lib/parser/generate-from-tree-v2"
 import { downloadTsx } from "@/lib/download-tsx"
+import { CvaSlotPicker } from "@/components/playground/cva-slot-picker"
 
 export default function ComponentPage() {
   const params = useParams<{ slug: string }>()
@@ -49,22 +53,15 @@ export default function ComponentPage() {
   const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
-  // ── Pillar 5b (GEO-302) — parsed v2 tree + edit-export state ─────
-  // The slug page now mounts a mutable copy of the parsed tree alongside
-  // the existing M2 state. Edits route through the v2 tree; export
-  // produces the spliced source via `generateFromTreeV2`.
+  // ── Pillar 5b (GEO-302) + 5c (GEO-303) — parsed v2 tree + edit state
   const parsedState = useParsedComponent(slug)
   const [editTree, setEditTree] = React.useState<ComponentTreeV2 | null>(null)
-  // Bump on every applied edit so the UI re-renders even though we mutate
-  // the tree in place (the slow-path generator detects edits via byte
-  // comparison so structural mutation is fine).
   const [editVersion, setEditVersion] = React.useState(0)
-  // Reason returned by the most recent edit attempt — used to drive the
-  // "cva editing coming in 5c" banner when the user selects a part the
-  // parser knows about but Pillar 5b can't yet edit.
-  const [lastEditReason, setLastEditReason] = React.useState<
-    ApplyClassEditResult | null
-  >(null)
+  // Pillar 5c — currently-selected cva slot for the visual editor's edits.
+  // Resets to "base" whenever the user selects a new element. Independent
+  // of the toolbar's preview state — the canvas keeps showing whatever
+  // the toolbar dropdowns describe; this only controls where edits land.
+  const [cvaSlot, setCvaSlot] = React.useState<CvaEditSlot>({ kind: "base" })
 
   // Hydrate the editable tree once the API call resolves. Deep-clone via
   // structuredClone so we own a separate copy from the hook's cached
@@ -73,7 +70,6 @@ export default function ComponentPage() {
     if (parsedState.status === "ready") {
       setEditTree(structuredClone(parsedState.tree))
       setEditVersion(0)
-      setLastEditReason(null)
     } else {
       setEditTree(null)
     }
@@ -100,6 +96,13 @@ export default function ComponentPage() {
       setSelectedElement(null)
     }
   }, [mode])
+
+  // Pillar 5c — reset the cva slot to "base" whenever the user selects a
+  // different element. The picker's default is always "Base classes" on
+  // a fresh selection.
+  React.useEffect(() => {
+    setCvaSlot({ kind: "base" })
+  }, [selectedElement?.elementPath])
 
   if (!component) {
     return (
@@ -128,36 +131,66 @@ export default function ComponentPage() {
   const previewProps: Record<string, string> | undefined =
     Object.keys(propValues).length > 0 ? propValues : undefined
 
+  // Pillar 5c — compute the cva slot info for the currently-selected
+  // element (null when the element isn't a cva-call component or no
+  // element is selected). The picker only renders when this is non-null.
+  const cvaSlotInfo: CvaSlotInfo | null = React.useMemo(() => {
+    if (!editTree || !selectedElement?.domElement) return null
+    const dataSlot = selectedElement.domElement.getAttribute("data-slot")
+    if (!dataSlot) return null
+    return getCvaSlotsForDataSlot(editTree, dataSlot)
+  }, [editTree, selectedElement])
+
+  // Pillar 5c — when the slot picker is active and the user picks a new
+  // slot, the visual editor needs to display the classes from that slot
+  // (not from the live DOM element, which is showing the toolbar's
+  // preview state). Build a synthetic ElementInfo whose currentClasses
+  // come from the chosen cva slot.
+  const editorElement: ElementInfo | null = React.useMemo(() => {
+    if (!selectedElement) return null
+    if (!cvaSlotInfo || !editTree) return selectedElement
+    const dataSlot = selectedElement.domElement?.getAttribute("data-slot")
+    if (!dataSlot) return selectedElement
+    const slotClasses = readBaseClassesForDataSlot(editTree, dataSlot, cvaSlot)
+    if (slotClasses === null) return selectedElement
+    return {
+      ...selectedElement,
+      currentClasses: slotClasses.split(/\s+/).filter(Boolean),
+    }
+    // editVersion participation: when the user mutates a slot via the
+    // editor, re-derive currentClasses from the freshly-mutated tree.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedElement, cvaSlotInfo, editTree, cvaSlot, editVersion])
+
   const handleClassChange = React.useCallback(
     (classes: string[]) => {
       setSelectedElement((prev) => {
         if (!prev) return null
-        // Apply classes directly to the DOM element for live preview
+        // Apply classes directly to the DOM element for live preview.
+        // For cva slot edits this isn't quite right (the DOM merges base
+        // + variant + size classes at runtime), but it gives immediate
+        // visual feedback for the most common case where the user is
+        // editing the slot the canvas is currently previewing.
         if (prev.domElement && prev.domElement.isConnected) {
           prev.domElement.className = classes.join(" ")
         }
         return { ...prev, currentClasses: classes }
       })
 
-      // Pillar 5b — mutate the parsed v2 tree so the export reflects the
-      // change. We look up the selected element's `data-slot` and route
-      // the edit to the matching sub-component's root part. cva-call parts
-      // surface a structured failure for the banner.
       if (!editTree || !selectedElement?.domElement) return
       const dataSlot = selectedElement.domElement.getAttribute("data-slot")
       if (!dataSlot) return
-      const result = applyClassEditToTree(editTree, dataSlot, classes)
-      setLastEditReason(result)
+      // Pillar 5c — pass the current cva slot. cn-call paths ignore it.
+      const result = applyClassEditToTree(editTree, dataSlot, classes, cvaSlot)
       if (result.ok) {
         setEditVersion((v) => v + 1)
       }
     },
-    [editTree, selectedElement],
+    [editTree, selectedElement, cvaSlot],
   )
 
   const handleDeselect = React.useCallback(() => {
     setSelectedElement(null)
-    setLastEditReason(null)
   }, [])
 
   // ── Pillar 5b — export + reset handlers ──────────────────────────
@@ -181,7 +214,6 @@ export default function ComponentPage() {
     if (parsedState.status !== "ready") return
     setEditTree(structuredClone(parsedState.tree))
     setEditVersion(0)
-    setLastEditReason(null)
     // Also reset the live DOM by clearing the selection. The next click
     // will re-select against the now-pristine canvas.
     setSelectedElement(null)
@@ -241,15 +273,6 @@ export default function ComponentPage() {
             {/* Edit-export controls — only meaningful in edit mode */}
             {mode === "edit" && (
               <>
-                {lastEditReason && !lastEditReason.ok && lastEditReason.reason === "cva-only" && (
-                  <div
-                    className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] leading-tight text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
-                    data-testid="cva-only-banner"
-                  >
-                    This component&rsquo;s styles live in a cva block. Editing
-                    cva variants is coming in Pillar 5c.
-                  </div>
-                )}
                 <div className="flex items-center gap-1">
                   <Button
                     size="xs"
@@ -333,9 +356,18 @@ export default function ComponentPage() {
           isOpen={mode === "edit"}
           source={source}
           isCompound={component.isCompound}
-          selectedElement={selectedElement}
+          selectedElement={editorElement}
           onClassChange={handleClassChange}
           onDeselect={handleDeselect}
+          editorHeader={
+            cvaSlotInfo ? (
+              <CvaSlotPicker
+                info={cvaSlotInfo}
+                selected={cvaSlot}
+                onChange={setCvaSlot}
+              />
+            ) : null
+          }
         />
       </div>
 

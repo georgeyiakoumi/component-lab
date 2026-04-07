@@ -26,6 +26,7 @@ import {
 } from "@/lib/parser/find-by-data-slot"
 import {
   applyClassEditToTree,
+  getCvaSlotsForDataSlot,
   readBaseClassesForDataSlot,
 } from "@/lib/parser/apply-class-edit"
 
@@ -145,17 +146,17 @@ describe("applyClassEditToTree — failure paths", () => {
     if (!result.ok) expect(result.reason).toBe("not-found")
   })
 
-  it("returns cva-only for Button (cva-call className)", () => {
+  it("returns cva-needs-slot for Button when called without a slot (Pillar 5c contract)", () => {
     const tree = parseSource(
       load("components/ui/button.tsx"),
       "components/ui/button.tsx",
     )
     const result = applyClassEditToTree(tree, "button", ["foo"])
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toBe("cva-only")
+    if (!result.ok) expect(result.reason).toBe("cva-needs-slot")
   })
 
-  it("returns no-base-range for Badge (cva inside cn — no string literal first arg)", () => {
+  it("returns no-base-range for Badge cn-call without literal first arg", () => {
     // Badge wraps cva in cn: cn(badgeVariants({ variant }), className).
     // The first arg is a function call, not a string literal, so no
     // baseRange is set. Editing must surface a structured failure.
@@ -164,12 +165,160 @@ describe("applyClassEditToTree — failure paths", () => {
       "components/ui/badge.tsx",
     )
     const result = applyClassEditToTree(tree, "badge", ["foo"])
-    // Could be cva-only OR no-base-range depending on which kind the
-    // parser settled on. Either is a valid "we can't edit this in 5b" answer.
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(["cva-only", "no-base-range"]).toContain(result.reason)
+      // Either no-base-range (cn-call shape) or cva-needs-slot (cva-call
+      // shape) — both are valid "can't edit without a slot" answers.
+      expect(["cva-needs-slot", "no-base-range"]).toContain(result.reason)
     }
+  })
+})
+
+/* ── Pillar 5c — cva slot-targeted edits ─────────────────────────── */
+
+describe("applyClassEditToTree — cva slot edits (Button)", () => {
+  const original = load("components/ui/button.tsx")
+
+  it("edits the cva base classes when slot.kind = 'base'", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const result = applyClassEditToTree(tree, "button", ["NEW_BASE_CLASSES"], {
+      kind: "base",
+    })
+    expect(result).toEqual({ ok: true })
+    const emitted = generateFromTreeV2(tree)
+    expect(emitted).toContain('"NEW_BASE_CLASSES"')
+    // Original variant strings still present
+    expect(emitted).toContain("bg-primary text-primary-foreground hover:bg-primary/90")
+  })
+
+  it("edits a single variant value when slot.kind = 'variant'", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const result = applyClassEditToTree(
+      tree,
+      "button",
+      ["bg-blue-500", "text-white"],
+      { kind: "variant", group: "variant", value: "destructive" },
+    )
+    expect(result).toEqual({ ok: true })
+    const emitted = generateFromTreeV2(tree)
+    expect(emitted).toContain('destructive:\n          "bg-blue-500 text-white"')
+    // The default variant is untouched
+    expect(emitted).toContain('default: "bg-primary text-primary-foreground hover:bg-primary/90"')
+    // The base classes are untouched
+    expect(emitted).toContain("inline-flex shrink-0 items-center justify-center")
+  })
+
+  it("edits a size-group value the same way it edits a variant-group value", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const result = applyClassEditToTree(
+      tree,
+      "button",
+      ["h-12", "px-8", "MEGA_LG"],
+      { kind: "variant", group: "size", value: "lg" },
+    )
+    expect(result).toEqual({ ok: true })
+    const emitted = generateFromTreeV2(tree)
+    expect(emitted).toContain('lg: "h-12 px-8 MEGA_LG"')
+    // Other sizes still present
+    expect(emitted).toContain('default: "h-9 px-4 py-2 has-[>svg]:px-3"')
+  })
+
+  it("multiple cva slot edits stack and round-trip cleanly", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    expect(
+      applyClassEditToTree(tree, "button", ["base!"], { kind: "base" }),
+    ).toEqual({ ok: true })
+    expect(
+      applyClassEditToTree(tree, "button", ["destructive!"], {
+        kind: "variant",
+        group: "variant",
+        value: "destructive",
+      }),
+    ).toEqual({ ok: true })
+    expect(
+      applyClassEditToTree(tree, "button", ["icon!"], {
+        kind: "variant",
+        group: "size",
+        value: "icon",
+      }),
+    ).toEqual({ ok: true })
+
+    const emitted = generateFromTreeV2(tree)
+    expect(emitted).toContain('"base!"')
+    expect(emitted).toContain('"destructive!"')
+    expect(emitted).toContain('"icon!"')
+  })
+
+  it("returns cva-slot-not-found for an unknown variant value", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const result = applyClassEditToTree(tree, "button", ["foo"], {
+      kind: "variant",
+      group: "variant",
+      value: "this-does-not-exist",
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe("cva-slot-not-found")
+  })
+
+  it("returns cva-slot-not-found for an unknown variant group", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const result = applyClassEditToTree(tree, "button", ["foo"], {
+      kind: "variant",
+      group: "color",
+      value: "red",
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe("cva-slot-not-found")
+  })
+
+  it("edit-then-revert returns Button to byte-equivalent source", () => {
+    const tree = parseSource(original, "components/ui/button.tsx")
+    const slot: { kind: "variant"; group: string; value: string } = {
+      kind: "variant",
+      group: "variant",
+      value: "default",
+    }
+    const beforeValue = readBaseClassesForDataSlot(tree, "button", slot)!
+    expect(
+      applyClassEditToTree(tree, "button", ["TEMPORARY"], slot),
+    ).toEqual({ ok: true })
+    expect(generateFromTreeV2(tree)).not.toBe(original)
+    expect(
+      applyClassEditToTree(tree, "button", beforeValue.split(/\s+/), slot),
+    ).toEqual({ ok: true })
+    expect(generateFromTreeV2(tree)).toBe(original)
+  })
+})
+
+/* ── Pillar 5c — getCvaSlotsForDataSlot ─────────────────────────── */
+
+describe("getCvaSlotsForDataSlot", () => {
+  it("returns the cva slot info for Button", () => {
+    const tree = parseSource(
+      load("components/ui/button.tsx"),
+      "components/ui/button.tsx",
+    )
+    const info = getCvaSlotsForDataSlot(tree, "button")
+    expect(info).not.toBeNull()
+    expect(info!.cvaName).toBe("buttonVariants")
+    expect(info!.baseAvailable).toBe(true)
+    const groupNames = info!.groups.map((g) => g.name)
+    expect(groupNames).toEqual(["variant", "size"])
+    const variantValues = info!.groups.find((g) => g.name === "variant")!.values
+    expect(variantValues).toContain("destructive")
+    expect(variantValues).toContain("ghost")
+    const sizeValues = info!.groups.find((g) => g.name === "size")!.values
+    expect(sizeValues).toContain("lg")
+    expect(sizeValues).toContain("icon")
+  })
+
+  it("returns null for non-cva components (Card)", () => {
+    const tree = parseSource(
+      load("components/ui/card.tsx"),
+      "components/ui/card.tsx",
+    )
+    const info = getCvaSlotsForDataSlot(tree, "card")
+    expect(info).toBeNull()
   })
 })
 

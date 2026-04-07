@@ -24,6 +24,14 @@ interface RightPanelProps {
   selectedElement?: ElementInfo | null
   onClassChange?: (classes: string[]) => void
   onDeselect?: () => void
+  /**
+   * Pillar 5c — optional header rendered above the visual editor when a
+   * cva-style component is selected. Used by the slug page to mount the
+   * `CvaSlotPicker` so the user can choose which cva slot their next
+   * class edit will land in. Decoupled from the panel so the panel
+   * stays unaware of v2-specific concerns.
+   */
+  editorHeader?: React.ReactNode
 }
 
 export function RightPanel({
@@ -33,6 +41,7 @@ export function RightPanel({
   selectedElement,
   onClassChange,
   onDeselect,
+  editorHeader,
 }: RightPanelProps) {
   const showVisualEditor = selectedElement != null
   const [width, setWidth] = React.useState(DEFAULT_WIDTH)
@@ -62,11 +71,16 @@ export function RightPanel({
         style={{ width: `${width}px` }}
       >
         {showVisualEditor ? (
-          <VisualEditor
-            selectedElement={selectedElement}
-            onClassChange={onClassChange ?? (() => {})}
-            onDeselect={onDeselect ?? (() => {})}
-          />
+          <div className="flex h-full w-full flex-col">
+            {editorHeader}
+            <div className="min-h-0 flex-1">
+              <VisualEditor
+                selectedElement={selectedElement}
+                onClassChange={onClassChange ?? (() => {})}
+                onDeselect={onDeselect ?? (() => {})}
+              />
+            </div>
+          </div>
         ) : (
           <Tabs defaultValue="styles" className="flex flex-1 flex-col">
             <TabsList className="mx-2 mt-2 shrink-0">
