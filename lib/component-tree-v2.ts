@@ -65,6 +65,22 @@ export interface ComponentTreeV2 {
   rawSource?: string
 
   /**
+   * The original source text the parser read this tree from, preserved
+   * verbatim. Populated by `parseSource` when available. Distinct from
+   * `rawSource` (D10 escape hatch): `originalSource` is set for ALL parsed
+   * trees, not just unhandleable ones, and is used by the generator's
+   * fast path to return byte-equivalent output when the tree has not been
+   * edited since parsing. If the tree is constructed programmatically (e.g.
+   * by the M3 from-scratch builder), this field is undefined and the
+   * generator falls back to template-based emission.
+   *
+   * Lesson #16 — "Respect the source" — in the Notion Lessons & Insights
+   * page explains why this field exists and why it's the first pattern the
+   * generator reaches for.
+   */
+  originalSource?: string
+
+  /**
    * Top-of-file directives like `"use client"`. Emitted verbatim at the top
    * of the generated file in array order.
    */

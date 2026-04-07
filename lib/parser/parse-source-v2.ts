@@ -227,6 +227,12 @@ export function parseSource(
     hookExports,
     subComponents,
     thirdParty: ctx.thirdParty,
+    // Lesson #16 — preserve the original source verbatim so the generator's
+    // fast path can return byte-equivalent output when the tree has not
+    // been edited. For programmatically-constructed trees (M3 from-scratch
+    // builder), this field is undefined and the generator falls back to
+    // template-based emission.
+    originalSource: source,
   }
 }
 
