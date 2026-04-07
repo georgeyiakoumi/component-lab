@@ -22,6 +22,17 @@ import { RightPanel } from "@/components/playground/right-panel"
 import { DragHandle } from "@/components/playground/drag-handle"
 import { CanvasToolbar } from "@/components/playground/canvas-toolbar"
 import { ParserV2Status } from "@/components/playground/parser-v2-status"
+import { Button } from "@/components/ui/button"
+import { Download, RotateCcw } from "lucide-react"
+
+import { useParsedComponent } from "@/lib/parser/use-parsed-component"
+import type { ComponentTreeV2 } from "@/lib/component-tree-v2"
+import {
+  applyClassEditToTree,
+  type ApplyClassEditResult,
+} from "@/lib/parser/apply-class-edit"
+import { generateFromTreeV2 } from "@/lib/parser/generate-from-tree-v2"
+import { downloadTsx } from "@/lib/download-tsx"
 
 export default function ComponentPage() {
   const params = useParams<{ slug: string }>()
@@ -37,6 +48,36 @@ export default function ComponentPage() {
   const [codePanelWidth, setCodePanelWidth] = React.useState(350)
   const [highlightLine, setHighlightLine] = React.useState<number | null>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
+
+  // ── Pillar 5b (GEO-302) — parsed v2 tree + edit-export state ─────
+  // The slug page now mounts a mutable copy of the parsed tree alongside
+  // the existing M2 state. Edits route through the v2 tree; export
+  // produces the spliced source via `generateFromTreeV2`.
+  const parsedState = useParsedComponent(slug)
+  const [editTree, setEditTree] = React.useState<ComponentTreeV2 | null>(null)
+  // Bump on every applied edit so the UI re-renders even though we mutate
+  // the tree in place (the slow-path generator detects edits via byte
+  // comparison so structural mutation is fine).
+  const [editVersion, setEditVersion] = React.useState(0)
+  // Reason returned by the most recent edit attempt — used to drive the
+  // "cva editing coming in 5c" banner when the user selects a part the
+  // parser knows about but Pillar 5b can't yet edit.
+  const [lastEditReason, setLastEditReason] = React.useState<
+    ApplyClassEditResult | null
+  >(null)
+
+  // Hydrate the editable tree once the API call resolves. Deep-clone via
+  // structuredClone so we own a separate copy from the hook's cached
+  // state — mutations should not bleed back through the cache.
+  React.useEffect(() => {
+    if (parsedState.status === "ready") {
+      setEditTree(structuredClone(parsedState.tree))
+      setEditVersion(0)
+      setLastEditReason(null)
+    } else {
+      setEditTree(null)
+    }
+  }, [parsedState.status, slug])
 
   const component = registry.find((c) => c.slug === slug)
 
@@ -87,20 +128,64 @@ export default function ComponentPage() {
   const previewProps: Record<string, string> | undefined =
     Object.keys(propValues).length > 0 ? propValues : undefined
 
-  const handleClassChange = React.useCallback((classes: string[]) => {
-    setSelectedElement((prev) => {
-      if (!prev) return null
-      // Apply classes directly to the DOM element for live preview
-      if (prev.domElement && prev.domElement.isConnected) {
-        prev.domElement.className = classes.join(" ")
+  const handleClassChange = React.useCallback(
+    (classes: string[]) => {
+      setSelectedElement((prev) => {
+        if (!prev) return null
+        // Apply classes directly to the DOM element for live preview
+        if (prev.domElement && prev.domElement.isConnected) {
+          prev.domElement.className = classes.join(" ")
+        }
+        return { ...prev, currentClasses: classes }
+      })
+
+      // Pillar 5b — mutate the parsed v2 tree so the export reflects the
+      // change. We look up the selected element's `data-slot` and route
+      // the edit to the matching sub-component's root part. cva-call parts
+      // surface a structured failure for the banner.
+      if (!editTree || !selectedElement?.domElement) return
+      const dataSlot = selectedElement.domElement.getAttribute("data-slot")
+      if (!dataSlot) return
+      const result = applyClassEditToTree(editTree, dataSlot, classes)
+      setLastEditReason(result)
+      if (result.ok) {
+        setEditVersion((v) => v + 1)
       }
-      return { ...prev, currentClasses: classes }
-    })
-  }, [])
+    },
+    [editTree, selectedElement],
+  )
 
   const handleDeselect = React.useCallback(() => {
     setSelectedElement(null)
+    setLastEditReason(null)
   }, [])
+
+  // ── Pillar 5b — export + reset handlers ──────────────────────────
+  // `editVersion` is referenced so React re-evaluates `isDirty` after
+  // each in-place tree mutation. The generator's slow path detects edits
+  // via byte comparison, so the tree object identity doesn't change.
+  const isDirty = React.useMemo(() => {
+    if (!editTree?.originalSource) return false
+    // Touch editVersion so the memo recomputes after each edit.
+    void editVersion
+    return generateFromTreeV2(editTree) !== editTree.originalSource
+  }, [editTree, editVersion])
+
+  const handleDownload = React.useCallback(() => {
+    if (!editTree) return
+    const source = generateFromTreeV2(editTree)
+    downloadTsx(`${slug}.tsx`, source)
+  }, [editTree, slug])
+
+  const handleReset = React.useCallback(() => {
+    if (parsedState.status !== "ready") return
+    setEditTree(structuredClone(parsedState.tree))
+    setEditVersion(0)
+    setLastEditReason(null)
+    // Also reset the live DOM by clearing the selection. The next click
+    // will re-select against the now-pristine canvas.
+    setSelectedElement(null)
+  }, [parsedState])
 
   const handleOutlineNodeClick = React.useCallback(
     (name: string) => {
@@ -147,10 +232,51 @@ export default function ComponentPage() {
           <div className="flex-1 overflow-auto">
             <StructurePanel slug={slug} onNodeClick={handleOutlineNodeClick} />
           </div>
-          {/* Pillar 5a (GEO-290) — proof-of-life surface for the M4 parser.
-              Replaced in Pillar 5b by full visual editor integration. */}
-          <div className="border-t px-3 py-2">
+          {/* Pillar 5a (GEO-290) status surface + Pillar 5b (GEO-302)
+              edit-export controls. The status line is kept for now as
+              a debug aid; Pillar 6 will trim or move it. */}
+          <div className="flex flex-col gap-2 border-t px-3 py-2">
             <ParserV2Status slug={slug} />
+
+            {/* Edit-export controls — only meaningful in edit mode */}
+            {mode === "edit" && (
+              <>
+                {lastEditReason && !lastEditReason.ok && lastEditReason.reason === "cva-only" && (
+                  <div
+                    className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] leading-tight text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+                    data-testid="cva-only-banner"
+                  >
+                    This component&rsquo;s styles live in a cva block. Editing
+                    cva variants is coming in Pillar 5c.
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="xs"
+                    variant="default"
+                    className="h-7 flex-1 gap-1.5"
+                    disabled={!isDirty}
+                    onClick={handleDownload}
+                    data-testid="download-tsx-button"
+                    data-dirty={isDirty ? "true" : "false"}
+                  >
+                    <Download className="size-3" />
+                    Download .tsx
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    className="h-7 gap-1.5"
+                    disabled={!isDirty}
+                    onClick={handleReset}
+                    data-testid="reset-edits-button"
+                  >
+                    <RotateCcw className="size-3" />
+                    Reset
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
