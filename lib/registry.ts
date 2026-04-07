@@ -124,6 +124,8 @@ export const registry: readonly ComponentMeta[] = [
       "SelectItem",
       "SelectLabel",
       "SelectSeparator",
+      "SelectScrollUpButton",
+      "SelectScrollDownButton",
     ],
     variants: [],
     keywords: [
@@ -266,6 +268,7 @@ export const registry: readonly ComponentMeta[] = [
       "CardHeader",
       "CardTitle",
       "CardDescription",
+      "CardAction",
       "CardContent",
       "CardFooter",
     ],
@@ -393,11 +396,14 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "AlertDialogTrigger",
+      "AlertDialogPortal",
+      "AlertDialogOverlay",
       "AlertDialogContent",
       "AlertDialogHeader",
       "AlertDialogFooter",
       "AlertDialogTitle",
       "AlertDialogDescription",
+      "AlertDialogMedia",
       "AlertDialogAction",
       "AlertDialogCancel",
     ],
@@ -420,6 +426,8 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "DialogTrigger",
+      "DialogPortal",
+      "DialogOverlay",
       "DialogContent",
       "DialogHeader",
       "DialogFooter",
@@ -439,6 +447,8 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "DrawerTrigger",
+      "DrawerPortal",
+      "DrawerOverlay",
       "DrawerContent",
       "DrawerHeader",
       "DrawerFooter",
@@ -481,7 +491,14 @@ export const registry: readonly ComponentMeta[] = [
       "A floating panel anchored to a trigger element, used for contextual content or controls.",
     category: "Feedback",
     isCompound: true,
-    subComponents: ["PopoverTrigger", "PopoverContent"],
+    subComponents: [
+      "PopoverTrigger",
+      "PopoverAnchor",
+      "PopoverContent",
+      "PopoverHeader",
+      "PopoverTitle",
+      "PopoverDescription",
+    ],
     variants: [],
     keywords: [
       "popup",
@@ -618,7 +635,9 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "ContextMenuTrigger",
+      "ContextMenuPortal",
       "ContextMenuContent",
+      "ContextMenuGroup",
       "ContextMenuItem",
       "ContextMenuCheckboxItem",
       "ContextMenuRadioItem",
@@ -648,6 +667,7 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "DropdownMenuTrigger",
+      "DropdownMenuPortal",
       "DropdownMenuContent",
       "DropdownMenuItem",
       "DropdownMenuCheckboxItem",
@@ -680,6 +700,8 @@ export const registry: readonly ComponentMeta[] = [
     isCompound: true,
     subComponents: [
       "MenubarMenu",
+      "MenubarGroup",
+      "MenubarPortal",
       "MenubarTrigger",
       "MenubarContent",
       "MenubarItem",
@@ -810,7 +832,13 @@ export const registry: readonly ComponentMeta[] = [
       "A circular image or fallback initials representing a user or entity.",
     category: "Data Display",
     isCompound: true,
-    subComponents: ["AvatarImage", "AvatarFallback"],
+    subComponents: [
+      "AvatarImage",
+      "AvatarFallback",
+      "AvatarBadge",
+      "AvatarGroup",
+      "AvatarGroupCount",
+    ],
     variants: [],
     keywords: [
       "profile picture",
@@ -838,8 +866,8 @@ export const registry: readonly ComponentMeta[] = [
     description:
       "A date picker grid that lets users view and select dates.",
     category: "Data Display",
-    isCompound: false,
-    subComponents: [],
+    isCompound: true,
+    subComponents: ["CalendarDayButton"],
     variants: [],
     keywords: [
       "date picker",
@@ -871,6 +899,34 @@ export const registry: readonly ComponentMeta[] = [
       "swipe",
       "image carousel",
       "rotator",
+    ],
+  },
+  {
+    name: "Item",
+    slug: "item",
+    description:
+      "A flexible list-item primitive for building rows with media, title, description, and actions.",
+    category: "Data Display",
+    isCompound: true,
+    subComponents: [
+      "ItemGroup",
+      "ItemSeparator",
+      "ItemMedia",
+      "ItemContent",
+      "ItemTitle",
+      "ItemDescription",
+      "ItemActions",
+      "ItemHeader",
+      "ItemFooter",
+    ],
+    variants: ["default", "outline", "muted"],
+    keywords: [
+      "list item",
+      "row",
+      "entry",
+      "line item",
+      "record",
+      "data row",
     ],
   },
   {
