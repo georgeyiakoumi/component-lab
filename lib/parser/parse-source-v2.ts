@@ -1,34 +1,46 @@
 /**
  * shadcn-source-to-ComponentTreeV2 parser.
  *
- * Pillar 2a scope: Button only. This file intentionally does only what Button
- * needs — imports, one cva export, one function component with the
- * `const Comp = asChild ? Slot.Root : "button"` dynamic-ref pattern, inline
- * props destructuring with defaults, and one root JSX element.
+ * Covered scope as of Pillar 2b (easy bucket — GEO-296):
+ * - All 14 easy-bucket components (AspectRatio, Badge, Checkbox, Collapsible,
+ *   HoverCard, Input, Label, Progress, RadioGroup, Separator, Skeleton,
+ *   Sonner, Switch, Textarea, Tooltip) plus Button (2a) and anything else
+ *   that happens to fit the same code paths (Card).
+ * - Radix primitives via the `radix-ui` umbrella package pattern:
+ *   `import { X as XPrimitive } from "radix-ui"` + `<XPrimitive.Root>`.
+ * - JSX children (self-closing, element with children, nested elements).
+ * - Component-ref bases (`<CheckIcon />` from lucide-react).
+ * - Arrow function components (`const Foo = (...) => ...`) used by Sonner.
+ * - Inline `style={{...}}` attributes captured as raw attribute source.
+ * - Third-party library adapters (sonner is the first real use).
  *
- * Pillar 2b (easy bucket) will extend this file with Radix primitive
- * recognition, and may split it into per-concern walker files if the single
- * file gets unwieldy. For now, one file is simpler to reason about.
+ * Still out of scope (future pillars):
+ * - Medium/hard bucket components (Pillar 2c/2d)
+ * - Escape-hatch components (Pillar 2e)
+ * - The generator (Pillar 3)
  *
  * Design doc: https://www.notion.so/33bfeeb2a07881a9b24fee494b4d4d71
- * Linear: GEO-295
+ * Linear: GEO-295 (2a), GEO-296 (2b)
  *
- * AST library decision: TypeScript compiler API.
- * Rationale: native TSX support, zero new dependencies (we already ship
- * `typescript`), the compiler API also exposes a printer for Pillar 3.
- * If this decision bites us later, the fallback is `@babel/parser`, but all
- * AST handling is contained in `lib/parser/` so the refactor is scoped.
+ * AST library decision: TypeScript compiler API. Zero new dependencies,
+ * native TSX, printer covers Pillar 3's generator needs. Contained in
+ * `lib/parser/` so the refactor to Babel is scoped if we ever need it.
  */
 
 import * as ts from "typescript"
 
 import type {
+  Base,
   ComponentTreeV2,
   CvaExport,
   ImportDecl,
+  LibraryId,
+  PartChild,
+  PartNode,
   PropsDecl,
   PropsPart,
   SubComponentV2,
+  ThirdPartyIntegration,
 } from "@/lib/component-tree-v2"
 import { ParserError } from "@/lib/parser/parser-error"
 
@@ -50,12 +62,21 @@ export function parseSource(
     ts.ScriptKind.TSX,
   )
 
-  const ctx: ParserContext = { sourceFile, filePath, source }
+  const ctx: ParserContext = {
+    sourceFile,
+    filePath,
+    source,
+    radixAliases: new Map(),
+    thirdPartyAliases: new Map(),
+    componentRefs: new Set(),
+    thirdParty: undefined,
+  }
 
   const imports: ImportDecl[] = []
   const cvaExports: CvaExport[] = []
   const subComponents: SubComponentV2[] = []
   const directives: string[] = []
+  const filePassthrough: ComponentTreeV2["filePassthrough"] = []
 
   // Capture "use client" and similar top-level directives if present.
   // TypeScript parses them as string-literal expression statements at the top
@@ -85,20 +106,35 @@ export function parseSource(
     }
 
     if (ts.isImportDeclaration(stmt)) {
-      imports.push(parseImport(stmt, ctx))
+      const decl = parseImport(stmt, ctx)
+      imports.push(decl)
+      collectImportContext(decl, ctx)
       continue
     }
 
     if (ts.isVariableStatement(stmt)) {
+      // Three kinds of top-level `const` we recognise:
+      // (a) `const fooVariants = cva(...)` → cva export
+      // (b) `const Foo = (...) => <JSX />` → arrow-function component (Sonner)
+      // (c) anything else → error (Pillar 2b scope)
       const cva = tryParseCvaExport(stmt, ctx)
       if (cva) {
         cvaExports.push(cva)
         continue
       }
+      const arrowComponent = tryParseArrowFunctionComponent(
+        stmt,
+        ctx,
+        subComponents.length,
+      )
+      if (arrowComponent) {
+        subComponents.push(arrowComponent)
+        continue
+      }
       throw parserError(
         stmt,
         ctx,
-        "Top-level variable statement is not a recognised cva() export (Pillar 2a only handles cva).",
+        "Top-level variable statement is neither a cva() export nor an arrow-function component.",
       )
     }
 
@@ -113,10 +149,22 @@ export function parseSource(
       continue
     }
 
+    if (ts.isTypeAliasDeclaration(stmt) || ts.isInterfaceDeclaration(stmt)) {
+      // Top-level `type Foo = ...` or `interface Foo {}`. Capture verbatim
+      // so the generator re-emits it in place. Carousel and Pagination
+      // use this shape (Carousel for embla API props, Pagination for its
+      // own link props type).
+      filePassthrough.push({
+        kind: "type-alias",
+        source: stmt.getText(ctx.sourceFile),
+      })
+      continue
+    }
+
     throw parserError(
       stmt,
       ctx,
-      `Unhandled top-level statement (Pillar 2a scope): ${ts.SyntaxKind[stmt.kind]}`,
+      `Unhandled top-level statement: ${ts.SyntaxKind[stmt.kind]}`,
     )
   }
 
@@ -127,13 +175,146 @@ export function parseSource(
     roundTripRisk: "handleable",
     customHandling: false,
     directives,
-    filePassthrough: [],
+    filePassthrough,
     imports,
     cvaExports,
     contextExports: [],
     hookExports: [],
     subComponents,
-    thirdParty: undefined,
+    thirdParty: ctx.thirdParty,
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Import context collection
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Map of third-party package name → `LibraryId`. Only closed-enum libraries
+ * from Pillar 1 D6 are listed; anything else stays generic.
+ */
+const KNOWN_LIBRARIES: Record<string, LibraryId> = {
+  "radix-ui": "radix-ui",
+  "react-day-picker": "react-day-picker",
+  cmdk: "cmdk",
+  vaul: "vaul",
+  "embla-carousel-react": "embla-carousel-react",
+  sonner: "sonner",
+  "react-resizable-panels": "react-resizable-panels",
+  "input-otp": "input-otp",
+}
+
+/**
+ * Known packages whose named imports are treated as `component-ref` bases
+ * when they appear as JSX tags. lucide-react is the only one in scope for 2b.
+ */
+const COMPONENT_REF_PACKAGES = new Set<string>([
+  "lucide-react",
+  "next-themes", // hooks, not components; harmless to include here
+])
+
+/**
+ * After an import is parsed, update the context with any side-effects:
+ * - Radix alias map (`import { X as XPrimitive } from "radix-ui"`)
+ * - Third-party alias map (cmdk / vaul / react-resizable-panels / embla etc.)
+ * - Component-ref set (lucide-react icons, cross-component refs from
+ *   `@/components/ui/...`, sonner's `Toaster as Sonner`, etc.)
+ * - Third-party library detection (populates `ctx.thirdParty`)
+ */
+function collectImportContext(decl: ImportDecl, ctx: ParserContext): void {
+  // Library detection for the top-level `thirdParty` field.
+  if (decl.kind === "named" || decl.kind === "default-namespace") {
+    const libId = KNOWN_LIBRARIES[decl.source]
+    if (libId !== undefined && libId !== "radix-ui") {
+      // radix-ui is infrastructure, not a "third-party integration" we surface
+      // on the tree. sonner/vaul/cmdk/etc. we do.
+      if (ctx.thirdParty === undefined) {
+        ctx.thirdParty = { library: libId }
+      }
+    }
+  }
+
+  // Namespace imports: `import * as ResizablePrimitive from "react-resizable-panels"`.
+  // The local name becomes a third-party alias pointing at the library id.
+  if (decl.kind === "default-namespace" && decl.namespaceImport) {
+    const libId = KNOWN_LIBRARIES[decl.source]
+    if (libId !== undefined && libId !== "radix-ui") {
+      ctx.thirdPartyAliases.set(decl.localName, libId)
+    }
+    return
+  }
+
+  if (decl.kind !== "named") return
+
+  // Named imports from radix-ui: extract per-specifier aliases by re-walking
+  // the AST (our ImportDecl only stores local names, we need the original
+  // names too).
+  if (decl.source === "radix-ui") {
+    populateAliasMap(ctx, "radix-ui", ctx.radixAliases)
+    return
+  }
+
+  // Named imports from known non-radix third-party libraries. Same shape as
+  // radix: `import { Drawer as DrawerPrimitive } from "vaul"` →
+  // aliases['DrawerPrimitive'] = 'vaul'.
+  const libId = KNOWN_LIBRARIES[decl.source]
+  if (libId !== undefined && libId !== "radix-ui") {
+    for (const local of decl.names) {
+      ctx.thirdPartyAliases.set(local, libId)
+    }
+    // sonner has a `<Sonner />` JSX usage (not qualified), so also add the
+    // local names as component-refs so the JSX walker finds them.
+    for (const local of decl.names) {
+      ctx.componentRefs.add(local)
+    }
+    return
+  }
+
+  // Component-ref packages (lucide-react, next-themes): every named import
+  // becomes a known component-ref.
+  if (COMPONENT_REF_PACKAGES.has(decl.source)) {
+    for (const name of decl.names) {
+      ctx.componentRefs.add(name)
+    }
+    return
+  }
+
+  // Cross-component refs: `import { Dialog, DialogContent } from "@/components/ui/dialog"`.
+  // These become component-refs — the JSX walker will emit
+  // `{ kind: 'component-ref', name }` when it sees them.
+  if (decl.source.startsWith("@/components/ui/")) {
+    for (const name of decl.names) {
+      ctx.componentRefs.add(name)
+    }
+    return
+  }
+}
+
+/**
+ * Walk the raw AST to populate an alias map. Our `ImportDecl` loses the
+ * `propertyName` (the "X" in `{ X as Y }`), so we re-walk the source file
+ * to collect it for a given module specifier.
+ */
+function populateAliasMap(
+  ctx: ParserContext,
+  moduleSpec: string,
+  target: Map<string, string>,
+): void {
+  for (const stmt of ctx.sourceFile.statements) {
+    if (!ts.isImportDeclaration(stmt)) continue
+    if (
+      !ts.isStringLiteral(stmt.moduleSpecifier) ||
+      stmt.moduleSpecifier.text !== moduleSpec
+    ) {
+      continue
+    }
+    const bindings = stmt.importClause?.namedBindings
+    if (!bindings || !ts.isNamedImports(bindings)) continue
+    for (const el of bindings.elements) {
+      const localName = el.name.text
+      const originalName = el.propertyName?.text ?? el.name.text
+      target.set(localName, originalName)
+    }
   }
 }
 
@@ -141,10 +322,44 @@ export function parseSource(
  * Internal: context + helpers
  * ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Shared context threaded through every walker. Collects import-level
+ * metadata up-front so individual JSX walkers can disambiguate tag names
+ * without re-scanning the imports on every element.
+ */
 interface ParserContext {
   sourceFile: ts.SourceFile
   filePath: string
   source: string
+  /**
+   * Map of local identifier → radix-ui primitive name. Populated from
+   * `import { Accordion as AccordionPrimitive } from "radix-ui"` —
+   * `AccordionPrimitive` is the key, `"Accordion"` is the value. When the
+   * JSX walker sees `<AccordionPrimitive.Root>` it looks up the key and
+   * emits `{ kind: 'radix', primitive: 'Accordion', part: 'Root' }`.
+   */
+  radixAliases: Map<string, string>
+  /**
+   * Map of local identifier → third-party `LibraryId`. Populated from
+   * default/namespace imports of known libraries. When the JSX walker sees
+   * `<CommandPrimitive.Input>` and `CommandPrimitive` is in this map, it
+   * emits `{ kind: 'third-party', library: 'cmdk', component: 'Input' }`.
+   */
+  thirdPartyAliases: Map<string, LibraryId>
+  /**
+   * Known component-ref names — identifiers imported from third-party packages
+   * that appear as JSX tags but aren't Radix (e.g. `CheckIcon`, `CircleIcon`
+   * from lucide-react, `Loader2Icon` from lucide-react, or `Sonner` from
+   * `sonner`). When the JSX walker sees `<CheckIcon />` and the name is in
+   * this set, it emits `{ kind: 'component-ref', name: 'CheckIcon' }`.
+   */
+  componentRefs: Set<string>
+  /**
+   * Detected third-party library integration (e.g. `sonner`, `cmdk`, `vaul`).
+   * Set at most once per file. Populated when an import from a known library
+   * is seen. Surfaced on the output tree's `thirdParty` field.
+   */
+  thirdParty: ThirdPartyIntegration | undefined
 }
 
 function parserError(
@@ -405,7 +620,7 @@ function getPropertyName(
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Function component (Button)
+ * Function components (function declarations + arrow functions)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 function parseFunctionComponent(
@@ -416,22 +631,88 @@ function parseFunctionComponent(
   if (!node.name) {
     throw parserError(node, ctx, "Function component must have a name.")
   }
-  const name = node.name.text
+  return buildSubComponent({
+    name: node.name.text,
+    parameters: node.parameters,
+    body: node.body,
+    ctx,
+    exportOrder,
+    node,
+  })
+}
 
-  // Parse the single destructured param — `{ className, variant, size, asChild = false, ...props }: TypeAnnotation`
-  if (node.parameters.length !== 1) {
+/**
+ * Try to parse `const Toaster = (...) => <JSX />` as a sub-component.
+ * Returns null if the variable statement isn't an arrow function component.
+ * Sonner is the only file in the easy bucket that uses this shape.
+ */
+function tryParseArrowFunctionComponent(
+  stmt: ts.VariableStatement,
+  ctx: ParserContext,
+  exportOrder: number,
+): SubComponentV2 | null {
+  if (stmt.declarationList.declarations.length !== 1) return null
+  const decl = stmt.declarationList.declarations[0]
+  if (!ts.isIdentifier(decl.name)) return null
+  if (!decl.initializer || !ts.isArrowFunction(decl.initializer)) return null
+  const arrow = decl.initializer
+
+  // Arrow body: either a block statement (`() => { return <JSX /> }`) or an
+  // expression (`() => <JSX />`). We need it to be a block so we can walk
+  // passthrough statements.
+  if (!ts.isBlock(arrow.body)) {
+    // Expression body — wrap the returned JSX directly with no passthrough.
+    // None of the easy bucket uses this shape, but support it cheaply.
+    const expr = arrow.body
+    if (!ts.isJsxElement(expr) && !ts.isJsxSelfClosingElement(expr)) {
+      return null
+    }
+    return buildSubComponent({
+      name: decl.name.text,
+      parameters: arrow.parameters,
+      body: ts.factory.createBlock([ts.factory.createReturnStatement(expr)], true),
+      ctx,
+      exportOrder,
+      node: arrow,
+    })
+  }
+
+  return buildSubComponent({
+    name: decl.name.text,
+    parameters: arrow.parameters,
+    body: arrow.body,
+    ctx,
+    exportOrder,
+    node: arrow,
+  })
+}
+
+interface BuildSubComponentArgs {
+  name: string
+  parameters: ts.NodeArray<ts.ParameterDeclaration>
+  body: ts.Block | undefined
+  ctx: ParserContext
+  exportOrder: number
+  /** The original AST node, for error reporting. */
+  node: ts.Node
+}
+
+function buildSubComponent(args: BuildSubComponentArgs): SubComponentV2 {
+  const { name, parameters, body, ctx, exportOrder, node } = args
+
+  if (parameters.length !== 1) {
     throw parserError(
       node,
       ctx,
-      "Pillar 2a only handles single-param function components.",
+      "Only single-param function components are supported.",
     )
   }
-  const param = node.parameters[0]
+  const param = parameters[0]
   if (!param.name || !ts.isObjectBindingPattern(param.name)) {
     throw parserError(
       param,
       ctx,
-      "Pillar 2a only handles destructured object params.",
+      "Only destructured object params are supported.",
     )
   }
   if (!param.type) {
@@ -441,12 +722,10 @@ function parseFunctionComponent(
   const propsDecl = parsePropsType(param.type, ctx)
   const inlineDefaults = collectInlineDefaults(param.name)
 
-  // Parse the body: capture the `const Comp = ...` statement as passthrough,
-  // then find the return statement with the JSX element.
-  if (!node.body) {
+  if (!body) {
     throw parserError(node, ctx, "Function component must have a body.")
   }
-  const bodyStatements = node.body.statements
+  const bodyStatements = body.statements
 
   const passthrough: SubComponentV2["passthrough"] = []
   let returnStmt: ts.ReturnStatement | null = null
@@ -456,7 +735,9 @@ function parseFunctionComponent(
       returnStmt = bodyStmt
       break
     }
-    // Any non-return statement before the return goes into passthrough verbatim.
+    // Non-return statements before the return go into passthrough verbatim.
+    // Examples: `const Comp = asChild ? Slot.Root : "button"`,
+    // `const { theme = "system" } = useTheme()` (Sonner).
     passthrough.push({
       kind: "statement",
       source: bodyStmt.getText(ctx.sourceFile),
@@ -467,7 +748,6 @@ function parseFunctionComponent(
     throw parserError(node, ctx, "Function component body must return a JSX element.")
   }
 
-  // Unwrap parenthesised JSX.
   let returnExpr: ts.Expression = returnStmt.expression
   while (ts.isParenthesizedExpression(returnExpr)) {
     returnExpr = returnExpr.expression
@@ -477,7 +757,7 @@ function parseFunctionComponent(
     throw parserError(
       returnExpr,
       ctx,
-      "Function component must return a JSX element (Pillar 2a scope).",
+      "Function component must return a JSX element.",
     )
   }
 
@@ -634,16 +914,24 @@ function parsePropsPart(type: ts.TypeNode, ctx: ParserContext): PropsPart {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 function parseJsxElement(
-  node: ts.JsxSelfClosingElement | ts.JsxElement,
+  node: ts.JsxSelfClosingElement | ts.JsxElement | ts.JsxFragment,
   ctx: ParserContext,
-): SubComponentV2["parts"]["root"] {
+): PartNode {
+  if (ts.isJsxFragment(node)) {
+    throw parserError(
+      node,
+      ctx,
+      "JSX fragments not yet supported (none of the easy bucket uses them).",
+    )
+  }
+
   const opening = ts.isJsxSelfClosingElement(node) ? node : node.openingElement
 
   const tagName = opening.tagName.getText(ctx.sourceFile)
   const base = resolveBase(tagName, ctx, opening)
 
   const attributes: Record<string, string> = {}
-  let className: SubComponentV2["parts"]["root"]["className"] = {
+  let className: PartNode["className"] = {
     kind: "literal",
     value: "",
   }
@@ -653,7 +941,9 @@ function parseJsxElement(
 
   for (const attr of opening.attributes.properties) {
     if (ts.isJsxSpreadAttribute(attr)) {
-      // Only `{...props}` is supported in 2a.
+      // Only `{...props}` is supported — shadcn's convention. Any other
+      // spread target would require tracking the identifier back to its
+      // declaration, which we'll do if a later bucket needs it.
       if (
         ts.isIdentifier(attr.expression) &&
         attr.expression.text === "props"
@@ -664,15 +954,14 @@ function parseJsxElement(
       throw parserError(
         attr,
         ctx,
-        "Pillar 2a only handles `{...props}` spreads.",
+        "Only `{...props}` spreads are supported.",
       )
     }
     if (!ts.isIdentifier(attr.name)) {
-      // e.g. namespaced attributes — Button doesn't use them.
       throw parserError(
         attr,
         ctx,
-        "Pillar 2a only handles identifier-named JSX attributes.",
+        "Only identifier-named JSX attributes are supported.",
       )
     }
     const attrName = attr.name.text
@@ -701,23 +990,10 @@ function parseJsxElement(
     attributes[attrName] = getJsxAttributeRawValue(attr, ctx)
   }
 
-  // Only self-closing elements have no children. `ts.JsxElement` has children,
-  // but for 2a (Button) the element is self-closing. Reject with a helpful
-  // error if we see children.
-  if (ts.isJsxElement(node) && node.children.length > 0) {
-    // Filter out whitespace-only JsxText.
-    const meaningful = node.children.filter((c) => {
-      if (ts.isJsxText(c)) return c.text.trim().length > 0
-      return true
-    })
-    if (meaningful.length > 0) {
-      throw parserError(
-        node,
-        ctx,
-        "Pillar 2a does not yet handle JSX children (Button is self-closing).",
-      )
-    }
-  }
+  // Walk children for JsxElement; self-closing elements have none.
+  const children: PartChild[] = ts.isJsxElement(node)
+    ? parseJsxChildren(node.children, ctx)
+    : []
 
   return {
     base,
@@ -726,37 +1002,116 @@ function parseJsxElement(
     propsSpread,
     attributes,
     asChild,
-    children: [],
+    children,
   }
 }
 
 /**
- * Given the tag name source (e.g. "Comp", "button", "Slot.Root"), figure out
- * what kind of Base this element is. Pillar 2a recognises:
- *  - lowercase single-word → html tag
- *  - identifier referring to a local variable (dynamic-ref)
- *  - qualified name like `Namespace.Name` → unsupported in 2a
+ * Walk a JsxElement's children array and produce `PartChild` entries.
+ * Whitespace-only `JsxText` nodes are dropped (they're not meaningful for
+ * the structured editor; the generator will reintroduce reasonable whitespace).
+ */
+function parseJsxChildren(
+  children: readonly ts.JsxChild[],
+  ctx: ParserContext,
+): PartChild[] {
+  const out: PartChild[] = []
+  for (const child of children) {
+    if (ts.isJsxText(child)) {
+      const trimmed = child.text.trim()
+      if (trimmed.length === 0) continue
+      out.push({ kind: "text", value: trimmed })
+      continue
+    }
+    if (ts.isJsxExpression(child)) {
+      // Empty expression `{}` — skip.
+      if (!child.expression) continue
+      out.push({
+        kind: "expression",
+        source: child.expression.getText(ctx.sourceFile),
+      })
+      continue
+    }
+    if (
+      ts.isJsxElement(child) ||
+      ts.isJsxSelfClosingElement(child) ||
+      ts.isJsxFragment(child)
+    ) {
+      out.push({ kind: "part", part: parseJsxElement(child, ctx) })
+      continue
+    }
+    // JsxText we filtered, JsxExpression we handled, the element kinds too,
+    // so anything left is a future TS feature (e.g. JsxOpeningFragment).
+    // Surface it as a passthrough so we don't crash.
+    out.push({
+      kind: "passthrough",
+      passthrough: {
+        kind: "raw",
+        source: (child as ts.Node).getText(ctx.sourceFile),
+      },
+    })
+  }
+  return out
+}
+
+/**
+ * Given the JSX tag name source (e.g. "Comp", "button", "Slot.Root",
+ * "AccordionPrimitive.Root"), figure out what kind of Base this element is.
+ *
+ * Recognised in 2a + 2b:
+ *  - lowercase single word → HTML tag
+ *  - qualified `X.Y` where X is a radix-ui alias → Radix primitive part
+ *  - qualified `Slot.Root` (radix-ui umbrella, no alias) → Radix primitive
+ *  - single identifier that's a known component-ref → component-ref base
+ *  - single identifier otherwise → dynamic-ref (local variable, like Button's
+ *    `const Comp = ...`)
  */
 function resolveBase(
   tagName: string,
   ctx: ParserContext,
   node: ts.Node,
-): SubComponentV2["parts"]["root"]["base"] {
+): Base {
   // HTML tag: all-lowercase single identifier.
   if (/^[a-z][a-z0-9-]*$/.test(tagName)) {
     return { kind: "html", tag: tagName }
   }
-  // Single-identifier PascalCase → assume local dynamic-ref for 2a.
-  // Button uses `const Comp = ...; return <Comp ... />` so `Comp` is our only
-  // case here. Any other identifier will be flagged in 2b or later when
-  // Radix-primitive detection lands.
+
+  // Qualified tag: `Namespace.Part` (or deeper, but shadcn only uses 2 levels).
+  if (tagName.includes(".")) {
+    const [namespace, ...parts] = tagName.split(".")
+    const part = parts.join(".")
+    // First try the radix aliases map (most common case).
+    const primitive = ctx.radixAliases.get(namespace)
+    if (primitive !== undefined) {
+      return { kind: "radix", primitive, part }
+    }
+    // Then try the third-party aliases map (vaul, cmdk, react-resizable-panels,
+    // embla-carousel-react, react-day-picker, etc.).
+    const libId = ctx.thirdPartyAliases.get(namespace)
+    if (libId !== undefined) {
+      return { kind: "third-party", library: libId, component: part }
+    }
+    throw parserError(
+      node,
+      ctx,
+      `Qualified JSX tag "${tagName}" does not resolve to a known radix-ui primitive or third-party library namespace.`,
+    )
+  }
+
+  // Single identifier.
   if (/^[A-Z][A-Za-z0-9_]*$/.test(tagName)) {
+    if (ctx.componentRefs.has(tagName)) {
+      return { kind: "component-ref", name: tagName }
+    }
+    // Fall through to dynamic-ref: a local variable defined in the function
+    // body (Button's `const Comp = ...`).
     return { kind: "dynamic-ref", localName: tagName }
   }
+
   throw parserError(
     node,
     ctx,
-    `Pillar 2a does not yet handle qualified or complex tag names: "${tagName}"`,
+    `Unrecognised JSX tag name: "${tagName}"`,
   )
 }
 
