@@ -47,6 +47,13 @@ interface VisualEditorProps {
   subComponentNames?: string[]
   parentClasses?: string[]
   parentTag?: string
+  /**
+   * Observe the active context selection. The parent page uses this to
+   * derive which cva slot a write should land in when the active
+   * contexts include a `variant:<group>:<value>` that belongs to the
+   * current element's own cva. Fires on every context change.
+   */
+  onContextsChange?: (contexts: string[]) => void
 }
 
 /* ── Main component ──────────────────────────────────────────────── */
@@ -61,14 +68,28 @@ export function VisualEditor({
   subComponentNames,
   parentClasses,
   parentTag,
+  onContextsChange,
 }: VisualEditorProps) {
   const [contexts, setContexts] = React.useState<string[]>([])
 
-  // Compute the combined CSS prefix from selected contexts
+  // Notify parent when contexts change so it can derive cva slot routing.
+  React.useEffect(() => {
+    onContextsChange?.(contexts)
+  }, [contexts, onContextsChange])
+
+  // Compute the combined CSS prefix from selected contexts.
+  //
+  // Variant contexts (e.g. `variant:size:sm`) are deliberately excluded
+  // here: when the user picks a variant in the ContextPicker, the edit
+  // should land in the cva slot (variants.size.sm) — NOT on the base
+  // className as a `data-[size=sm]:` prefix. The parent page derives
+  // the target slot from `contexts` via `onContextsChange` and routes
+  // the write accordingly. Breakpoints, pseudos, and data-attr contexts
+  // from parentVariants still produce CSS prefixes as before.
   const combinedPrefix = React.useMemo(() => {
     if (contexts.length === 0) return "default"
-    // Filter out variant contexts (they don't produce CSS prefixes)
     const cssPrefixes = contexts
+      .filter((c) => !c.startsWith("variant:"))
       .map(getCssPrefix)
       .filter((p) => p !== "default")
     if (cssPrefixes.length === 0) return "default"

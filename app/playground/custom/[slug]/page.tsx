@@ -81,6 +81,10 @@ export default function CustomComponentPage() {
   const [focusRange, setFocusRange] = React.useState<{ start: number; end: number } | null>(null)
   const [hiddenPaths, setHiddenPaths] = React.useState<Set<PartPath>>(new Set())
   const [isDirty, setIsDirty] = React.useState(false)
+  // Active contexts in the VisualEditor's ContextPicker. When one of these
+  // is `variant:<group>:<value>` and matches the selected sub-component's
+  // own cva, edits route into the cva slot instead of the base className.
+  const [activeContexts, setActiveContexts] = React.useState<string[]>([])
   const contentRef = React.useRef<HTMLDivElement>(null)
 
   const hasTree = tree !== null
@@ -279,14 +283,73 @@ export default function CustomComponentPage() {
     Object.keys(propValues).length > 0 ? propValues : undefined
 
   /* ── Class edit handler (called when the user edits classes
-        on the selected part in the visual editor) ───────────── */
+        on the selected part in the visual editor) ─────────────
+
+     If the active contexts include a `variant:<group>:<value>` that
+     matches the selected sub-component's own cva, route the write
+     into that cva slot (mutating `tree.cvaExports[i].variants[g][v]`)
+     rather than onto the cn-call base. Otherwise fall back to the
+     base className edit via `setPartClasses`.
+
+     This is the unified ContextPicker → cva slot flow — the
+     ContextPicker IS the slot picker for own-variants, so the user
+     only has one UI to think about.                                 */
 
   const handlePartClassChange = React.useCallback(
     (path: PartPath, classes: string[]) => {
       if (!tree) return
+
+      // Find the sub-component the selected path lives under.
+      const sub = findSubByPath(tree, path)
+      const ownVariantContext = activeContexts.find((c) => c.startsWith("variant:"))
+
+      if (
+        sub &&
+        ownVariantContext &&
+        sub.variantStrategy.kind === "cva" &&
+        isRootPath(path)
+      ) {
+        // Only the sub-component root can carry cva variants — a nested
+        // body part never has its own cva. Body parts fall through to
+        // the base-className edit path below.
+        const cvaRef = sub.variantStrategy.cvaRef
+        const cva = tree.cvaExports.find((c) => c.name === cvaRef)
+        if (cva) {
+          const parts = ownVariantContext.split(":")
+          const group = parts[1]
+          const value = parts[2]
+          if (
+            group &&
+            value &&
+            cva.variants[group] &&
+            value in cva.variants[group]
+          ) {
+            const newTree: ComponentTreeV2 = {
+              ...tree,
+              cvaExports: tree.cvaExports.map((ce) => {
+                if (ce.name !== cvaRef) return ce
+                return {
+                  ...ce,
+                  variants: {
+                    ...ce.variants,
+                    [group]: {
+                      ...ce.variants[group],
+                      [value]: classes.join(" "),
+                    },
+                  },
+                }
+              }),
+            }
+            handleTreeChange(newTree)
+            return
+          }
+        }
+      }
+
+      // Default path — write to the element's cn-call base.
       handleTreeChange(setPartClasses(tree, path, classes))
     },
-    [tree, handleTreeChange],
+    [tree, activeContexts, handleTreeChange],
   )
 
   /* ── Outline node click → highlight in code panel ──────────── */
@@ -571,34 +634,51 @@ export default function CustomComponentPage() {
               </div>
 
               {/* Visual editor for selected part */}
-              <ScrollArea className="flex-1">
+              {/* `min-h-0` is the load-bearing line — without it the
+                  flex-1 doesn't constrain the ScrollArea's height and
+                  the panel grows past the viewport. */}
+              <ScrollArea className="min-h-0 flex-1">
                 {selectedPath ? (() => {
                   const selectedPart = findPartByPath(tree, selectedPath)
                   const selectedSub = findSubByPath(tree, selectedPath)
                   if (!selectedPart || !selectedSub) return null
 
-                  const partClasses = getPartClasses(selectedPart)
                   const tagName =
                     selectedPart.base.kind === "html"
                       ? selectedPart.base.tag
                       : "div"
                   const isRoot = isRootPath(selectedPath)
-                  const subVariants =
+                  const subCva =
                     selectedSub.variantStrategy.kind === "cva"
-                      ? (() => {
-                          const cva = tree.cvaExports.find(
-                            (c) =>
-                              c.name === (selectedSub.variantStrategy as { kind: "cva"; cvaRef: string }).cvaRef,
-                          )
-                          if (!cva) return []
-                          return Object.entries(cva.variants).map(
-                            ([n, vals]) => ({
-                              name: n,
-                              options: Object.keys(vals),
-                            }),
-                          )
-                        })()
-                      : []
+                      ? tree.cvaExports.find(
+                          (c) =>
+                            c.name === (selectedSub.variantStrategy as { kind: "cva"; cvaRef: string }).cvaRef,
+                        )
+                      : undefined
+                  const subVariants = subCva
+                    ? Object.entries(subCva.variants).map(([n, vals]) => ({
+                        name: n,
+                        options: Object.keys(vals),
+                      }))
+                    : []
+
+                  // If the active contexts point at an own-variant slot,
+                  // load classes from that slot so the controls reflect
+                  // the slot's current state. Body parts and unmatched
+                  // contexts fall through to the element's base classes.
+                  const ownVariantContext = activeContexts.find((c) =>
+                    c.startsWith("variant:"),
+                  )
+                  let partClasses: string[] = getPartClasses(selectedPart)
+                  if (subCva && ownVariantContext && isRoot) {
+                    const parts = ownVariantContext.split(":")
+                    const group = parts[1]
+                    const value = parts[2]
+                    const slotValue = subCva.variants[group]?.[value]
+                    if (typeof slotValue === "string") {
+                      partClasses = slotValue.split(/\s+/).filter(Boolean)
+                    }
+                  }
 
                   return (
                     <VisualEditor
@@ -618,6 +698,7 @@ export default function CustomComponentPage() {
                       variants={subVariants}
                       props={[]}
                       subComponentNames={tree.subComponents.map((sc) => sc.name)}
+                      onContextsChange={setActiveContexts}
                     />
                   )
                 })() : (
