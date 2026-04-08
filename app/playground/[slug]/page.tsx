@@ -406,10 +406,10 @@ export default function ComponentPage() {
           side="left"
         />
 
-        {/* ── Centre: Canvas ──────────────────────────────────── */}
-        {/* Pillar 6.1 — CanvasToolbar with VARIANT/SIZE dropdowns
-            removed. The variants UI now lives in the bottom-bar
-            VariantsPopover (StatusBar), matching the from-scratch page. */}
+        {/* ── Centre: Canvas section ──────────────────────────── */}
+        {/* GEO-305 Step 7 — the StatusBar is now scoped to the canvas
+            column instead of spanning the whole page width. Matches
+            the from-scratch page layout exactly. */}
         <div className="flex min-w-[100px] flex-1 flex-col">
           <ComponentCanvas
             slug={slug}
@@ -420,6 +420,16 @@ export default function ComponentPage() {
             mode={mode}
             onElementSelect={setSelectedElement}
             onElementHover={() => {}}
+          />
+
+          {/* ── Status bar (scoped to canvas column) ──────────── */}
+          <StatusBar
+            source={source}
+            theme={theme}
+            onThemeChange={setTheme}
+            breakpoint={breakpoint}
+            onBreakpointChange={setBreakpoint}
+            propSelectors={propSelectors}
           />
         </div>
 
@@ -442,20 +452,6 @@ export default function ComponentPage() {
           }
         />
       </div>
-
-      {/* ── Bottom: A11y + Semantic + Variants popover status bar ── */}
-      {/* Pillar 6.1 — pass `propSelectors` so the variants popover that
-          already lives in StatusBar lights up on stock pages too. Same
-          widget the from-scratch page uses, fed by the v2 parsed tree's
-          cvaExports via `variantDefs`. */}
-      <StatusBar
-        source={source}
-        theme={theme}
-        onThemeChange={setTheme}
-        breakpoint={breakpoint}
-        onBreakpointChange={setBreakpoint}
-        propSelectors={propSelectors}
-      />
     </>
   )
 }

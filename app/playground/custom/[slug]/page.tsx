@@ -490,8 +490,10 @@ export default function CustomComponentPage() {
             />
 
             {/* Right panel: visual styling per part */}
+            {/* GEO-305 Step 7 — `min-h-0` lets the inner ScrollArea constrain
+                its own height instead of growing past the viewport. */}
             <div
-              className="flex shrink-0 flex-col border-l bg-background"
+              className="flex min-h-0 shrink-0 flex-col border-l bg-background"
               style={{ width: `${editPanelWidth}px` }}
             >
               <div className="flex items-center gap-1.5 border-b px-3 py-2">

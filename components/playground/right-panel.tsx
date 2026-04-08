@@ -64,8 +64,12 @@ export function RightPanel({
       )}
 
       {/* ── Panel content ────────────────────────────────── */}
+      {/* GEO-305 Step 7 — `min-h-0` lets the inner ScrollArea constrain
+          its own height instead of growing past the viewport. Without
+          it, flex children of an overflow-hidden parent fall back to
+          their content height and the right panel grows unbounded. */}
       <div
-        className="flex flex-1 flex-col border-l bg-background"
+        className="flex min-h-0 flex-1 flex-col border-l bg-background"
         style={{ width: `${width}px` }}
       >
         {showVisualEditor ? (
