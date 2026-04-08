@@ -1,7 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown, Box, Type, Heading, MousePointer, Image, FormInput, List, Minus, Code2, Component, TextCursorInput } from "lucide-react"
+import {
+  Plus,
+  Eye,
+  EyeOff,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  Box,
+  Type,
+  Heading,
+  MousePointer,
+  Image,
+  FormInput,
+  List,
+  Minus,
+  Code2,
+  Component,
+  TextCursorInput,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -24,72 +42,85 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import type { ComponentTree, ElementNode, SubComponentDef } from "@/lib/component-tree"
+import type {
+  ComponentTreeV2,
+  PartChild,
+  PartNode,
+  SubComponentV2,
+} from "@/lib/component-tree-v2"
+import { createPartNode } from "@/lib/component-tree-v2-factories"
 import {
-  addChild,
-  removeNode,
-  moveNode,
-  createElementNode,
-} from "@/lib/component-tree"
+  appendChildAtPath,
+  makePartPath,
+  movePartByPath,
+  removePartAtPath,
+  type PartPath,
+} from "@/lib/parser/v2-tree-path"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 interface AssemblyPanelProps {
-  tree: ComponentTree
-  onTreeChange: (tree: ComponentTree) => void
-  onSelectComponent?: (id: string | null) => void
-  selectedId?: string | null
-  /** Set of node IDs that are hidden in the canvas */
-  hiddenIds: Set<string>
-  onHiddenChange: (hiddenIds: Set<string>) => void
+  tree: ComponentTreeV2
+  onTreeChange: (tree: ComponentTreeV2) => void
+  onSelectPath?: (path: PartPath | null) => void
+  selectedPath?: PartPath | null
+  /** Set of part paths that are hidden in the canvas */
+  hiddenPaths: Set<PartPath>
+  onHiddenChange: (hiddenPaths: Set<PartPath>) => void
 }
 
 type DropPosition = "before" | "after" | "inside"
-
-/* ── Hidden nodes state ────────────────────────────────────────── */
-
-// Track which nodes are hidden (visibility toggle)
-// This is local state — hidden nodes still exist in the tree but
-// don't render in the canvas preview
 
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function AssemblyPanel({
   tree,
   onTreeChange,
-  onSelectComponent,
-  selectedId,
-  hiddenIds,
+  onSelectPath,
+  selectedPath,
+  hiddenPaths,
   onHiddenChange,
 }: AssemblyPanelProps) {
-  function toggleHidden(nodeId: string) {
-    const next = new Set(hiddenIds)
-    if (next.has(nodeId)) {
-      next.delete(nodeId)
+  function toggleHidden(path: PartPath) {
+    const next = new Set(hiddenPaths)
+    if (next.has(path)) {
+      next.delete(path)
     } else {
-      next.add(nodeId)
+      next.add(path)
     }
     onHiddenChange(next)
   }
 
-  function handleRemoveNode(nodeId: string) {
-    const newAssembly = removeNode(tree.assemblyTree, nodeId)
-    onTreeChange({ ...tree, assemblyTree: newAssembly })
+  function handleRemove(path: PartPath) {
+    onTreeChange(removePartAtPath(tree, path))
   }
 
-  function handleMoveNode(dragId: string, targetId: string, position: DropPosition) {
-    const newAssembly = moveNode(tree.assemblyTree, dragId, targetId, position)
-    onTreeChange({ ...tree, assemblyTree: newAssembly })
+  function handleMove(
+    dragPath: PartPath,
+    targetPath: PartPath,
+    position: DropPosition,
+  ) {
+    onTreeChange(movePartByPath(tree, dragPath, targetPath, position))
   }
 
-  function handleAddChild(parentId: string, tag: string) {
-    const child = createElementNode(tag === "#text" ? "span" : tag)
+  function handleAddChild(parentPath: PartPath, tag: string) {
+    // #text becomes a literal text child instead of a new part
     if (tag === "#text") {
-      child.text = "Sample text"
+      // We need to mutate the parent to add a text PartChild. The simplest
+      // way is to compute it manually rather than going through
+      // appendChildAtPath (which only takes PartNodes, not PartChildren).
+      onTreeChange(appendTextChildAtPath(tree, parentPath, "Sample text"))
+      return
     }
-    const newAssembly = addChild(tree.assemblyTree, parentId, child)
-    onTreeChange({ ...tree, assemblyTree: newAssembly })
+    const newChild = createPartNode(tag)
+    onTreeChange(appendChildAtPath(tree, parentPath, newChild))
   }
+
+  // The first sub-component is the canvas root. Any additional sub-components
+  // appear as siblings further down the tree.
+  const root = tree.subComponents[0]
+  if (!root) return null
+  const rootPath = makePartPath(root.name, [])
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -102,17 +133,18 @@ export function AssemblyPanel({
         <div className="flex-1 overflow-auto">
           <div className="min-w-max p-1.5">
             <AssemblyNode
-              node={tree.assemblyTree}
+              part={root.parts.root}
+              path={rootPath}
               depth={0}
               isRoot
-              rootName={tree.name}
+              rootName={root.name}
               subComponents={tree.subComponents}
-              hiddenIds={hiddenIds}
-              selectedId={selectedId}
-              onSelectComponent={onSelectComponent}
+              hiddenPaths={hiddenPaths}
+              selectedPath={selectedPath}
+              onSelectPath={onSelectPath}
               onToggleHidden={toggleHidden}
-              onRemove={handleRemoveNode}
-              onMove={handleMoveNode}
+              onRemove={handleRemove}
+              onMove={handleMove}
               onAddChild={handleAddChild}
             />
           </div>
@@ -122,56 +154,151 @@ export function AssemblyPanel({
   )
 }
 
+/* ── Helpers ────────────────────────────────────────────────────── */
+
+/**
+ * Append a text child to the part at `path`. Used by the AssemblyPanel's
+ * "#text" picker option, which v1 handled by setting `node.text` on a
+ * fresh ElementNode. v2 represents text as a PartChild of kind "text".
+ */
+function appendTextChildAtPath(
+  tree: ComponentTreeV2,
+  path: PartPath,
+  text: string,
+): ComponentTreeV2 {
+  // Round-trip through the path layer would require a separate
+  // appendPartChildAtPath helper, but a one-off for text is simple enough
+  // to do inline. We rebuild the tree by walking and replacing at the path.
+  return mutatePartAtPath(tree, path, (part) => ({
+    ...part,
+    children: [
+      ...part.children,
+      { kind: "text", value: text } satisfies PartChild,
+    ],
+  }))
+}
+
+function mutatePartAtPath(
+  tree: ComponentTreeV2,
+  path: PartPath,
+  mutate: (part: PartNode) => PartNode,
+): ComponentTreeV2 {
+  // Parse the path manually since we don't import parsePartPath here.
+  // sub:NAME/IDX/IDX/...
+  if (!path.startsWith("sub:")) return tree
+  const slashIdx = path.indexOf("/")
+  if (slashIdx === -1) return tree
+  const subName = path.slice("sub:".length, slashIdx)
+  const indexStr = path.slice(slashIdx + 1)
+  const indices: number[] =
+    indexStr === "" ? [] : indexStr.split("/").map((s) => Number(s))
+  if (indices.some((n) => !Number.isInteger(n) || n < 0)) return tree
+
+  return {
+    ...tree,
+    subComponents: tree.subComponents.map((sub) => {
+      if (sub.name !== subName) return sub
+      return {
+        ...sub,
+        parts: {
+          root:
+            indices.length === 0
+              ? mutate(sub.parts.root)
+              : mutateInChildren(sub.parts.root, indices, mutate),
+        },
+      }
+    }),
+  }
+}
+
+function mutateInChildren(
+  parent: PartNode,
+  indices: number[],
+  mutate: (part: PartNode) => PartNode,
+): PartNode {
+  if (indices.length === 0) return mutate(parent)
+  const [head, ...rest] = indices
+  return {
+    ...parent,
+    children: parent.children.map((child, i) => {
+      if (i !== head) return child
+      if (child.kind !== "part") return child
+      return {
+        kind: "part",
+        part:
+          rest.length === 0
+            ? mutate(child.part)
+            : mutateInChildren(child.part, rest, mutate),
+      }
+    }),
+  }
+}
+
 /* ── AssemblyNode — recursive tree node ────────────────────────── */
 
 interface AssemblyNodeProps {
-  node: ElementNode
+  part: PartNode
+  path: PartPath
   depth: number
   isRoot: boolean
   rootName?: string
-  subComponents: ComponentTree["subComponents"]
-  hiddenIds: Set<string>
-  selectedId?: string | null
-  onSelectComponent?: (id: string | null) => void
-  onToggleHidden: (id: string) => void
-  onRemove: (id: string) => void
-  onMove: (dragId: string, targetId: string, position: DropPosition) => void
-  onAddChild: (parentId: string, tag: string) => void
+  subComponents: SubComponentV2[]
+  hiddenPaths: Set<PartPath>
+  selectedPath?: PartPath | null
+  onSelectPath?: (path: PartPath | null) => void
+  onToggleHidden: (path: PartPath) => void
+  onRemove: (path: PartPath) => void
+  onMove: (dragPath: PartPath, targetPath: PartPath, position: DropPosition) => void
+  onAddChild: (parentPath: PartPath, tag: string) => void
 }
 
 function AssemblyNode({
-  node,
+  part,
+  path,
   depth,
   isRoot,
   rootName,
   subComponents,
-  hiddenIds,
-  selectedId,
-  onSelectComponent,
+  hiddenPaths,
+  selectedPath,
+  onSelectPath,
   onToggleHidden,
   onRemove,
   onMove,
   onAddChild,
 }: AssemblyNodeProps) {
   const [expanded, setExpanded] = React.useState(true)
-  const [dropPosition, setDropPosition] = React.useState<DropPosition | null>(null)
+  const [dropPosition, setDropPosition] = React.useState<DropPosition | null>(
+    null,
+  )
   const rowRef = React.useRef<HTMLDivElement>(null)
 
-  const isHidden = hiddenIds.has(node.id)
-  const hasChildren = node.children.length > 0
-  const subComponent = subComponents.find((sc) => sc.name === node.tag)
-  const isSubComponent = !!subComponent
-  const isSelected = isRoot
-    ? selectedId === "main"
-    : selectedId === node.id
+  const isHidden = hiddenPaths.has(path)
+  const hasChildren = part.children.length > 0
+  const isSelected = selectedPath === path
+  const isComponentRef = part.base.kind === "component-ref"
 
-  // Display name — root shows component name, sub-components show their name
-  const displayName = isRoot && rootName ? rootName : node.tag
+  // Display name — root shows the sub-component name, refs show the
+  // referenced sub-component name, html bases show the tag.
+  const displayName = isRoot
+    ? rootName ?? "?"
+    : part.base.kind === "html"
+      ? part.base.tag
+      : part.base.kind === "component-ref"
+        ? part.base.name
+        : part.base.kind === "radix"
+          ? `${part.base.primitive}.${part.base.part}`
+          : part.base.kind === "third-party"
+            ? part.base.component
+            : part.base.localName
 
   // Drag handlers
   const handleDragStart = (e: React.DragEvent) => {
-    if (isRoot) { e.preventDefault(); return }
-    e.dataTransfer.setData("text/plain", node.id)
+    if (isRoot) {
+      e.preventDefault()
+      return
+    }
+    e.dataTransfer.setData("text/plain", path)
     e.dataTransfer.effectAllowed = "move"
     e.stopPropagation()
   }
@@ -196,12 +323,18 @@ function AssemblyNode({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const dragId = e.dataTransfer.getData("text/plain")
-    if (dragId && dragId !== node.id && dropPosition) {
-      onMove(dragId, node.id, dropPosition)
+    const dragPath = e.dataTransfer.getData("text/plain") as PartPath
+    if (dragPath && dragPath !== path && dropPosition) {
+      onMove(dragPath, path, dropPosition)
     }
     setDropPosition(null)
   }
+
+  // The "first text child" — for displaying inline text in the row label
+  const firstTextChild = part.children.find(
+    (c) => c.kind === "text",
+  ) as Extract<PartChild, { kind: "text" }> | undefined
+  const showAsTextRow = !!firstTextChild && !hasChildrenOfKindPart(part)
 
   return (
     <div>
@@ -230,18 +363,26 @@ function AssemblyNode({
         )}
       >
         {/* Indentation spacer */}
-        {depth > 0 && <div className="shrink-0" style={{ width: `${depth * 14}px` }} />}
+        {depth > 0 && (
+          <div className="shrink-0" style={{ width: `${depth * 14}px` }} />
+        )}
 
         {/* Expand/collapse */}
         <button
           type="button"
           className={cn(
             "flex size-4 shrink-0 items-center justify-center rounded-sm",
-            hasChildren ? "text-muted-foreground hover:text-foreground" : "invisible",
+            hasChildren
+              ? "text-muted-foreground hover:text-foreground"
+              : "invisible",
           )}
           onClick={() => setExpanded(!expanded)}
         >
-          {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+          {expanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
         </button>
 
         {/* Tag name — clickable for all nodes */}
@@ -249,27 +390,31 @@ function AssemblyNode({
           type="button"
           className={cn(
             "min-w-0 flex-1 truncate text-left font-mono text-xs",
-            isSubComponent
+            isComponentRef
               ? "text-blue-500/80 hover:text-blue-500"
               : isSelected
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground/70",
           )}
           onClick={() => {
-            if (onSelectComponent) {
-              const nodeIdToSet = isRoot ? "main" : node.id
+            if (onSelectPath) {
               // Toggle: click again to deselect
-              onSelectComponent(selectedId === nodeIdToSet ? null : nodeIdToSet)
+              onSelectPath(selectedPath === path ? null : path)
             }
           }}
         >
-          {node.text && !hasChildren ? (
+          {showAsTextRow && firstTextChild ? (
             <span className="font-sans text-foreground/50 italic">
-              &quot;{node.text.length > 20 ? node.text.slice(0, 20) + "…" : node.text}&quot;
+              &quot;
+              {firstTextChild.value.length > 20
+                ? firstTextChild.value.slice(0, 20) + "…"
+                : firstTextChild.value}
+              &quot;
             </span>
           ) : (
             <>
-              &lt;{displayName}{!hasChildren && !node.text ? " /" : ""}&gt;
+              &lt;{displayName}
+              {!hasChildren ? " /" : ""}&gt;
             </>
           )}
         </button>
@@ -280,7 +425,7 @@ function AssemblyNode({
           <AddElementPicker
             subComponents={subComponents}
             onSelect={(tag) => {
-              onAddChild(node.id, tag)
+              onAddChild(path, tag)
               setExpanded(true)
             }}
           />
@@ -295,17 +440,20 @@ function AssemblyNode({
                   className="size-5"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onToggleHidden(node.id)
+                    onToggleHidden(path)
                   }}
                 >
-                  {isHidden ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                  {isHidden ? (
+                    <EyeOff className="size-3" />
+                  ) : (
+                    <Eye className="size-3" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
                 {isHidden ? "Show" : "Hide"}
               </TooltipContent>
             </Tooltip>
-
           )}
 
           {/* Remove from demo — not on root */}
@@ -318,35 +466,44 @@ function AssemblyNode({
                   className="size-5"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onRemove(node.id)
+                    onRemove(path)
                   }}
                 >
                   <Trash2 className="size-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Remove</TooltipContent>
+              <TooltipContent side="top" className="text-xs">
+                Remove
+              </TooltipContent>
             </Tooltip>
           )}
         </div>
       </div>
 
-      {/* Children */}
-      {expanded && hasChildren && node.children.map((child) => (
-        <AssemblyNode
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          isRoot={false}
-          subComponents={subComponents}
-          hiddenIds={hiddenIds}
-          selectedId={selectedId}
-          onSelectComponent={onSelectComponent}
-          onToggleHidden={onToggleHidden}
-          onRemove={onRemove}
-          onMove={onMove}
-          onAddChild={onAddChild}
-        />
-      ))}
+      {/* Children — only render PartChild of kind "part"; text/expression
+          children are inlined into the parent's row label above */}
+      {expanded && hasChildren &&
+        part.children.map((child, i) => {
+          if (child.kind !== "part") return null
+          const childPath = appendIndexToPath(path, i)
+          return (
+            <AssemblyNode
+              key={childPath}
+              part={child.part}
+              path={childPath}
+              depth={depth + 1}
+              isRoot={false}
+              subComponents={subComponents}
+              hiddenPaths={hiddenPaths}
+              selectedPath={selectedPath}
+              onSelectPath={onSelectPath}
+              onToggleHidden={onToggleHidden}
+              onRemove={onRemove}
+              onMove={onMove}
+              onAddChild={onAddChild}
+            />
+          )
+        })}
 
       {/* Drop indicator: after */}
       {dropPosition === "after" && !isRoot && (
@@ -357,6 +514,17 @@ function AssemblyNode({
       )}
     </div>
   )
+}
+
+function hasChildrenOfKindPart(part: PartNode): boolean {
+  return part.children.some((c) => c.kind === "part")
+}
+
+function appendIndexToPath(path: PartPath, index: number): PartPath {
+  if (path.endsWith("/")) {
+    return `${path}${index}`
+  }
+  return `${path}/${index}`
 }
 
 /* ── AddElementPicker — Command-based popover for adding elements ── */
@@ -404,7 +572,7 @@ function AddElementPicker({
   subComponents,
   onSelect,
 }: {
-  subComponents: SubComponentDef[]
+  subComponents: SubComponentV2[]
   onSelect: (tag: string) => void
 }) {
   const [open, setOpen] = React.useState(false)
@@ -431,14 +599,17 @@ function AddElementPicker({
         <Command className="[&_[cmdk-list]]:max-h-[240px]">
           <CommandInput placeholder="Search elements..." className="h-8 text-xs" />
           <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs">No matches.</CommandEmpty>
+            <CommandEmpty className="py-3 text-center text-xs">
+              No matches.
+            </CommandEmpty>
 
-            {/* Sub-components */}
-            {subComponents.length > 0 && (
+            {/* Sub-components — skip the root sub-component (index 0) since
+                it's the canvas root and can't be inserted as a child of itself */}
+            {subComponents.length > 1 && (
               <CommandGroup heading="Your sub-components">
-                {subComponents.map((sc) => (
+                {subComponents.slice(1).map((sc) => (
                   <CommandItem
-                    key={sc.id}
+                    key={sc.name}
                     value={sc.name}
                     onSelect={() => handleSelect(sc.name)}
                     className="gap-2 text-xs"
@@ -463,9 +634,13 @@ function AddElementPicker({
                   {el.tag === "#text" ? (
                     <span className="font-medium">{el.label}</span>
                   ) : (
-                    <code className="font-mono text-xs">&lt;{el.label}&gt;</code>
+                    <code className="font-mono text-xs">
+                      &lt;{el.label}&gt;
+                    </code>
                   )}
-                  <span className="text-muted-foreground">{el.description}</span>
+                  <span className="text-muted-foreground">
+                    {el.description}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -481,7 +656,9 @@ function AddElementPicker({
                 >
                   <Code2 className="size-3.5 text-purple-500" />
                   <span className="font-medium">{el.label}</span>
-                  <span className="text-muted-foreground">{el.description}</span>
+                  <span className="text-muted-foreground">
+                    {el.description}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -1,7 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Pencil, Trash2, X, ArrowUpDown, Settings, ToggleLeft, Type, Hash, Blocks, Diamond } from "lucide-react"
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  ArrowUpDown,
+  Settings,
+  ToggleLeft,
+  Type,
+  Hash,
+  Blocks,
+  Diamond,
+} from "lucide-react"
 import { deleteUserComponent, toSlug } from "@/lib/component-store"
 
 import { cn } from "@/lib/utils"
@@ -53,198 +65,243 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-import type {
-  ComponentTree,
-  ComponentProp,
-  SubComponentDef,
-  ElementNode,
-} from "@/lib/component-tree"
-import { createElementNode, toDataSlot } from "@/lib/component-tree"
-import { toPascalCase } from "@/lib/code-generator"
+import type { ComponentTreeV2, SubComponentV2 } from "@/lib/component-tree-v2"
+import type { ComponentProp } from "@/lib/component-tree"
 import type { CustomVariantDef } from "@/lib/component-state"
-
-/* ── Helpers ────────────────────────────────────────────────────── */
-
-/** Recursively rename tags in an element tree that contain the old prefix */
-function renameTagsInTree(
-  node: ElementNode,
-  oldPrefix: string,
-  newPrefix: string,
-): ElementNode {
-  const newTag = node.tag.includes(oldPrefix)
-    ? node.tag.replace(oldPrefix, newPrefix)
-    : node.tag
-  return {
-    ...node,
-    tag: newTag,
-    children: node.children.map((c) =>
-      renameTagsInTree(c, oldPrefix, newPrefix),
-    ),
-  }
-}
-
-/** Add a node to the assembly tree, optionally nested inside a specific sub-component */
-function addToAssemblyTree(
-  assemblyTree: ElementNode,
-  newNodeTag: string,
-  nestInside?: string,
-): ElementNode {
-  if (!nestInside) {
-    return {
-      ...assemblyTree,
-      children: [...assemblyTree.children, createElementNode(newNodeTag)],
-    }
-  }
-  function addInside(node: ElementNode): ElementNode {
-    if (node.tag === nestInside) {
-      return {
-        ...node,
-        children: [...node.children, createElementNode(newNodeTag)],
-      }
-    }
-    return { ...node, children: node.children.map(addInside) }
-  }
-  return addInside(assemblyTree)
-}
-
-/** Remove a node by tag from the assembly tree (recursive) */
-function removeFromAssemblyTree(
-  node: ElementNode,
-  tagToRemove: string,
-): ElementNode {
-  return {
-    ...node,
-    children: node.children
-      .filter((c) => c.tag !== tagToRemove)
-      .map((c) => removeFromAssemblyTree(c, tagToRemove)),
-  }
-}
-
-/** Move a node from one parent to another in the assembly tree */
-function moveInAssemblyTree(
-  assemblyTree: ElementNode,
-  nodeTag: string,
-  newParentTag?: string,
-): ElementNode {
-  const removed = removeFromAssemblyTree(assemblyTree, nodeTag)
-  return addToAssemblyTree(removed, nodeTag, newParentTag)
-}
+import { toPascalCase } from "@/lib/code-generator"
+import {
+  addSubComponent,
+  readPropsFromSub,
+  readVariantsFromSub,
+  removeSubComponent,
+  renameSubComponent,
+  reorderSubComponents,
+  setPropsOnSub,
+  setVariantsOnSub,
+} from "@/lib/parser/v2-tree-define"
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
 const PROP_TYPES = ["string", "number", "boolean", "ReactNode"] as const
 
 const HTML_ELEMENTS = [
-  "div", "section", "header", "footer", "nav", "aside", "span", "p", "ul", "li",
-  "button", "a", "form", "input", "textarea", "select", "img", "article",
+  "div",
+  "section",
+  "header",
+  "footer",
+  "nav",
+  "aside",
+  "span",
+  "p",
+  "ul",
+  "li",
+  "button",
+  "a",
+  "form",
+  "input",
+  "textarea",
+  "select",
+  "img",
+  "article",
 ]
 
 const SHADCN_BASE_COMPONENTS = [
-  "Button", "Badge", "Input", "Label", "Separator", "Checkbox", "Switch",
-  "Slider", "Progress", "Skeleton", "Avatar", "Toggle",
+  "Button",
+  "Badge",
+  "Input",
+  "Label",
+  "Separator",
+  "Checkbox",
+  "Switch",
+  "Slider",
+  "Progress",
+  "Skeleton",
+  "Avatar",
+  "Toggle",
 ]
 
-const BASE_ELEMENTS = [...HTML_ELEMENTS, ...SHADCN_BASE_COMPONENTS]
+/** Local helper — kebab-case for data slot, mirrors the factories' helper. */
+function toDataSlot(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase()
+}
 
+/** Get the base HTML/component tag of a sub-component for display. */
+function getSubBaseTag(sub: SubComponentV2): string {
+  const base = sub.parts.root.base
+  if (base.kind === "html") return base.tag
+  if (base.kind === "component-ref") return base.name
+  if (base.kind === "radix") return `${base.primitive}.${base.part}`
+  if (base.kind === "third-party") return base.component
+  return base.localName
+}
 
 /* ── Props ──────────────────────────────────────────────────────── */
 
 interface DefineViewProps {
-  tree: ComponentTree
-  onTreeChange: (tree: ComponentTree) => void
+  tree: ComponentTreeV2
+  onTreeChange: (tree: ComponentTreeV2) => void
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function DefineView({ tree, onTreeChange }: DefineViewProps) {
+  const rootSub = tree.subComponents[0]
+  if (!rootSub) return null
+
+  const rootProps = readPropsFromSub(rootSub)
+  const rootVariants = readVariantsFromSub(rootSub, tree.cvaExports)
+  const rootBaseTag = getSubBaseTag(rootSub)
+
   function handleDeleteComponent() {
     deleteUserComponent(toSlug(tree.name))
     window.location.href = "/"
   }
 
-  /* ── Compound prop/variant handlers ── */
+  /* ── Root sub-component prop/variant handlers ── */
 
-  function handleUpdateCompoundProp(index: number, updated: ComponentProp) {
-    const newProps = [...tree.props]
-    newProps[index] = updated
-    onTreeChange({ ...tree, props: newProps })
-  }
-
-  function handleDeleteCompoundProp(index: number) {
-    onTreeChange({ ...tree, props: tree.props.filter((_, i) => i !== index) })
-  }
-
-  function handleAddCompoundProp(prop: ComponentProp) {
-    onTreeChange({ ...tree, props: [...tree.props, prop] })
-  }
-
-  function handleUpdateCompoundVariant(index: number, updated: CustomVariantDef) {
-    const newVariants = [...tree.variants]
-    newVariants[index] = updated
-    onTreeChange({ ...tree, variants: newVariants })
-  }
-
-  function handleDeleteCompoundVariant(index: number) {
-    onTreeChange({ ...tree, variants: tree.variants.filter((_, i) => i !== index) })
-  }
-
-  function handleAddCompoundVariant(variant: CustomVariantDef) {
-    onTreeChange({ ...tree, variants: [...tree.variants, variant] })
-  }
-
-  /* ── Sub-component prop/variant handlers ── */
-
-  function handleUpdateSubProp(scIndex: number, propIndex: number, updated: ComponentProp) {
+  function setRootProps(props: ComponentProp[]) {
     const newSubs = [...tree.subComponents]
-    const newProps = [...newSubs[scIndex].props]
-    newProps[propIndex] = updated
-    newSubs[scIndex] = { ...newSubs[scIndex], props: newProps }
+    newSubs[0] = setPropsOnSub(newSubs[0], props)
     onTreeChange({ ...tree, subComponents: newSubs })
+  }
+
+  function setRootVariants(variants: CustomVariantDef[]) {
+    onTreeChange(setVariantsOnSub(tree, 0, variants))
+  }
+
+  function handleUpdateRootProp(index: number, updated: ComponentProp) {
+    const newProps = [...rootProps]
+    newProps[index] = updated
+    setRootProps(newProps)
+  }
+
+  function handleDeleteRootProp(index: number) {
+    setRootProps(rootProps.filter((_, i) => i !== index))
+  }
+
+  function handleAddRootProp(prop: ComponentProp) {
+    setRootProps([...rootProps, prop])
+  }
+
+  function handleUpdateRootVariant(index: number, updated: CustomVariantDef) {
+    const newVariants = [...rootVariants]
+    newVariants[index] = updated
+    setRootVariants(newVariants)
+  }
+
+  function handleDeleteRootVariant(index: number) {
+    setRootVariants(rootVariants.filter((_, i) => i !== index))
+  }
+
+  function handleAddRootVariant(variant: CustomVariantDef) {
+    setRootVariants([...rootVariants, variant])
+  }
+
+  /* ── Sub-component handlers (siblings of root, indexed from 1) ── */
+
+  function setSubProps(scIndex: number, props: ComponentProp[]) {
+    const newSubs = [...tree.subComponents]
+    if (!newSubs[scIndex]) return
+    newSubs[scIndex] = setPropsOnSub(newSubs[scIndex], props)
+    onTreeChange({ ...tree, subComponents: newSubs })
+  }
+
+  function setSubVariants(scIndex: number, variants: CustomVariantDef[]) {
+    onTreeChange(setVariantsOnSub(tree, scIndex, variants))
+  }
+
+  function handleUpdateSubProp(
+    scIndex: number,
+    propIndex: number,
+    updated: ComponentProp,
+  ) {
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    const subProps = readPropsFromSub(sub)
+    const newProps = [...subProps]
+    newProps[propIndex] = updated
+    setSubProps(scIndex, newProps)
   }
 
   function handleDeleteSubProp(scIndex: number, propIndex: number) {
-    const newSubs = [...tree.subComponents]
-    newSubs[scIndex] = {
-      ...newSubs[scIndex],
-      props: newSubs[scIndex].props.filter((_, i) => i !== propIndex),
-    }
-    onTreeChange({ ...tree, subComponents: newSubs })
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    const subProps = readPropsFromSub(sub)
+    setSubProps(
+      scIndex,
+      subProps.filter((_, i) => i !== propIndex),
+    )
   }
 
   function handleAddSubProp(scIndex: number, prop: ComponentProp) {
-    const newSubs = [...tree.subComponents]
-    newSubs[scIndex] = {
-      ...newSubs[scIndex],
-      props: [...newSubs[scIndex].props, prop],
-    }
-    onTreeChange({ ...tree, subComponents: newSubs })
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    setSubProps(scIndex, [...readPropsFromSub(sub), prop])
   }
 
-  function handleUpdateSubVariant(scIndex: number, varIndex: number, updated: CustomVariantDef) {
-    const newSubs = [...tree.subComponents]
-    const newVariants = [...newSubs[scIndex].variants]
+  function handleUpdateSubVariant(
+    scIndex: number,
+    varIndex: number,
+    updated: CustomVariantDef,
+  ) {
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    const subVariants = readVariantsFromSub(sub, tree.cvaExports)
+    const newVariants = [...subVariants]
     newVariants[varIndex] = updated
-    newSubs[scIndex] = { ...newSubs[scIndex], variants: newVariants }
-    onTreeChange({ ...tree, subComponents: newSubs })
+    setSubVariants(scIndex, newVariants)
   }
 
   function handleDeleteSubVariant(scIndex: number, varIndex: number) {
-    const newSubs = [...tree.subComponents]
-    newSubs[scIndex] = {
-      ...newSubs[scIndex],
-      variants: newSubs[scIndex].variants.filter((_, i) => i !== varIndex),
-    }
-    onTreeChange({ ...tree, subComponents: newSubs })
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    const subVariants = readVariantsFromSub(sub, tree.cvaExports)
+    setSubVariants(
+      scIndex,
+      subVariants.filter((_, i) => i !== varIndex),
+    )
   }
 
   function handleAddSubVariant(scIndex: number, variant: CustomVariantDef) {
-    const newSubs = [...tree.subComponents]
-    newSubs[scIndex] = {
-      ...newSubs[scIndex],
-      variants: [...newSubs[scIndex].variants, variant],
-    }
-    onTreeChange({ ...tree, subComponents: newSubs })
+    const sub = tree.subComponents[scIndex]
+    if (!sub) return
+    const subVariants = readVariantsFromSub(sub, tree.cvaExports)
+    setSubVariants(scIndex, [...subVariants, variant])
   }
+
+  /* ── Sub-component CRUD ── */
+
+  function handleAddSubComponent(name: string, baseTag: string) {
+    onTreeChange(addSubComponent(tree, name, baseTag))
+  }
+
+  function handleDeleteSubComponent(scIndex: number) {
+    onTreeChange(removeSubComponent(tree, scIndex))
+  }
+
+  function handleRenameSubComponent(
+    scIndex: number,
+    newName: string,
+    newBaseTag: string,
+  ) {
+    onTreeChange(renameSubComponent(tree, scIndex, newName, newBaseTag))
+  }
+
+  function handleRenameRoot(newName: string, newBaseTag: string) {
+    onTreeChange(renameSubComponent(tree, 0, newName, newBaseTag))
+  }
+
+  function handleReorderSubComponents(reordered: SubComponentV2[]) {
+    // The reordered list contains the non-root sub-components only.
+    // Prepend the root.
+    onTreeChange(reorderSubComponents(tree, [tree.subComponents[0], ...reordered]))
+  }
+
+  // Sub-components other than the root (indices 1+)
+  const childSubs = tree.subComponents.slice(1)
 
   return (
     <ScrollArea className="flex-1">
@@ -253,35 +310,23 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
         <Card className="group/compound">
           <CardHeader>
             <CardTitle className="text-lg">{tree.name}</CardTitle>
-            <CardDescription>&lt;{tree.baseElement}&gt;</CardDescription>
+            <CardDescription>&lt;{rootBaseTag}&gt;</CardDescription>
             <CardAction className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover/compound:opacity-100">
               <EditSettingsDialog
                 name={tree.name}
-                baseElement={tree.baseElement}
+                baseElement={rootBaseTag}
                 isCompound
                 onSave={(newName, newBaseElement) => {
-                  const oldName = tree.name
-                  const updatedSubComponents = newName !== oldName
-                    ? tree.subComponents.map((sc) => ({
-                        ...sc,
-                        name: sc.name.replace(oldName, newName),
-                        dataSlot: toDataSlot(sc.name.replace(oldName, newName)),
-                      }))
-                    : tree.subComponents
-                  const updatedAssembly = newName !== oldName
-                    ? renameTagsInTree(tree.assemblyTree, oldName, newName)
-                    : tree.assemblyTree
-                  const updatedTree = newBaseElement !== tree.baseElement
-                    ? { ...updatedAssembly, tag: newBaseElement }
-                    : updatedAssembly
-                  onTreeChange({
-                    ...tree,
-                    name: newName,
-                    dataSlot: toDataSlot(newName),
-                    baseElement: newBaseElement,
-                    subComponents: updatedSubComponents,
-                    assemblyTree: updatedTree,
-                  })
+                  // Renaming the root also renames the tree's `name`. The
+                  // helper updates the sub-component, then we update the
+                  // tree-level name afterwards.
+                  const renamed = renameSubComponent(
+                    tree,
+                    0,
+                    newName,
+                    newBaseElement,
+                  )
+                  onTreeChange({ ...renamed, name: newName, slug: toSlug(newName) })
                 }}
               />
               <AlertDialog>
@@ -295,7 +340,8 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete {tree.name}?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete this component and all its sub-components. This action cannot be undone.
+                      This will permanently delete this component and all its
+                      sub-components. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -313,22 +359,22 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <InlinePropsSection
-              props={tree.props}
-              onUpdate={handleUpdateCompoundProp}
-              onDelete={handleDeleteCompoundProp}
-              onAdd={handleAddCompoundProp}
+              props={rootProps}
+              onUpdate={handleUpdateRootProp}
+              onDelete={handleDeleteRootProp}
+              onAdd={handleAddRootProp}
             />
             <InlineVariantsSection
-              variants={tree.variants}
-              onUpdate={handleUpdateCompoundVariant}
-              onDelete={handleDeleteCompoundVariant}
-              onAdd={handleAddCompoundVariant}
+              variants={rootVariants}
+              onUpdate={handleUpdateRootVariant}
+              onDelete={handleDeleteRootVariant}
+              onAdd={handleAddRootVariant}
             />
           </CardContent>
-          {tree.variants.length > 0 && (
+          {rootVariants.length > 0 && (
             <CardFooter className="text-xs text-muted-foreground">
               <span className="font-semibold">Defaults:</span>&nbsp;
-              {tree.variants.map((v, i) => (
+              {rootVariants.map((v, i) => (
                 <React.Fragment key={v.name}>
                   {i > 0 && ", "}
                   {v.name}: <em>{v.defaultValue}</em>
@@ -343,162 +389,116 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold">Sub-components</h2>
-              {tree.subComponents.length > 0 && (
+              {childSubs.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {tree.subComponents.length}
+                  {childSubs.length}
                 </Badge>
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {tree.subComponents.length > 1 && (
+              {childSubs.length > 1 && (
                 <ReorderDialog
-                  subComponents={tree.subComponents}
-                  onReorder={(reordered) => onTreeChange({ ...tree, subComponents: reordered })}
+                  subComponents={childSubs}
+                  onReorder={handleReorderSubComponents}
                 />
               )}
               <AddSubComponentDialog
                 parentName={tree.name}
-                existingNames={tree.subComponents.map((sc) => sc.name)}
-                existingSubComponents={tree.subComponents}
-                onAdd={(sc) => {
-                  const newAssembly = addToAssemblyTree(
-                    tree.assemblyTree,
-                    sc.name,
-                    sc.nestInside,
-                  )
-                  onTreeChange({
-                    ...tree,
-                    subComponents: [...tree.subComponents, sc],
-                    assemblyTree: newAssembly,
-                  })
-                }}
+                existingNames={childSubs.map((sc) => sc.name)}
+                onAdd={(name, baseTag) => handleAddSubComponent(name, baseTag)}
               />
             </div>
           </div>
 
-          {tree.subComponents.length === 0 && (
+          {childSubs.length === 0 && (
             <p className="text-xs text-muted-foreground">
               No sub-components yet. Add one to create a compound component.
             </p>
           )}
 
-          {tree.subComponents.map((sc, i) => (
-            <Card key={sc.id} className="group/card">
-              <CardHeader>
-                <CardTitle className="text-sm">{sc.name}</CardTitle>
-                <CardDescription>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span>&lt;{sc.baseElement}&gt;</span>
-                    {sc.nestInside && (
-                      <>
-                        <span>·</span>
-                        <span>nests inside {sc.nestInside}</span>
-                      </>
-                    )}
-                  </span>
-                </CardDescription>
-                <CardAction className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
-                  <EditSettingsDialog
-                    name={sc.name}
-                    baseElement={sc.baseElement}
-                    nestInside={sc.nestInside}
-                    namedGroup={sc.namedGroup}
-                    headingFont={sc.headingFont}
-                    existingSubComponents={tree.subComponents.filter((s) => s.id !== sc.id)}
-                    onSave={(newName, newBaseElement, newNestInside, newNamedGroup, newHeadingFont) => {
-                      const newSubs = [...tree.subComponents]
-                      const oldName = sc.name
-                      newSubs[i] = {
-                        ...sc,
-                        name: newName,
-                        dataSlot: toDataSlot(newName),
-                        baseElement: newBaseElement,
-                        nestInside: newNestInside,
-                        namedGroup: newNamedGroup,
-                        headingFont: newHeadingFont,
-                      }
+          {childSubs.map((sc, childIndex) => {
+            const scIndex = childIndex + 1 // index in tree.subComponents
+            const subProps = readPropsFromSub(sc)
+            const subVariants = readVariantsFromSub(sc, tree.cvaExports)
+            const subBaseTag = getSubBaseTag(sc)
 
-                      let updatedAssembly = tree.assemblyTree
-                      if (newName !== oldName) {
-                        updatedAssembly = renameTagsInTree(updatedAssembly, oldName, newName)
-                      }
-                      // Handle nestInside change
-                      if (sc.nestInside !== newNestInside) {
-                        updatedAssembly = moveInAssemblyTree(
-                          updatedAssembly,
-                          newName,
-                          newNestInside,
-                        )
-                      }
-                      onTreeChange({
-                        ...tree,
-                        subComponents: newSubs,
-                        assemblyTree: updatedAssembly,
-                      })
-                    }}
-                  />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 />
-                        Delete
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete {sc.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will remove this sub-component. This cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={() => {
-                            const newSubs = tree.subComponents.filter((_, idx) => idx !== i)
-                            const newAssembly = removeFromAssemblyTree(tree.assemblyTree, sc.name)
-                            onTreeChange({
-                              ...tree,
-                              subComponents: newSubs,
-                              assemblyTree: newAssembly,
-                            })
-                          }}
-                        >
+            return (
+              <Card key={sc.name} className="group/card">
+                <CardHeader>
+                  <CardTitle className="text-sm">{sc.name}</CardTitle>
+                  <CardDescription>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span>&lt;{subBaseTag}&gt;</span>
+                    </span>
+                  </CardDescription>
+                  <CardAction className="flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
+                    <EditSettingsDialog
+                      name={sc.name}
+                      baseElement={subBaseTag}
+                      onSave={(newName, newBaseElement) => {
+                        handleRenameSubComponent(scIndex, newName, newBaseElement)
+                      }}
+                    />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 />
                           Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardAction>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InlinePropsSection
-                  props={sc.props}
-                  onUpdate={(idx, updated) => handleUpdateSubProp(i, idx, updated)}
-                  onDelete={(idx) => handleDeleteSubProp(i, idx)}
-                  onAdd={(prop) => handleAddSubProp(i, prop)}
-                />
-                <InlineVariantsSection
-                  variants={sc.variants}
-                  onUpdate={(idx, updated) => handleUpdateSubVariant(i, idx, updated)}
-                  onDelete={(idx) => handleDeleteSubVariant(i, idx)}
-                  onAdd={(variant) => handleAddSubVariant(i, variant)}
-                />
-              </CardContent>
-              {sc.variants.length > 0 && (
-                <CardFooter className="text-xs text-muted-foreground">
-                  <span className="font-semibold">Defaults:</span>&nbsp;
-                  {sc.variants.map((v, vi) => (
-                    <React.Fragment key={v.name}>
-                      {vi > 0 && ", "}
-                      {v.name}: <em>{v.defaultValue}</em>
-                    </React.Fragment>
-                  ))}
-                </CardFooter>
-              )}
-            </Card>
-          ))}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {sc.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove this sub-component. This cannot be
+                            undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleDeleteSubComponent(scIndex)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <InlinePropsSection
+                    props={subProps}
+                    onUpdate={(idx, updated) =>
+                      handleUpdateSubProp(scIndex, idx, updated)
+                    }
+                    onDelete={(idx) => handleDeleteSubProp(scIndex, idx)}
+                    onAdd={(prop) => handleAddSubProp(scIndex, prop)}
+                  />
+                  <InlineVariantsSection
+                    variants={subVariants}
+                    onUpdate={(idx, updated) =>
+                      handleUpdateSubVariant(scIndex, idx, updated)
+                    }
+                    onDelete={(idx) => handleDeleteSubVariant(scIndex, idx)}
+                    onAdd={(variant) => handleAddSubVariant(scIndex, variant)}
+                  />
+                </CardContent>
+                {subVariants.length > 0 && (
+                  <CardFooter className="text-xs text-muted-foreground">
+                    <span className="font-semibold">Defaults:</span>&nbsp;
+                    {subVariants.map((v, vi) => (
+                      <React.Fragment key={v.name}>
+                        {vi > 0 && ", "}
+                        {v.name}: <em>{v.defaultValue}</em>
+                      </React.Fragment>
+                    ))}
+                  </CardFooter>
+                )}
+              </Card>
+            )
+          })}
         </div>
       </div>
     </ScrollArea>
@@ -568,7 +568,9 @@ function PropRow({
         <ItemTitle className="text-xs">
           {prop.name}
           {prop.required && (
-            <span className="text-destructive" title="Required">*</span>
+            <span className="text-destructive" title="Required">
+              *
+            </span>
           )}
         </ItemTitle>
         <ItemDescription className="truncate text-xs">{prop.type}</ItemDescription>
@@ -609,7 +611,13 @@ function AddPropPopover({ onAdd }: { onAdd: (prop: ComponentProp) => void }) {
   }
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) reset()
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground">
           <Plus className="size-3.5" />
@@ -625,7 +633,9 @@ function AddPropPopover({ onAdd }: { onAdd: (prop: ComponentProp) => void }) {
             </SelectTrigger>
             <SelectContent>
               {PROP_TYPES.map((t) => (
-                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                <SelectItem key={t} value={t} className="text-xs">
+                  {t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -704,7 +714,9 @@ function EditPropPopover({
             </SelectTrigger>
             <SelectContent>
               {PROP_TYPES.map((t) => (
-                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                <SelectItem key={t} value={t} className="text-xs">
+                  {t}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -735,7 +747,7 @@ function EditPropPopover({
   )
 }
 
-/* ── InlineVariantsSection — variants displayed inline with popover add/edit ── */
+/* ── InlineVariantsSection ─────────────────────────────────────── */
 
 function InlineVariantsSection({
   variants,
@@ -755,7 +767,9 @@ function InlineVariantsSection({
         <AddVariantPopover onAdd={onAdd} />
       </div>
       {variants.length === 0 ? (
-        <p className="py-1 text-xs text-muted-foreground/60">No variants defined.</p>
+        <p className="py-1 text-xs text-muted-foreground/60">
+          No variants defined.
+        </p>
       ) : (
         <div className="space-y-1">
           {variants.map((v, i) => (
@@ -772,7 +786,7 @@ function InlineVariantsSection({
   )
 }
 
-/* ── VariantRow — single variant with hover-reveal edit/delete ── */
+/* ── VariantRow ─────────────────────────────────────────────────── */
 
 function VariantRow({
   variant,
@@ -812,9 +826,13 @@ function VariantRow({
   )
 }
 
-/* ── AddVariantPopover — popover to add a new variant ── */
+/* ── AddVariantPopover ─────────────────────────────────────────── */
 
-function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => void }) {
+function AddVariantPopover({
+  onAdd,
+}: {
+  onAdd: (v: CustomVariantDef) => void
+}) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [type, setType] = React.useState<"variant" | "boolean">("variant")
@@ -849,14 +867,23 @@ function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => void }) 
       name: name.trim(),
       type,
       options: type === "boolean" ? ["true", "false"] : options,
-      defaultValue: type === "boolean" ? (defaultValue || "false") : (defaultValue || options[0] || ""),
+      defaultValue:
+        type === "boolean"
+          ? defaultValue || "false"
+          : defaultValue || options[0] || "",
     })
     reset()
     setOpen(false)
   }
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) reset()
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground">
           <Plus className="size-3.5" />
@@ -866,13 +893,20 @@ function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => void }) 
       <PopoverContent className="w-80 space-y-3 p-3" align="start">
         <div className="space-y-1.5">
           <Label className="text-xs">Type</Label>
-          <Select value={type} onValueChange={(v) => setType(v as "variant" | "boolean")}>
+          <Select
+            value={type}
+            onValueChange={(v) => setType(v as "variant" | "boolean")}
+          >
             <SelectTrigger className="h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="variant" className="text-xs">Variant</SelectItem>
-              <SelectItem value="boolean" className="text-xs">Boolean</SelectItem>
+              <SelectItem value="variant" className="text-xs">
+                Variant
+              </SelectItem>
+              <SelectItem value="boolean" className="text-xs">
+                Boolean
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -924,7 +958,7 @@ function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => void }) 
   )
 }
 
-/* ── EditVariantPopover — popover to edit an existing variant ── */
+/* ── EditVariantPopover ────────────────────────────────────────── */
 
 function EditVariantPopover({
   variant,
@@ -969,7 +1003,10 @@ function EditVariantPopover({
       name: name.trim(),
       type,
       options: type === "boolean" ? ["true", "false"] : options,
-      defaultValue: type === "boolean" ? (defaultValue || "false") : (defaultValue || options[0] || ""),
+      defaultValue:
+        type === "boolean"
+          ? defaultValue || "false"
+          : defaultValue || options[0] || "",
     })
     setOpen(false)
   }
@@ -987,13 +1024,20 @@ function EditVariantPopover({
       <PopoverContent className="w-80 space-y-3 p-3" align="end">
         <div className="space-y-1.5">
           <Label className="text-xs">Type</Label>
-          <Select value={type} onValueChange={(v) => setType(v as "variant" | "boolean")}>
+          <Select
+            value={type}
+            onValueChange={(v) => setType(v as "variant" | "boolean")}
+          >
             <SelectTrigger className="h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="variant" className="text-xs">Variant</SelectItem>
-              <SelectItem value="boolean" className="text-xs">Boolean</SelectItem>
+              <SelectItem value="variant" className="text-xs">
+                Variant
+              </SelectItem>
+              <SelectItem value="boolean" className="text-xs">
+                Boolean
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1044,7 +1088,7 @@ function EditVariantPopover({
   )
 }
 
-/* ── VariantOptionsEditor — shared flex-wrap badge input for options ── */
+/* ── VariantOptionsEditor ──────────────────────────────────────── */
 
 function VariantOptionsEditor({
   options,
@@ -1075,7 +1119,10 @@ function VariantOptionsEditor({
           key={opt}
           variant={opt === defaultValue ? "default" : "secondary"}
           className="shrink-0 cursor-pointer gap-0.5 text-xs h-5"
-          onClick={(e) => { e.stopPropagation(); onDefaultChange(opt) }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDefaultChange(opt)
+          }}
         >
           {opt}
           <button
@@ -1100,7 +1147,11 @@ function VariantOptionsEditor({
             e.preventDefault()
             onCommitOptions()
           }
-          if (e.key === "Backspace" && optionInput === "" && options.length > 0) {
+          if (
+            e.key === "Backspace" &&
+            optionInput === "" &&
+            options.length > 0
+          ) {
             onOptionsChange(options.slice(0, -1))
           }
         }}
@@ -1111,57 +1162,30 @@ function VariantOptionsEditor({
   )
 }
 
-/* ── EditSettingsDialog — general settings only (name, base element, nests inside, conventions) ── */
+/* ── EditSettingsDialog ────────────────────────────────────────── */
 
 function EditSettingsDialog({
   name: initialName,
   baseElement: initialBaseElement,
-  nestInside: initialNestInside,
-  namedGroup: initialNamedGroup,
-  headingFont: initialHeadingFont,
   isCompound,
-  existingSubComponents,
   onSave,
 }: {
   name: string
   baseElement: string
-  nestInside?: string
-  namedGroup?: boolean
-  headingFont?: boolean
   isCompound?: boolean
-  existingSubComponents?: SubComponentDef[]
-  onSave: (
-    name: string,
-    baseElement: string,
-    nestInside?: string,
-    namedGroup?: boolean,
-    headingFont?: boolean,
-  ) => void
+  onSave: (name: string, baseElement: string) => void
 }) {
   const [open, setOpen] = React.useState(false)
   const [editName, setEditName] = React.useState(initialName)
   const [baseElement, setBaseElement] = React.useState(initialBaseElement)
-  const [nestInside, setNestInside] = React.useState(initialNestInside ?? "")
-  const [namedGroup, setNamedGroup] = React.useState<boolean>(initialNamedGroup ?? false)
-  const [headingFont, setHeadingFont] = React.useState<boolean>(initialHeadingFont ?? false)
   const isSubComponent = !isCompound
 
   React.useEffect(() => {
     if (open) {
       setEditName(initialName)
       setBaseElement(initialBaseElement)
-      setNestInside(initialNestInside ?? "")
-      setNamedGroup(initialNamedGroup ?? false)
-      setHeadingFont(initialHeadingFont ?? false)
     }
-  }, [
-    open,
-    initialName,
-    initialBaseElement,
-    initialNestInside,
-    initialNamedGroup,
-    initialHeadingFont,
-  ])
+  }, [open, initialName, initialBaseElement])
 
   const pascalName = React.useMemo(() => {
     if (!editName.trim()) return ""
@@ -1187,7 +1211,6 @@ function EditSettingsDialog({
         </AlertDialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Name */}
           <div className="space-y-1.5">
             <Label className="text-xs">Name</Label>
             <div className="flex items-center gap-3">
@@ -1205,7 +1228,6 @@ function EditSettingsDialog({
             </div>
           </div>
 
-          {/* Base element — for BOTH compound and sub-components */}
           <div className="space-y-1.5">
             <Label className="text-xs">Based on</Label>
             <Select value={baseElement} onValueChange={setBaseElement}>
@@ -1214,7 +1236,9 @@ function EditSettingsDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">HTML elements</SelectLabel>
+                  <SelectLabel className="text-xs text-muted-foreground">
+                    HTML elements
+                  </SelectLabel>
                   {HTML_ELEMENTS.map((el) => (
                     <SelectItem key={el} value={el} className="text-xs">
                       &lt;{el}&gt;
@@ -1222,7 +1246,9 @@ function EditSettingsDialog({
                   ))}
                 </SelectGroup>
                 <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">shadcn components</SelectLabel>
+                  <SelectLabel className="text-xs text-muted-foreground">
+                    shadcn components
+                  </SelectLabel>
                   {SHADCN_BASE_COMPONENTS.map((el) => (
                     <SelectItem key={el} value={el} className="text-xs">
                       {el}
@@ -1232,69 +1258,12 @@ function EditSettingsDialog({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Nests inside — sub-components only */}
-          {isSubComponent && existingSubComponents && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nests inside</Label>
-              <Select
-                value={nestInside || "__root__"}
-                onValueChange={(v) => setNestInside(v === "__root__" ? "" : v)}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__root__" className="text-xs">
-                    Root (direct child)
-                  </SelectItem>
-                  {existingSubComponents.map((sc) => (
-                    <SelectItem key={sc.id} value={sc.name} className="text-xs">
-                      {sc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Conventions — sub-components only */}
-          {isSubComponent && (
-            <div className="space-y-2 rounded-md border bg-muted/40 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Named group</Label>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Adds <code className="rounded bg-muted px-1">group/{toDataSlot(initialName || editName || "name")}</code> so children can use <code className="rounded bg-muted px-1">group-data-[…]/name:</code> modifiers.
-                  </p>
-                </div>
-                <Switch checked={namedGroup} onCheckedChange={setNamedGroup} />
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-0.5">
-                  <Label className="text-xs">Heading font</Label>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Adds <code className="rounded bg-muted px-1">cn-font-heading</code> for heading typography (uses <code className="rounded bg-muted px-1">--font-heading</code>).
-                  </p>
-                </div>
-                <Switch checked={headingFont} onCheckedChange={setHeadingFont} />
-              </div>
-            </div>
-          )}
         </div>
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() =>
-              onSave(
-                pascalName || initialName,
-                baseElement,
-                isSubComponent ? (nestInside || undefined) : undefined,
-                isSubComponent ? namedGroup : undefined,
-                isSubComponent ? headingFont : undefined,
-              )
-            }
+            onClick={() => onSave(pascalName || initialName, baseElement)}
             disabled={!pascalName}
           >
             Save changes
@@ -1311,8 +1280,8 @@ function ReorderDialog({
   subComponents,
   onReorder,
 }: {
-  subComponents: SubComponentDef[]
-  onReorder: (reordered: SubComponentDef[]) => void
+  subComponents: SubComponentV2[]
+  onReorder: (reordered: SubComponentV2[]) => void
 }) {
   const [open, setOpen] = React.useState(false)
   const [items, setItems] = React.useState(subComponents)
@@ -1355,16 +1324,22 @@ function ReorderDialog({
 
         <div className="space-y-1 py-2">
           {items.map((sc, i) => (
-            <div key={sc.id} className="flex items-center gap-2">
+            <div key={sc.name} className="flex items-center gap-2">
               <span className="w-5 shrink-0 text-center text-xs font-medium text-muted-foreground">
                 {i + 1}
               </span>
               <div
                 draggable
                 onDragStart={() => setDragIdx(i)}
-                onDragOver={(e) => { e.preventDefault(); setDropIdx(i) }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDropIdx(i)
+                }}
                 onDrop={() => handleDrop(i)}
-                onDragEnd={() => { setDragIdx(null); setDropIdx(null) }}
+                onDragEnd={() => {
+                  setDragIdx(null)
+                  setDropIdx(null)
+                }}
                 className={cn(
                   "flex flex-1 items-center gap-3 rounded-md border px-3 py-2 transition-all cursor-grab active:cursor-grabbing",
                   dragIdx === i && "opacity-50",
@@ -1394,20 +1369,15 @@ function ReorderDialog({
 function AddSubComponentDialog({
   parentName,
   existingNames,
-  existingSubComponents,
   onAdd,
 }: {
   parentName: string
   existingNames: string[]
-  existingSubComponents: SubComponentDef[]
-  onAdd: (sc: SubComponentDef & { nestInside?: string }) => void
+  onAdd: (name: string, baseTag: string) => void
 }) {
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState("")
   const [baseElement, setBaseElement] = React.useState("div")
-  const [nestInside, setNestInside] = React.useState("")
-  const [namedGroup, setNamedGroup] = React.useState<boolean>(false)
-  const [headingFont, setHeadingFont] = React.useState<boolean>(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const pascalName = React.useMemo(() => {
@@ -1419,25 +1389,7 @@ function AddSubComponentDialog({
   function resetForm() {
     setName("")
     setBaseElement("div")
-    setNestInside("")
-    setNamedGroup(false)
-    setHeadingFont(false)
     setError(null)
-  }
-
-  function buildSubComponent(): SubComponentDef & { nestInside?: string } {
-    return {
-      id: `sc_${Date.now().toString(36)}`,
-      name: pascalName,
-      baseElement,
-      dataSlot: toDataSlot(pascalName),
-      classes: [],
-      props: [],
-      variants: [],
-      nestInside: nestInside || undefined,
-      namedGroup,
-      headingFont,
-    }
   }
 
   function handleAdd() {
@@ -1449,8 +1401,7 @@ function AddSubComponentDialog({
       setError("A sub-component with this name already exists")
       return
     }
-
-    onAdd(buildSubComponent())
+    onAdd(pascalName, baseElement)
     resetForm()
     setOpen(false)
   }
@@ -1464,18 +1415,20 @@ function AddSubComponentDialog({
       setError("A sub-component with this name already exists")
       return
     }
-
-    onAdd(buildSubComponent())
-    // Clear form but keep nestInside and baseElement for convenience
-    const keepNestInside = nestInside
-    const keepBaseElement = baseElement
+    onAdd(pascalName, baseElement)
+    const keepBase = baseElement
     resetForm()
-    setNestInside(keepNestInside)
-    setBaseElement(keepBaseElement)
+    setBaseElement(keepBase)
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) resetForm()
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Plus />
@@ -1486,19 +1439,21 @@ function AddSubComponentDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Add sub-component</AlertDialogTitle>
           <AlertDialogDescription>
-            Creates a separate forwardRef export prefixed with {parentName}.
+            Creates a new exported sub-component prefixed with {parentName}.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Name */}
           <div className="space-y-1.5">
             <Label className="text-xs">Name</Label>
             <div className="flex items-center gap-3">
               <Input
                 placeholder="Start typing..."
                 value={name}
-                onChange={(e) => { setName(e.target.value); setError(null) }}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  setError(null)
+                }}
                 className="h-8 flex-1 text-xs"
               />
               {pascalName && (
@@ -1509,7 +1464,6 @@ function AddSubComponentDialog({
             </div>
           </div>
 
-          {/* Base element */}
           <div className="space-y-1.5">
             <Label className="text-xs">Based on</Label>
             <Select value={baseElement} onValueChange={setBaseElement}>
@@ -1518,7 +1472,9 @@ function AddSubComponentDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">HTML elements</SelectLabel>
+                  <SelectLabel className="text-xs text-muted-foreground">
+                    HTML elements
+                  </SelectLabel>
                   {HTML_ELEMENTS.map((el) => (
                     <SelectItem key={el} value={el} className="text-xs">
                       &lt;{el}&gt;
@@ -1526,7 +1482,9 @@ function AddSubComponentDialog({
                   ))}
                 </SelectGroup>
                 <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">shadcn components</SelectLabel>
+                  <SelectLabel className="text-xs text-muted-foreground">
+                    shadcn components
+                  </SelectLabel>
                   {SHADCN_BASE_COMPONENTS.map((el) => (
                     <SelectItem key={el} value={el} className="text-xs">
                       {el}
@@ -1535,51 +1493,6 @@ function AddSubComponentDialog({
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Nests inside */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Nests inside</Label>
-            <Select
-              value={nestInside || "__root__"}
-              onValueChange={(v) => setNestInside(v === "__root__" ? "" : v)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__root__" className="text-xs">
-                  Root (direct child)
-                </SelectItem>
-                {existingSubComponents.map((sc) => (
-                  <SelectItem key={sc.id} value={sc.name} className="text-xs">
-                    {sc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Conventions */}
-          <div className="space-y-2 rounded-md border bg-muted/40 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-0.5">
-                <Label className="text-xs">Named group</Label>
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  Adds <code className="rounded bg-muted px-1">group/{toDataSlot(pascalName || "name")}</code> so children can use <code className="rounded bg-muted px-1">group-data-[…]/name:</code> modifiers.
-                </p>
-              </div>
-              <Switch checked={namedGroup} onCheckedChange={setNamedGroup} />
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-0.5">
-                <Label className="text-xs">Heading font</Label>
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  Adds <code className="rounded bg-muted px-1">cn-font-heading</code> for heading typography (uses <code className="rounded bg-muted px-1">--font-heading</code>).
-                </p>
-              </div>
-              <Switch checked={headingFont} onCheckedChange={setHeadingFont} />
-            </div>
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}

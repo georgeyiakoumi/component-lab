@@ -343,3 +343,112 @@ export function removePartAtPath(
   }
   return replacePartByPath(tree, parentPath, updatedParent)
 }
+
+/**
+ * Move a part from `dragPath` to a new location relative to `targetPath`.
+ * Mirrors v1's `moveNode` API: `position` controls whether the dragged part
+ * lands BEFORE the target, AFTER the target, or INSIDE it as a new child.
+ *
+ * The implementation removes the part first, then inserts it at the new
+ * location. Cross-sub-component moves are not supported — if the drag and
+ * target paths refer to different sub-components, the tree is returned
+ * unchanged.
+ */
+export function movePartByPath(
+  tree: ComponentTreeV2,
+  dragPath: PartPath,
+  targetPath: PartPath,
+  position: "before" | "after" | "inside",
+): ComponentTreeV2 {
+  if (dragPath === targetPath) return tree
+
+  const dragParsed = parsePartPath(dragPath)
+  const targetParsed = parsePartPath(targetPath)
+  if (!dragParsed || !targetParsed) return tree
+  if (dragParsed.subComponentName !== targetParsed.subComponentName) return tree
+  if (dragParsed.childIndices.length === 0) return tree // can't move a root
+
+  // Find the part being dragged
+  const dragPart = findPartByPath(tree, dragPath)
+  if (!dragPart) return tree
+
+  // Refuse to move a part inside itself or its descendants
+  if (
+    position === "inside" &&
+    isAncestorOf(dragParsed.childIndices, targetParsed.childIndices)
+  ) {
+    return tree
+  }
+
+  // Remove the part from its current location first
+  const treeWithoutDrag = removePartAtPath(tree, dragPath)
+
+  // Recompute the target's path after the removal (indices shift if the
+  // drag was earlier in the same parent's children)
+  const adjustedTargetIndices = adjustIndicesAfterRemove(
+    targetParsed.childIndices,
+    dragParsed.childIndices,
+  )
+
+  if (position === "inside") {
+    const adjustedTargetPath = makePartPath(
+      targetParsed.subComponentName,
+      adjustedTargetIndices,
+    )
+    return appendChildAtPath(treeWithoutDrag, adjustedTargetPath, dragPart)
+  }
+
+  // before / after — insert as a sibling of the target
+  const targetParentIndices = adjustedTargetIndices.slice(0, -1)
+  const targetIdx = adjustedTargetIndices[adjustedTargetIndices.length - 1]
+  const insertIdx = position === "before" ? targetIdx : targetIdx + 1
+
+  const parentPath = makePartPath(
+    targetParsed.subComponentName,
+    targetParentIndices,
+  )
+  const parentPart = findPartByPath(treeWithoutDrag, parentPath)
+  if (!parentPart) return tree
+
+  const newChildren = [...parentPart.children]
+  newChildren.splice(insertIdx, 0, { kind: "part", part: dragPart })
+  const updatedParent: PartNode = { ...parentPart, children: newChildren }
+  return replacePartByPath(treeWithoutDrag, parentPath, updatedParent)
+}
+
+/** True if `ancestor` is an ancestor (or equal) of `descendant`. */
+function isAncestorOf(ancestor: number[], descendant: number[]): boolean {
+  if (ancestor.length > descendant.length) return false
+  for (let i = 0; i < ancestor.length; i++) {
+    if (ancestor[i] !== descendant[i]) return false
+  }
+  return true
+}
+
+/**
+ * After removing a part at `removedIndices`, adjust an existing index path
+ * so it still points to the same logical part. If a sibling earlier in the
+ * same parent was removed, the target's last-shared-level index decrements.
+ */
+function adjustIndicesAfterRemove(
+  target: number[],
+  removed: number[],
+): number[] {
+  if (removed.length === 0) return target
+
+  // Different parents — no adjustment needed
+  const removedParent = removed.slice(0, -1)
+  const removedIdx = removed[removed.length - 1]
+  if (target.length < removedParent.length) return target
+  for (let i = 0; i < removedParent.length; i++) {
+    if (target[i] !== removedParent[i]) return target
+  }
+
+  // Same parent. If the target's index at this level is greater than the
+  // removed index, decrement it.
+  const adjusted = [...target]
+  if (adjusted[removedParent.length] > removedIdx) {
+    adjusted[removedParent.length]--
+  }
+  return adjusted
+}

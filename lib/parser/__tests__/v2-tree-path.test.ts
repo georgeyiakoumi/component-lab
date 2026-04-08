@@ -9,6 +9,7 @@ import {
   getPartClasses,
   isRootPath,
   makePartPath,
+  movePartByPath,
   parsePartPath,
   removePartAtPath,
   replacePartByPath,
@@ -255,6 +256,136 @@ describe("removePartAtPath", () => {
     const tree = createComponentTreeV2("MyCard", "div")
     const updated = removePartAtPath(tree, "sub:MyCard/")
     // Should return the tree unchanged
+    expect(updated).toBe(tree)
+  })
+})
+
+describe("movePartByPath", () => {
+  test("moves a part 'inside' another part as a new child", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    const a = createPartNode("section")
+    const b = createPartNode("article")
+    tree.subComponents[0].parts.root.children.push(
+      { kind: "part", part: a },
+      { kind: "part", part: b },
+    )
+
+    // Move article (sub:MyCard/1) inside section (sub:MyCard/0)
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/1",
+      "sub:MyCard/0",
+      "inside",
+    )
+    const root = updated.subComponents[0].parts.root
+    expect(root.children).toHaveLength(1)
+    const sectionChild = root.children[0]
+    if (sectionChild.kind !== "part") return
+    expect(sectionChild.part.base).toEqual({ kind: "html", tag: "section" })
+    expect(sectionChild.part.children).toHaveLength(1)
+    const articleChild = sectionChild.part.children[0]
+    if (articleChild.kind !== "part") return
+    expect(articleChild.part.base).toEqual({ kind: "html", tag: "article" })
+  })
+
+  test("moves a part 'before' a sibling", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    const a = createPartNode("section")
+    const b = createPartNode("article")
+    const c = createPartNode("aside")
+    tree.subComponents[0].parts.root.children.push(
+      { kind: "part", part: a },
+      { kind: "part", part: b },
+      { kind: "part", part: c },
+    )
+
+    // Move aside (sub:MyCard/2) before article (sub:MyCard/1)
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/2",
+      "sub:MyCard/1",
+      "before",
+    )
+    const tags = updated.subComponents[0].parts.root.children.map((c) => {
+      if (c.kind !== "part") return null
+      return c.part.base.kind === "html" ? c.part.base.tag : null
+    })
+    expect(tags).toEqual(["section", "aside", "article"])
+  })
+
+  test("moves a part 'after' a sibling", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    const a = createPartNode("section")
+    const b = createPartNode("article")
+    const c = createPartNode("aside")
+    tree.subComponents[0].parts.root.children.push(
+      { kind: "part", part: a },
+      { kind: "part", part: b },
+      { kind: "part", part: c },
+    )
+
+    // Move section (sub:MyCard/0) after article (sub:MyCard/1)
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/0",
+      "sub:MyCard/1",
+      "after",
+    )
+    const tags = updated.subComponents[0].parts.root.children.map((c) => {
+      if (c.kind !== "part") return null
+      return c.part.base.kind === "html" ? c.part.base.tag : null
+    })
+    expect(tags).toEqual(["article", "section", "aside"])
+  })
+
+  test("refuses to move a part inside itself", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    const a = createPartNode("section")
+    tree.subComponents[0].parts.root.children.push({ kind: "part", part: a })
+
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/0",
+      "sub:MyCard/0",
+      "inside",
+    )
+    expect(updated).toBe(tree)
+  })
+
+  test("refuses to move a sub-component root", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/",
+      "sub:MyCard/0",
+      "before",
+    )
+    expect(updated).toBe(tree)
+  })
+
+  test("refuses cross-sub-component moves", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    // Add a second sub-component manually
+    tree.subComponents.push({
+      name: "MyCardHeader",
+      dataSlot: "my-card-header",
+      exportOrder: 1,
+      isDefaultExport: false,
+      jsdoc: null,
+      propsDecl: { kind: "single", part: { kind: "component-props", target: "div" } },
+      variantStrategy: { kind: "none" },
+      passthrough: [],
+      parts: { root: createPartNode("div") },
+    })
+    const a = createPartNode("section")
+    tree.subComponents[0].parts.root.children.push({ kind: "part", part: a })
+
+    const updated = movePartByPath(
+      tree,
+      "sub:MyCard/0",
+      "sub:MyCardHeader/",
+      "inside",
+    )
     expect(updated).toBe(tree)
   })
 })
