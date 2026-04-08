@@ -443,23 +443,38 @@ function SubComponentNode({
             />
           ))}
           {bodyChildren.map((child, i) => {
-            if (child.kind !== "part") return null
             const childPath = appendIndexToPath(path, i)
-            return (
-              <BodyPartNode
-                key={childPath}
-                part={child.part}
-                path={childPath}
-                depth={depth + 1}
-                hiddenPaths={hiddenPaths}
-                selectedPath={selectedPath}
-                onSelectPath={onSelectPath}
-                onToggleHidden={onToggleHidden}
-                onRemove={onRemove}
-                onMove={onMove}
-                onAddChild={onAddChild}
-              />
-            )
+            if (child.kind === "part") {
+              return (
+                <BodyPartNode
+                  key={childPath}
+                  part={child.part}
+                  path={childPath}
+                  depth={depth + 1}
+                  hiddenPaths={hiddenPaths}
+                  selectedPath={selectedPath}
+                  onSelectPath={onSelectPath}
+                  onToggleHidden={onToggleHidden}
+                  onRemove={onRemove}
+                  onMove={onMove}
+                  onAddChild={onAddChild}
+                />
+              )
+            }
+            if (child.kind === "text" || child.kind === "expression") {
+              return (
+                <BodyLeafNode
+                  key={childPath}
+                  child={child}
+                  path={childPath}
+                  depth={depth + 1}
+                  selectedPath={selectedPath}
+                  onSelectPath={onSelectPath}
+                  onRemove={onRemove}
+                />
+              )
+            }
+            return null
           })}
         </>
       )}
@@ -678,25 +693,40 @@ function BodyPartNode({
         </div>
       </div>
 
-      {expanded && hasChildren &&
+      {expanded && hasChildren && !showAsTextRow &&
         part.children.map((child, i) => {
-          if (child.kind !== "part") return null
           const childPath = appendIndexToPath(path, i)
-          return (
-            <BodyPartNode
-              key={childPath}
-              part={child.part}
-              path={childPath}
-              depth={depth + 1}
-              hiddenPaths={hiddenPaths}
-              selectedPath={selectedPath}
-              onSelectPath={onSelectPath}
-              onToggleHidden={onToggleHidden}
-              onRemove={onRemove}
-              onMove={onMove}
-              onAddChild={onAddChild}
-            />
-          )
+          if (child.kind === "part") {
+            return (
+              <BodyPartNode
+                key={childPath}
+                part={child.part}
+                path={childPath}
+                depth={depth + 1}
+                hiddenPaths={hiddenPaths}
+                selectedPath={selectedPath}
+                onSelectPath={onSelectPath}
+                onToggleHidden={onToggleHidden}
+                onRemove={onRemove}
+                onMove={onMove}
+                onAddChild={onAddChild}
+              />
+            )
+          }
+          if (child.kind === "text" || child.kind === "expression") {
+            return (
+              <BodyLeafNode
+                key={childPath}
+                child={child}
+                path={childPath}
+                depth={depth + 1}
+                selectedPath={selectedPath}
+                onSelectPath={onSelectPath}
+                onRemove={onRemove}
+              />
+            )
+          }
+          return null
         })}
 
       {dropPosition === "after" && (
@@ -711,6 +741,84 @@ function BodyPartNode({
 
 function hasChildrenOfKindPart(part: PartNode): boolean {
   return part.children.some((c) => c.kind === "part")
+}
+
+/* ── BodyLeafNode — renders a text or expression body child ───── */
+
+interface BodyLeafNodeProps {
+  child: Extract<PartChild, { kind: "text" } | { kind: "expression" }>
+  path: PartPath
+  depth: number
+  selectedPath?: PartPath | null
+  onSelectPath?: (path: PartPath | null) => void
+  onRemove: (path: PartPath) => void
+}
+
+function BodyLeafNode({
+  child,
+  path,
+  depth,
+  selectedPath,
+  onSelectPath,
+  onRemove,
+}: BodyLeafNodeProps) {
+  const isSelected = selectedPath === path
+  const label =
+    child.kind === "text"
+      ? child.value.length > 0
+        ? `"${child.value.length > 24 ? child.value.slice(0, 24) + "…" : child.value}"`
+        : '""'
+      : `{${child.source}}`
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-1 rounded-md py-0.5 pl-1",
+        isSelected && "bg-blue-500/10",
+      )}
+    >
+      {depth > 0 && (
+        <div className="shrink-0" style={{ width: `${depth * 14}px` }} />
+      )}
+      <div className="size-4 shrink-0" />
+      <button
+        type="button"
+        className={cn(
+          "min-w-0 flex-1 truncate text-left font-sans text-xs italic",
+          isSelected
+            ? "text-foreground"
+            : "text-amber-600/90 hover:text-amber-600 dark:text-amber-400/90 dark:hover:text-amber-400",
+        )}
+        onClick={() => {
+          if (onSelectPath) {
+            onSelectPath(selectedPath === path ? null : path)
+          }
+        }}
+      >
+        {label}
+      </button>
+      <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-0.5 bg-gradient-to-l from-background from-70% to-transparent pl-4 pr-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove(path)
+              }}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Remove
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  )
 }
 
 /* ── AddElementPicker — popover for adding HTML/shadcn elements ── */
