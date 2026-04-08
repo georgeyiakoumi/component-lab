@@ -27,7 +27,112 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import type { ComponentProp, CustomVariantDef } from "@/lib/component-state"
+
+/* ── VariantStrategyPicker ──────────────────────────────────────── */
+
+/**
+ * Small segmented control for choosing how a variant is expressed in the
+ * generated source. Used by `AddVariantPopover` / `EditVariantPopover`
+ * in this file AND by the dedicated add/edit variant popovers in
+ * `define-view.tsx`, so the choice is consistent everywhere a variant
+ * can be authored.
+ *
+ * - `data-attr` (default): plain TS union prop mirrored to the DOM via
+ *   `data-<name>={<name>}`, classes inline in the cn() base with
+ *   `data-[<name>=<value>]:` prefixes. Matches shadcn's newer pattern
+ *   (Card, Accordion, etc.). Good for compact/default toggles and
+ *   anything children should react to.
+ *
+ * - `cva`: generates a cva() export with a `variants` map. Matches the
+ *   older shadcn pattern (Button, Badge, Alert). Good for variants with
+ *   many value-specific style sets.
+ */
+export function VariantStrategyPicker({
+  value,
+  onChange,
+}: {
+  value: "data-attr" | "cva"
+  onChange: (value: "data-attr" | "cva") => void
+}) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Strategy</Label>
+        <div className="grid grid-cols-2 gap-1 rounded-md border p-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onChange("data-attr")}
+                className={cn(
+                  "rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                  value === "data-attr"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Data attr
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-xs">
+              <div className="space-y-1">
+                <p>
+                  <span className="font-semibold">Recommended.</span> Emits
+                  a plain TS union prop + <code>data-X={"{X}"}</code> on
+                  the root element. Classes live inline in the cn() base
+                  with <code>data-[X=Y]:</code> prefixes.
+                </p>
+                <p className="text-muted-foreground">
+                  Matches shadcn Card, Accordion, etc. Children in this
+                  compound can react to the parent's variant via
+                  <code>{" group-data-[X=Y]/name:"}</code> selectors.
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onChange("cva")}
+                className={cn(
+                  "rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                  value === "cva"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                cva
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-xs">
+              <div className="space-y-1">
+                <p>
+                  Generates a <code>cva()</code> export with a{" "}
+                  <code>variants</code> map. Each value keeps its own
+                  class string in the export.
+                </p>
+                <p className="text-muted-foreground">
+                  Matches shadcn Button, Badge, Alert. Good for variants
+                  with many value-specific style sets that don't fit
+                  comfortably inline.
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </TooltipProvider>
+  )
+}
 
 /* ── Constants ──────────────────────────────────────────────────── */
 
@@ -342,6 +447,11 @@ export function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => v
   const [options, setOptions] = React.useState<string[]>([])
   const [optionInput, setOptionInput] = React.useState("")
   const [defaultValue, setDefaultValue] = React.useState("")
+  // New variants default to the data-attr strategy — matches the newer
+  // shadcn authoring pattern and is the simpler mental model for most
+  // compact/default toggles. The user can switch to cva for variants
+  // with many value-specific style sets.
+  const [strategy, setStrategy] = React.useState<"data-attr" | "cva">("data-attr")
 
   function reset() {
     setName("")
@@ -349,6 +459,7 @@ export function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => v
     setOptions([])
     setOptionInput("")
     setDefaultValue("")
+    setStrategy("data-attr")
   }
 
   function handleAddOptions() {
@@ -371,6 +482,7 @@ export function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => v
       type,
       options: type === "boolean" ? ["true", "false"] : options,
       defaultValue: type === "boolean" ? (defaultValue || "false") : (defaultValue || options[0] || ""),
+      strategy,
     })
     reset()
     setOpen(false)
@@ -397,6 +509,7 @@ export function AddVariantPopover({ onAdd }: { onAdd: (v: CustomVariantDef) => v
             </SelectContent>
           </Select>
         </div>
+        <VariantStrategyPicker value={strategy} onChange={setStrategy} />
         <div className="space-y-1.5">
           <Label className="text-xs">Name</Label>
           <Input
@@ -460,6 +573,13 @@ export function EditVariantPopover({
   const [options, setOptions] = React.useState<string[]>(variant.options)
   const [optionInput, setOptionInput] = React.useState("")
   const [defaultValue, setDefaultValue] = React.useState(variant.defaultValue)
+  // Edit preserves the existing strategy. If absent (pre-this-PR
+  // localStorage entries), default to "cva" — the historical default
+  // for variants without an explicit strategy field. Matches the
+  // translator's backwards-compat rule in `translateVariantsToV2Cva`.
+  const [strategy, setStrategy] = React.useState<"data-attr" | "cva">(
+    variant.strategy ?? "cva",
+  )
 
   React.useEffect(() => {
     if (open) {
@@ -468,8 +588,16 @@ export function EditVariantPopover({
       setOptions(variant.options)
       setOptionInput("")
       setDefaultValue(variant.defaultValue)
+      setStrategy(variant.strategy ?? "cva")
     }
-  }, [open, variant.name, variant.type, variant.options, variant.defaultValue])
+  }, [
+    open,
+    variant.name,
+    variant.type,
+    variant.options,
+    variant.defaultValue,
+    variant.strategy,
+  ])
 
   function handleAddOptions() {
     const newOpts = optionInput
@@ -491,6 +619,7 @@ export function EditVariantPopover({
       type,
       options: type === "boolean" ? ["true", "false"] : options,
       defaultValue: type === "boolean" ? (defaultValue || "false") : (defaultValue || options[0] || ""),
+      strategy,
     })
     setOpen(false)
   }
@@ -518,6 +647,7 @@ export function EditVariantPopover({
             </SelectContent>
           </Select>
         </div>
+        <VariantStrategyPicker value={strategy} onChange={setStrategy} />
         <div className="space-y-1.5">
           <Label className="text-xs">Name</Label>
           <Input

@@ -25,6 +25,10 @@ import {
   type PartPath,
 } from "@/lib/parser/v2-tree-path"
 import {
+  getDataAttrSlotClasses,
+  setDataAttrSlotClasses,
+} from "@/lib/parser/data-attr-slot"
+import {
   renderTreePreviewV2,
   type RenderContextV2,
 } from "@/lib/parser/render-tree-preview-v2"
@@ -285,45 +289,39 @@ export default function CustomComponentPage() {
   /* ── Class edit handler (called when the user edits classes
         on the selected part in the visual editor) ─────────────
 
-     If the active contexts include a `variant:<group>:<value>` that
-     matches the selected sub-component's own cva, route the write
-     into that cva slot (mutating `tree.cvaExports[i].variants[g][v]`)
-     rather than onto the cn-call base. Otherwise fall back to the
-     base className edit via `setPartClasses`.
+     The ContextPicker doubles as the variant slot picker on the
+     custom page (Lesson #20 — don't split UIs that do the same job).
+     When the active contexts include a `variant:<group>:<value>` that
+     matches the selected sub-component's own variant, the write
+     routes to the right slot:
 
-     This is the unified ContextPicker → cva slot flow — the
-     ContextPicker IS the slot picker for own-variants, so the user
-     only has one UI to think about.                                 */
+     - cva strategy → mutate `tree.cvaExports[i].variants[g][v]`
+     - data-attr strategy → mutate the cn() base via
+       `setDataAttrSlotClasses` (writes `data-[g=v]:` prefixes)
+     - no matching strategy → fall through to the base className edit
+
+     Only the sub-component root carries variants. Body parts never
+     have their own variant slots — they always edit the base. */
 
   const handlePartClassChange = React.useCallback(
     (path: PartPath, classes: string[]) => {
       if (!tree) return
 
-      // Find the sub-component the selected path lives under.
       const sub = findSubByPath(tree, path)
-      const ownVariantContext = activeContexts.find((c) => c.startsWith("variant:"))
+      const ownVariantContext = activeContexts.find((c) =>
+        c.startsWith("variant:"),
+      )
 
-      if (
-        sub &&
-        ownVariantContext &&
-        sub.variantStrategy.kind === "cva" &&
-        isRootPath(path)
-      ) {
-        // Only the sub-component root can carry cva variants — a nested
-        // body part never has its own cva. Body parts fall through to
-        // the base-className edit path below.
-        const cvaRef = sub.variantStrategy.cvaRef
-        const cva = tree.cvaExports.find((c) => c.name === cvaRef)
-        if (cva) {
-          const parts = ownVariantContext.split(":")
-          const group = parts[1]
-          const value = parts[2]
-          if (
-            group &&
-            value &&
-            cva.variants[group] &&
-            value in cva.variants[group]
-          ) {
+      if (sub && ownVariantContext && isRootPath(path)) {
+        const parts = ownVariantContext.split(":")
+        const group = parts[1]
+        const value = parts[2]
+
+        // cva strategy: write into the cva slot
+        if (sub.variantStrategy.kind === "cva" && group && value) {
+          const cvaRef = sub.variantStrategy.cvaRef
+          const cva = tree.cvaExports.find((c) => c.name === cvaRef)
+          if (cva && cva.variants[group] && value in cva.variants[group]) {
             const newTree: ComponentTreeV2 = {
               ...tree,
               cvaExports: tree.cvaExports.map((ce) => {
@@ -340,6 +338,24 @@ export default function CustomComponentPage() {
                 }
               }),
             }
+            handleTreeChange(newTree)
+            return
+          }
+        }
+
+        // data-attr strategy: write to the cn() base via the slot helper
+        if (sub.variantStrategy.kind === "data-attr" && group && value) {
+          const matches = sub.variantStrategy.variants.find(
+            (v) => v.propName === group && v.values.includes(value),
+          )
+          if (matches) {
+            const newTree = setDataAttrSlotClasses(
+              tree,
+              sub.name,
+              group,
+              value,
+              classes,
+            )
             handleTreeChange(newTree)
             return
           }
@@ -648,6 +664,14 @@ export default function CustomComponentPage() {
                       ? selectedPart.base.tag
                       : "div"
                   const isRoot = isRootPath(selectedPath)
+
+                  // Build the variants list the ContextPicker will surface
+                  // for this selected element. Includes both cva and
+                  // data-attr variants, in source order. The picker uses
+                  // these to populate its own-variant rows; the routing
+                  // layer (handlePartClassChange) decides whether each
+                  // context maps to a cva slot or a data-attr slot when
+                  // the user edits classes.
                   const subCva =
                     selectedSub.variantStrategy.kind === "cva"
                       ? tree.cvaExports.find(
@@ -655,12 +679,20 @@ export default function CustomComponentPage() {
                             c.name === (selectedSub.variantStrategy as { kind: "cva"; cvaRef: string }).cvaRef,
                         )
                       : undefined
-                  const subVariants = subCva
-                    ? Object.entries(subCva.variants).map(([n, vals]) => ({
-                        name: n,
-                        options: Object.keys(vals),
-                      }))
-                    : []
+                  const subVariants: Array<{ name: string; options: string[] }> = []
+                  if (subCva) {
+                    for (const [n, vals] of Object.entries(subCva.variants)) {
+                      subVariants.push({ name: n, options: Object.keys(vals) })
+                    }
+                  }
+                  if (selectedSub.variantStrategy.kind === "data-attr") {
+                    for (const dav of selectedSub.variantStrategy.variants) {
+                      subVariants.push({
+                        name: dav.propName,
+                        options: dav.values.slice(),
+                      })
+                    }
+                  }
 
                   // If the active contexts point at an own-variant slot,
                   // load classes from that slot so the controls reflect
@@ -670,13 +702,28 @@ export default function CustomComponentPage() {
                     c.startsWith("variant:"),
                   )
                   let partClasses: string[] = getPartClasses(selectedPart)
-                  if (subCva && ownVariantContext && isRoot) {
+                  if (ownVariantContext && isRoot) {
                     const parts = ownVariantContext.split(":")
                     const group = parts[1]
                     const value = parts[2]
-                    const slotValue = subCva.variants[group]?.[value]
-                    if (typeof slotValue === "string") {
-                      partClasses = slotValue.split(/\s+/).filter(Boolean)
+                    if (subCva && group && value) {
+                      const slotValue = subCva.variants[group]?.[value]
+                      if (typeof slotValue === "string") {
+                        partClasses = slotValue.split(/\s+/).filter(Boolean)
+                      }
+                    } else if (
+                      selectedSub.variantStrategy.kind === "data-attr" &&
+                      group &&
+                      value
+                    ) {
+                      const slotClasses = getDataAttrSlotClasses(
+                        selectedSub,
+                        group,
+                        value,
+                      )
+                      if (slotClasses !== null) {
+                        partClasses = slotClasses
+                      }
                     }
                   }
 
