@@ -32,6 +32,7 @@
  */
 
 import * as React from "react"
+import * as LucideIcons from "lucide-react"
 
 import type {
   ClassNameExpr,
@@ -48,6 +49,42 @@ import {
 } from "@/lib/parser/v2-tree-path"
 import { resolveColorStyles } from "@/lib/resolve-color-styles"
 import { shadcnPreviewMap } from "@/lib/shadcn-preview-map"
+
+/* ── Lucide icon namespace import ──────────────────────────────── */
+
+/**
+ * Lucide icons in shadcn source show up as `component-ref` parts with
+ * names like `CheckIcon`, `ChevronDownIcon`, `XIcon`, etc. Without
+ * special handling, the renderer falls back to a placeholder pill.
+ *
+ * We namespace-import `lucide-react` and render matching names as real
+ * Lucide components on the canvas. Bundle size hit is ~400KB gzipped
+ * because tree-shaking can't eliminate a namespace import — acceptable
+ * for a design tool that already ships shadcn + Radix + Tailwind + the
+ * whole visual editor.
+ *
+ * Discovered: 2026-04-08 while stabilising Checkbox / RadioGroup /
+ * Dialog / DropdownMenu etc. See GEO-306 cross-cutting blocker #2.
+ */
+function getLucideIcon(name: string): React.ComponentType<Record<string, unknown>> | null {
+  // Lucide icons are React.forwardRef components, so `typeof` returns
+  // "object", not "function". We check for presence + the hallmarks of
+  // a valid React component (either a function, or an object with
+  // `$$typeof` which React uses to tag forwardRef / memo / etc.).
+  const icon = (LucideIcons as Record<string, unknown>)[name]
+  if (!icon) return null
+  if (typeof icon === "function") {
+    return icon as React.ComponentType<Record<string, unknown>>
+  }
+  if (
+    typeof icon === "object" &&
+    icon !== null &&
+    "$$typeof" in icon
+  ) {
+    return icon as unknown as React.ComponentType<Record<string, unknown>>
+  }
+  return null
+}
 
 /* ── HTML void elements ─────────────────────────────────────────── */
 
@@ -109,20 +146,44 @@ type RadixMapping = {
   tag: string | null
   /** Extra attributes to set on the rendered element (e.g. `role`) */
   attrs?: Record<string, string>
+  /**
+   * Default Radix runtime data attributes to set on the rendered element
+   * for the canvas preview. Many Radix primitives apply styling via
+   * `data-[state=open]:*` / `data-[state=unchecked]:*` / `data-[side=bottom]:*`
+   * / etc. selectors. At runtime these attrs are set by Radix itself based
+   * on component state. On the canvas (where we have no Radix instance),
+   * the attrs would normally be missing and the classes would never
+   * activate, leaving Switch / Checkbox / Dialog.Content / etc. visibly
+   * broken.
+   *
+   * The renderer does two things with these:
+   * 1. Merges them into the rendered element's HTML attributes so the DOM
+   *    actually has e.g. `data-state="unchecked"` set.
+   * 2. Merges them into the active `variantDataAttrs` for the class
+   *    resolver, so `data-[state=unchecked]:bg-input` strips its prefix
+   *    at render time and emits `bg-input` as a live class (same runtime
+   *    prefix-stripping mechanism we built for user-facing data-attr
+   *    variants in PR #30).
+   *
+   * Choose defaults that show the component in its "resting" visible
+   * state — e.g. `state=unchecked` for a fresh checkbox, `state=open` for
+   * Dialog.Content so the modal body is visible for styling.
+   */
+  defaultDataAttrs?: Record<string, string>
 }
 
 const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   // Accordion
   "Accordion.Root": { tag: "div" },
   "AccordionPrimitive.Root": { tag: "div" },
-  "Accordion.Item": { tag: "div" },
-  "AccordionPrimitive.Item": { tag: "div" },
+  "Accordion.Item": { tag: "div", defaultDataAttrs: { "data-state": "closed" } },
+  "AccordionPrimitive.Item": { tag: "div", defaultDataAttrs: { "data-state": "closed" } },
   "Accordion.Header": { tag: "h3" },
   "AccordionPrimitive.Header": { tag: "h3" },
-  "Accordion.Trigger": { tag: "button" },
-  "AccordionPrimitive.Trigger": { tag: "button" },
-  "Accordion.Content": { tag: "div" },
-  "AccordionPrimitive.Content": { tag: "div" },
+  "Accordion.Trigger": { tag: "button", defaultDataAttrs: { "data-state": "closed" } },
+  "AccordionPrimitive.Trigger": { tag: "button", defaultDataAttrs: { "data-state": "closed" } },
+  "Accordion.Content": { tag: "div", defaultDataAttrs: { "data-state": "open" } },
+  "AccordionPrimitive.Content": { tag: "div", defaultDataAttrs: { "data-state": "open" } },
 
   // AlertDialog (same DOM shape as Dialog)
   "AlertDialog.Root": { tag: null },
@@ -136,10 +197,12 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "AlertDialog.Content": {
     tag: "div",
     attrs: { role: "alertdialog" },
+    defaultDataAttrs: { "data-state": "open" },
   },
   "AlertDialogPrimitive.Content": {
     tag: "div",
     attrs: { role: "alertdialog" },
+    defaultDataAttrs: { "data-state": "open" },
   },
   "AlertDialog.Cancel": { tag: "button" },
   "AlertDialogPrimitive.Cancel": { tag: "button" },
@@ -163,18 +226,32 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "AvatarPrimitive.Fallback": { tag: "span" },
 
   // Checkbox
-  "Checkbox.Root": { tag: "button", attrs: { role: "checkbox", type: "button" } },
-  "CheckboxPrimitive.Root": { tag: "button", attrs: { role: "checkbox", type: "button" } },
-  "Checkbox.Indicator": { tag: "span" },
-  "CheckboxPrimitive.Indicator": { tag: "span" },
+  "Checkbox.Root": {
+    tag: "button",
+    attrs: { role: "checkbox", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
+  },
+  "CheckboxPrimitive.Root": {
+    tag: "button",
+    attrs: { role: "checkbox", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
+  },
+  "Checkbox.Indicator": {
+    tag: "span",
+    defaultDataAttrs: { "data-state": "unchecked" },
+  },
+  "CheckboxPrimitive.Indicator": {
+    tag: "span",
+    defaultDataAttrs: { "data-state": "unchecked" },
+  },
 
   // Collapsible
-  "Collapsible.Root": { tag: "div" },
-  "CollapsiblePrimitive.Root": { tag: "div" },
-  "Collapsible.Trigger": { tag: "button" },
-  "CollapsiblePrimitive.Trigger": { tag: "button" },
-  "Collapsible.Content": { tag: "div" },
-  "CollapsiblePrimitive.Content": { tag: "div" },
+  "Collapsible.Root": { tag: "div", defaultDataAttrs: { "data-state": "closed" } },
+  "CollapsiblePrimitive.Root": { tag: "div", defaultDataAttrs: { "data-state": "closed" } },
+  "Collapsible.Trigger": { tag: "button", defaultDataAttrs: { "data-state": "closed" } },
+  "CollapsiblePrimitive.Trigger": { tag: "button", defaultDataAttrs: { "data-state": "closed" } },
+  "Collapsible.Content": { tag: "div", defaultDataAttrs: { "data-state": "open" } },
+  "CollapsiblePrimitive.Content": { tag: "div", defaultDataAttrs: { "data-state": "open" } },
 
   // ContextMenu (same DOM shape as DropdownMenu)
   "ContextMenu.Root": { tag: null },
@@ -211,8 +288,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "DialogPrimitive.Portal": { tag: null },
   "Dialog.Overlay": { tag: "div" },
   "DialogPrimitive.Overlay": { tag: "div" },
-  "Dialog.Content": { tag: "div", attrs: { role: "dialog" } },
-  "DialogPrimitive.Content": { tag: "div", attrs: { role: "dialog" } },
+  "Dialog.Content": {
+    tag: "div",
+    attrs: { role: "dialog" },
+    defaultDataAttrs: { "data-state": "open" },
+  },
+  "DialogPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "dialog" },
+    defaultDataAttrs: { "data-state": "open" },
+  },
   "Dialog.Close": { tag: "button" },
   "DialogPrimitive.Close": { tag: "button" },
   "Dialog.Title": { tag: "h2" },
@@ -229,8 +314,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "DrawerPrimitive.Portal": { tag: null },
   "Drawer.Overlay": { tag: "div" },
   "DrawerPrimitive.Overlay": { tag: "div" },
-  "Drawer.Content": { tag: "div", attrs: { role: "dialog" } },
-  "DrawerPrimitive.Content": { tag: "div", attrs: { role: "dialog" } },
+  "Drawer.Content": {
+    tag: "div",
+    attrs: { role: "dialog" },
+    defaultDataAttrs: { "data-state": "open", "vaul-drawer-direction": "bottom" },
+  },
+  "DrawerPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "dialog" },
+    defaultDataAttrs: { "data-state": "open", "vaul-drawer-direction": "bottom" },
+  },
   "Drawer.Close": { tag: "button" },
   "DrawerPrimitive.Close": { tag: "button" },
   "Drawer.Title": { tag: "h2" },
@@ -245,8 +338,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "DropdownMenuPrimitive.Trigger": { tag: "button" },
   "DropdownMenu.Portal": { tag: null },
   "DropdownMenuPrimitive.Portal": { tag: null },
-  "DropdownMenu.Content": { tag: "div", attrs: { role: "menu" } },
-  "DropdownMenuPrimitive.Content": { tag: "div", attrs: { role: "menu" } },
+  "DropdownMenu.Content": {
+    tag: "div",
+    attrs: { role: "menu" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
+  "DropdownMenuPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "menu" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
   "DropdownMenu.Item": { tag: "div", attrs: { role: "menuitem" } },
   "DropdownMenuPrimitive.Item": { tag: "div", attrs: { role: "menuitem" } },
   "DropdownMenu.CheckboxItem": {
@@ -284,8 +385,14 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "HoverCardPrimitive.Trigger": { tag: "span" },
   "HoverCard.Portal": { tag: null },
   "HoverCardPrimitive.Portal": { tag: null },
-  "HoverCard.Content": { tag: "div" },
-  "HoverCardPrimitive.Content": { tag: "div" },
+  "HoverCard.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
+  "HoverCardPrimitive.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
 
   // Label
   "Label.Root": { tag: "label" },
@@ -300,8 +407,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "MenubarPrimitive.Trigger": { tag: "button" },
   "Menubar.Portal": { tag: null },
   "MenubarPrimitive.Portal": { tag: null },
-  "Menubar.Content": { tag: "div", attrs: { role: "menu" } },
-  "MenubarPrimitive.Content": { tag: "div", attrs: { role: "menu" } },
+  "Menubar.Content": {
+    tag: "div",
+    attrs: { role: "menu" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
+  "MenubarPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "menu" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
   "Menubar.Item": { tag: "div", attrs: { role: "menuitem" } },
   "MenubarPrimitive.Item": { tag: "div", attrs: { role: "menuitem" } },
   "Menubar.CheckboxItem": { tag: "div", attrs: { role: "menuitemcheckbox" } },
@@ -334,8 +449,14 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "NavigationMenuPrimitive.Item": { tag: "li" },
   "NavigationMenu.Trigger": { tag: "button" },
   "NavigationMenuPrimitive.Trigger": { tag: "button" },
-  "NavigationMenu.Content": { tag: "div" },
-  "NavigationMenuPrimitive.Content": { tag: "div" },
+  "NavigationMenu.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-motion": "from-start" },
+  },
+  "NavigationMenuPrimitive.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-motion": "from-start" },
+  },
   "NavigationMenu.Link": { tag: "a" },
   "NavigationMenuPrimitive.Link": { tag: "a" },
   "NavigationMenu.Indicator": { tag: "div" },
@@ -352,14 +473,25 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "PopoverPrimitive.Anchor": { tag: "span" },
   "Popover.Portal": { tag: null },
   "PopoverPrimitive.Portal": { tag: null },
-  "Popover.Content": { tag: "div" },
-  "PopoverPrimitive.Content": { tag: "div" },
+  "Popover.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
+  "PopoverPrimitive.Content": {
+    tag: "div",
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
   "Popover.Close": { tag: "button" },
   "PopoverPrimitive.Close": { tag: "button" },
   "Popover.Arrow": { tag: "svg" },
   "PopoverPrimitive.Arrow": { tag: "svg" },
 
-  // Progress
+  // Progress. The Indicator's inline `style={{ transform: translateX(...) }}`
+  // from source references a runtime `value` prop that doesn't exist on the
+  // canvas. The renderer's general "drop parsed inline style" policy means
+  // we won't apply the transform at all, so the indicator sits flush-left
+  // and visibly fills the track at its full width. That's the correct
+  // preview for an unfilled Progress with no styling on it.
   "Progress.Root": { tag: "div", attrs: { role: "progressbar" } },
   "ProgressPrimitive.Root": { tag: "div", attrs: { role: "progressbar" } },
   "Progress.Indicator": { tag: "div" },
@@ -371,13 +503,15 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "RadioGroup.Item": {
     tag: "button",
     attrs: { role: "radio", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
   },
   "RadioGroupPrimitive.Item": {
     tag: "button",
     attrs: { role: "radio", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
   },
-  "RadioGroup.Indicator": { tag: "span" },
-  "RadioGroupPrimitive.Indicator": { tag: "span" },
+  "RadioGroup.Indicator": { tag: "span", defaultDataAttrs: { "data-state": "unchecked" } },
+  "RadioGroupPrimitive.Indicator": { tag: "span", defaultDataAttrs: { "data-state": "unchecked" } },
 
   // ScrollArea
   "ScrollArea.Root": { tag: "div" },
@@ -406,8 +540,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "SelectPrimitive.Icon": { tag: "span" },
   "Select.Portal": { tag: null },
   "SelectPrimitive.Portal": { tag: null },
-  "Select.Content": { tag: "div", attrs: { role: "listbox" } },
-  "SelectPrimitive.Content": { tag: "div", attrs: { role: "listbox" } },
+  "Select.Content": {
+    tag: "div",
+    attrs: { role: "listbox" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
+  "SelectPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "listbox" },
+    defaultDataAttrs: { "data-state": "open", "data-side": "bottom" },
+  },
   "Select.Viewport": { tag: "div" },
   "SelectPrimitive.Viewport": { tag: "div" },
   "Select.Item": { tag: "div", attrs: { role: "option" } },
@@ -427,62 +569,114 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "Select.ScrollDownButton": { tag: "div" },
   "SelectPrimitive.ScrollDownButton": { tag: "div" },
 
-  // Separator
-  "Separator.Root": { tag: "div", attrs: { role: "separator" } },
-  "SeparatorPrimitive.Root": { tag: "div", attrs: { role: "separator" } },
+  // Separator. Default orientation is horizontal (shadcn's source inline
+  // destructures `orientation = "horizontal"` which the parser currently
+  // can't see — GEO-350). Without this default the `data-[orientation=*]:`
+  // classes never activate and the separator renders zero-height.
+  "Separator.Root": {
+    tag: "div",
+    attrs: { role: "separator" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
+  },
+  "SeparatorPrimitive.Root": {
+    tag: "div",
+    attrs: { role: "separator" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
+  },
 
   // Sheet uses Dialog primitive — covered by Dialog entries above
 
   // Slider
-  "Slider.Root": { tag: "span" },
-  "SliderPrimitive.Root": { tag: "span" },
-  "Slider.Track": { tag: "span" },
-  "SliderPrimitive.Track": { tag: "span" },
-  "Slider.Range": { tag: "span" },
-  "SliderPrimitive.Range": { tag: "span" },
+  "Slider.Root": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "SliderPrimitive.Root": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "Slider.Track": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "SliderPrimitive.Track": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "Slider.Range": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "SliderPrimitive.Range": { tag: "span", defaultDataAttrs: { "data-orientation": "horizontal" } },
   "Slider.Thumb": {
     tag: "span",
     attrs: { role: "slider", "aria-orientation": "horizontal" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
   },
   "SliderPrimitive.Thumb": {
     tag: "span",
     attrs: { role: "slider", "aria-orientation": "horizontal" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
   },
 
   // Switch
-  "Switch.Root": { tag: "button", attrs: { role: "switch", type: "button" } },
+  "Switch.Root": {
+    tag: "button",
+    attrs: { role: "switch", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
+  },
   "SwitchPrimitive.Root": {
     tag: "button",
     attrs: { role: "switch", type: "button" },
+    defaultDataAttrs: { "data-state": "unchecked" },
   },
-  "Switch.Thumb": { tag: "span" },
-  "SwitchPrimitive.Thumb": { tag: "span" },
+  "Switch.Thumb": { tag: "span", defaultDataAttrs: { "data-state": "unchecked" } },
+  "SwitchPrimitive.Thumb": { tag: "span", defaultDataAttrs: { "data-state": "unchecked" } },
 
   // Tabs
-  "Tabs.Root": { tag: "div" },
-  "TabsPrimitive.Root": { tag: "div" },
-  "Tabs.List": { tag: "div", attrs: { role: "tablist" } },
-  "TabsPrimitive.List": { tag: "div", attrs: { role: "tablist" } },
+  "Tabs.Root": { tag: "div", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "TabsPrimitive.Root": { tag: "div", defaultDataAttrs: { "data-orientation": "horizontal" } },
+  "Tabs.List": {
+    tag: "div",
+    attrs: { role: "tablist" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
+  },
+  "TabsPrimitive.List": {
+    tag: "div",
+    attrs: { role: "tablist" },
+    defaultDataAttrs: { "data-orientation": "horizontal" },
+  },
   "Tabs.Trigger": {
     tag: "button",
     attrs: { role: "tab", type: "button" },
+    defaultDataAttrs: { "data-state": "active", "data-orientation": "horizontal" },
   },
   "TabsPrimitive.Trigger": {
     tag: "button",
     attrs: { role: "tab", type: "button" },
+    defaultDataAttrs: { "data-state": "active", "data-orientation": "horizontal" },
   },
-  "Tabs.Content": { tag: "div", attrs: { role: "tabpanel" } },
-  "TabsPrimitive.Content": { tag: "div", attrs: { role: "tabpanel" } },
+  "Tabs.Content": {
+    tag: "div",
+    attrs: { role: "tabpanel" },
+    defaultDataAttrs: { "data-state": "active", "data-orientation": "horizontal" },
+  },
+  "TabsPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "tabpanel" },
+    defaultDataAttrs: { "data-state": "active", "data-orientation": "horizontal" },
+  },
 
   // Toggle
-  "Toggle.Root": { tag: "button", attrs: { type: "button" } },
-  "TogglePrimitive.Root": { tag: "button", attrs: { type: "button" } },
+  "Toggle.Root": {
+    tag: "button",
+    attrs: { type: "button" },
+    defaultDataAttrs: { "data-state": "off" },
+  },
+  "TogglePrimitive.Root": {
+    tag: "button",
+    attrs: { type: "button" },
+    defaultDataAttrs: { "data-state": "off" },
+  },
 
   // ToggleGroup
   "ToggleGroup.Root": { tag: "div", attrs: { role: "group" } },
   "ToggleGroupPrimitive.Root": { tag: "div", attrs: { role: "group" } },
-  "ToggleGroup.Item": { tag: "button", attrs: { type: "button" } },
-  "ToggleGroupPrimitive.Item": { tag: "button", attrs: { type: "button" } },
+  "ToggleGroup.Item": {
+    tag: "button",
+    attrs: { type: "button" },
+    defaultDataAttrs: { "data-state": "off" },
+  },
+  "ToggleGroupPrimitive.Item": {
+    tag: "button",
+    attrs: { type: "button" },
+    defaultDataAttrs: { "data-state": "off" },
+  },
 
   // Tooltip
   "Tooltip.Provider": { tag: null },
@@ -493,8 +687,16 @@ const RADIX_PRIMITIVE_MAP: Record<string, RadixMapping> = {
   "TooltipPrimitive.Trigger": { tag: "button" },
   "Tooltip.Portal": { tag: null },
   "TooltipPrimitive.Portal": { tag: null },
-  "Tooltip.Content": { tag: "div", attrs: { role: "tooltip" } },
-  "TooltipPrimitive.Content": { tag: "div", attrs: { role: "tooltip" } },
+  "Tooltip.Content": {
+    tag: "div",
+    attrs: { role: "tooltip" },
+    defaultDataAttrs: { "data-state": "delayed-open", "data-side": "top" },
+  },
+  "TooltipPrimitive.Content": {
+    tag: "div",
+    attrs: { role: "tooltip" },
+    defaultDataAttrs: { "data-state": "delayed-open", "data-side": "top" },
+  },
   "Tooltip.Arrow": { tag: "svg" },
   "TooltipPrimitive.Arrow": { tag: "svg" },
 }
@@ -513,6 +715,71 @@ function resolveRadixTag(
 ): RadixMapping | null {
   const key = `${primitive}.${part}`
   return RADIX_PRIMITIVE_MAP[key] ?? null
+}
+
+/**
+ * Apply a set of known data attributes to a class list by stripping
+ * matching `data-[X=Y]:*` prefixes and dropping non-matching ones.
+ * Used to resolve Radix runtime state / orientation / side classes on
+ * the canvas where we set the default data attributes ourselves (no
+ * Radix instance actually running to set them at runtime).
+ *
+ * Mirrors the prefix stripping in the dashboard's `resolveVariantClasses`
+ * that was added in PR #30 for user-facing data-attr variants. We need
+ * a second local pass because the dashboard's resolver only knows about
+ * user-facing `variantDataAttrs` — it doesn't know about Radix's own
+ * internal state defaults (`data-state`, `data-side`, `data-orientation`,
+ * etc.). See RADIX_PRIMITIVE_MAP entries' `defaultDataAttrs` field.
+ *
+ * Rules:
+ * - Bare class (no `data-[X=Y]:` prefix) → pass through unchanged
+ * - `data-[X=Y]:<utility>` where X === attr name AND Y === attr value →
+ *   emit bare `<utility>`
+ * - `data-[X]:<utility>` where X === attr name (no `=Y` — treat as
+ *   "present") → emit bare `<utility>`
+ * - `data-[X=Y]:<utility>` where attrs has X but value doesn't match →
+ *   drop entirely
+ * - `data-[X=Y]:<utility>` where X isn't in attrs at all → pass through
+ *   so the dashboard resolver or Tailwind's own safelist can handle it
+ */
+function stripKnownDataAttrPrefixes(
+  classes: string[],
+  attrs: Record<string, string>,
+): string[] {
+  if (Object.keys(attrs).length === 0) return classes
+  const result: string[] = []
+  for (const cls of classes) {
+    // Try matching `data-[X=Y]:rest`
+    const kvMatch = cls.match(/^data-\[([a-z][a-z0-9-]*)=([^\]]+)\]:(.+)$/)
+    if (kvMatch) {
+      const [, attrName, attrValue, utility] = kvMatch
+      const knownValue = attrs[`data-${attrName}`]
+      if (knownValue === undefined) {
+        // Not a known attr — pass through for the dashboard resolver
+        result.push(cls)
+      } else if (knownValue === attrValue) {
+        // Matching — strip prefix
+        result.push(utility)
+      }
+      // Else: drop (known attr, non-matching value)
+      continue
+    }
+    // Try matching `data-[X]:rest` (presence check, no value)
+    const presenceMatch = cls.match(/^data-\[([a-z][a-z0-9-]*)\]:(.+)$/)
+    if (presenceMatch) {
+      const [, attrName, utility] = presenceMatch
+      const knownValue = attrs[`data-${attrName}`]
+      if (knownValue === undefined) {
+        result.push(cls)
+      } else {
+        result.push(utility)
+      }
+      continue
+    }
+    // Not a data-attr-prefixed class — pass through
+    result.push(cls)
+  }
+  return result
 }
 
 /* ── Render context ─────────────────────────────────────────────── */
@@ -645,6 +912,7 @@ function renderShell(
   //   to the placeholder.
   let resolvedTag: string | null = null
   let radixAttrs: Record<string, string> | undefined
+  let radixDefaultDataAttrs: Record<string, string> | undefined
   let isTransparentRadix = false
   if (part.base.kind === "html") {
     resolvedTag = part.base.tag
@@ -660,6 +928,7 @@ function renderShell(
       } else {
         resolvedTag = mapping.tag
         radixAttrs = mapping.attrs
+        radixDefaultDataAttrs = mapping.defaultDataAttrs
       }
     }
   }
@@ -691,7 +960,15 @@ function renderShell(
 
   const isSelected = ctx.selectedPath === path
   const rawClasses = getPartClasses(part)
-  const resolved = ctx.resolveVariantClasses(rawClasses)
+  // First: the dashboard's resolver handles user-facing data-attr variants
+  // (cva slots, runtime prefix stripping from PR #30). Then: a local pass
+  // strips Radix's own default state/orientation/side data attrs so
+  // `data-[state=unchecked]:bg-input` → `bg-input` etc. activate on the
+  // canvas without a real Radix instance.
+  const afterDashboardResolve = ctx.resolveVariantClasses(rawClasses)
+  const resolved = radixDefaultDataAttrs
+    ? stripKnownDataAttrPrefixes(afterDashboardResolve, radixDefaultDataAttrs)
+    : afterDashboardResolve
   const { remainingClasses, style: colorStyle } = resolveColorStyles(resolved)
   const allClasses = [
     ...remainingClasses,
@@ -738,6 +1015,7 @@ function renderShell(
     style: inlineStyle,
     "data-node-id": path,
     ...(radixAttrs ?? {}),
+    ...(radixDefaultDataAttrs ?? {}),
     ...extraProps,
   }
 
@@ -858,14 +1136,20 @@ function renderBodyPart(
 ): React.ReactNode {
   if (ctx.hiddenPaths.has(path)) return null
 
-  // component-ref → render as a shadcn preview if known, else placeholder.
-  // We deliberately do NOT recurse into other sub-components from here
-  // (composition graph nesting is handled by renderShell + nestInside).
+  // component-ref → try Lucide first (real icon SVG), then shadcn
+  // preview map, then placeholder. We deliberately do NOT recurse into
+  // other sub-components from here (composition graph nesting is
+  // handled by renderShell + nestInside).
   if (part.base.kind === "component-ref") {
-    if (shadcnPreviewMap[part.base.name]) {
-      return renderShadcnPreview(part.base.name, path, ctx)
+    const name = part.base.name
+    const LucideIcon = getLucideIcon(name)
+    if (LucideIcon) {
+      return renderLucideIcon(LucideIcon, part, path, ctx)
     }
-    return renderPlaceholder(part.base.name, path)
+    if (shadcnPreviewMap[name]) {
+      return renderShadcnPreview(name, path, ctx)
+    }
+    return renderPlaceholder(name, path)
   }
 
   // Radix primitive nested inside a sub-component's body.
@@ -941,7 +1225,13 @@ function renderRadixBodyPart(
   const tag = mapping.tag
   const isSelected = ctx.selectedPath === path
   const rawClasses = getPartClasses(part)
-  const resolved = ctx.resolveVariantClasses(rawClasses)
+  // Same two-pass resolution as renderShell: dashboard resolver first
+  // (user-facing variants), then a local strip for Radix's own default
+  // state/orientation/side data attributes.
+  const afterDashboardResolve = ctx.resolveVariantClasses(rawClasses)
+  const resolved = mapping.defaultDataAttrs
+    ? stripKnownDataAttrPrefixes(afterDashboardResolve, mapping.defaultDataAttrs)
+    : afterDashboardResolve
   const { remainingClasses, style: colorStyle } = resolveColorStyles(resolved)
   const allClasses = [
     ...remainingClasses,
@@ -957,6 +1247,7 @@ function renderRadixBodyPart(
     style: inlineStyle,
     "data-node-id": path,
     ...(mapping.attrs ?? {}),
+    ...(mapping.defaultDataAttrs ?? {}),
   }
 
   // Void element guard (e.g. Avatar.Image → <img>)
@@ -1073,6 +1364,38 @@ function renderShadcnPreview(
     },
     shadcnPreviewMap[name](),
   )
+}
+
+/**
+ * Render a Lucide icon as a real SVG component on the canvas. Carries
+ * the part's resolved classes through so `size-4`, `text-primary`,
+ * `shrink-0`, etc. all work as they would in real source. Adds the
+ * selection ring when this path is selected.
+ */
+function renderLucideIcon(
+  Icon: React.ComponentType<Record<string, unknown>>,
+  part: PartNode,
+  path: PartPath,
+  ctx: RenderContextV2,
+): React.ReactNode {
+  const isSelected = ctx.selectedPath === path
+  const rawClasses = getPartClasses(part)
+  const resolved = ctx.resolveVariantClasses(rawClasses)
+  const { remainingClasses, style: colorStyle } = resolveColorStyles(resolved)
+  const allClasses = [
+    ...remainingClasses,
+    isSelected ? "ring-2 ring-blue-500 ring-offset-1 rounded" : "",
+  ].filter(Boolean)
+  const className = allClasses.length > 0 ? allClasses.join(" ") : undefined
+  const inlineStyle =
+    Object.keys(colorStyle).length > 0 ? colorStyle : undefined
+
+  return React.createElement(Icon, {
+    key: path,
+    "data-node-id": path,
+    className,
+    style: inlineStyle,
+  })
 }
 
 /* ── Helpers ────────────────────────────────────────────────────── */
