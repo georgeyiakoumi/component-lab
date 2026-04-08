@@ -586,23 +586,16 @@ export default function CustomComponentPage() {
                       ? selectedPart.base.tag
                       : "div"
                   const isRoot = isRootPath(selectedPath)
-                  const subVariants =
-                    selectedSub.variantStrategy.kind === "cva"
-                      ? (() => {
-                          const cva = tree.cvaExports.find(
-                            (c) =>
-                              c.name === (selectedSub.variantStrategy as { kind: "cva"; cvaRef: string }).cvaRef,
-                          )
-                          if (!cva) return []
-                          return Object.entries(cva.variants).map(
-                            ([n, vals]) => ({
-                              name: n,
-                              options: Object.keys(vals),
-                            }),
-                          )
-                        })()
-                      : []
 
+                  // Note: we deliberately do NOT pass the element's own cva
+                  // variants as `variants` to the ContextPicker. Edits to an
+                  // element's own variant slots belong in the cva export
+                  // (`variants.<name>.<option>`), not on the base className
+                  // as `data-[name=option]:` prefixes. The right UI for that
+                  // is the CvaSlotPicker (Pillar 5c) — not yet wired on the
+                  // custom page, but tracked as a follow-up. The ContextPicker
+                  // stays focused on breakpoints, pseudo-classes, and future
+                  // parentVariants.
                   return (
                     <VisualEditor
                       key={selectedPath}
@@ -618,7 +611,6 @@ export default function CustomComponentPage() {
                         handlePartClassChange(selectedPath, classes)
                       }}
                       onDeselect={() => setSelectedPath(null)}
-                      variants={subVariants}
                       props={[]}
                       subComponentNames={tree.subComponents.map((sc) => sc.name)}
                     />
