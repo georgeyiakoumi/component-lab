@@ -55,42 +55,93 @@ export function readPropsFromSub(sub: SubComponentV2): ComponentProp[] {
 
 /**
  * Read the variants of a sub-component as a flat `CustomVariantDef[]`
- * for the Define view's variant list UI. Looks up the cva export by
- * the sub-component's `variantStrategy.cvaRef`.
+ * for the Define view's variant list UI.
+ *
+ * Surfaces both strategies in a single list:
+ *
+ * - **cva** variants: looked up via `variantStrategy.cvaRef` → cva export.
+ *   Each variant is tagged with `strategy: "cva"` so the UI's edit
+ *   popover starts on the right strategy.
+ *
+ * - **data-attr** variants: read from
+ *   `variantStrategy.variants[].{propName, values, defaultValue}` and
+ *   tagged with `strategy: "data-attr"`. Boolean data-attr variants
+ *   (values `["true", "false"]`) are mapped back to `type: "boolean"`
+ *   so the UI renders them with the boolean toggle, matching the
+ *   creation experience.
+ *
+ * When a sub-component carries BOTH strategies (cva variants in an
+ * export AND data-attr variants on the strategy field — see Button-like
+ * components where cva owns the styling but data-attrs mirror to the
+ * DOM), the cva variants are listed first, then the data-attr ones.
+ * Order within each group is source order.
  */
 export function readVariantsFromSub(
   sub: SubComponentV2,
   cvaExports: CvaExport[],
 ): CustomVariantDef[] {
-  if (sub.variantStrategy.kind !== "cva") return []
-  const cvaRef = sub.variantStrategy.cvaRef
-  const cva = cvaExports.find((c) => c.name === cvaRef)
-  if (!cva) return []
-
   const out: CustomVariantDef[] = []
-  for (const [groupName, valueMap] of Object.entries(cva.variants)) {
-    const valueNames = Object.keys(valueMap)
-    // Detect boolean variant: exactly two values "true" and "false"
-    if (
-      valueNames.length === 2 &&
-      valueNames.includes("true") &&
-      valueNames.includes("false")
-    ) {
-      out.push({
-        name: groupName,
-        type: "boolean",
-        options: [],
-        defaultValue: cva.defaultVariants?.[groupName] ?? "false",
-      })
-    } else {
-      out.push({
-        name: groupName,
-        type: "variant",
-        options: valueNames,
-        defaultValue: cva.defaultVariants?.[groupName] ?? valueNames[0] ?? "",
-      })
+
+  // cva variants
+  if (sub.variantStrategy.kind === "cva") {
+    const cvaRef = sub.variantStrategy.cvaRef
+    const cva = cvaExports.find((c) => c.name === cvaRef)
+    if (cva) {
+      for (const [groupName, valueMap] of Object.entries(cva.variants)) {
+        const valueNames = Object.keys(valueMap)
+        if (
+          valueNames.length === 2 &&
+          valueNames.includes("true") &&
+          valueNames.includes("false")
+        ) {
+          out.push({
+            name: groupName,
+            type: "boolean",
+            options: [],
+            defaultValue: cva.defaultVariants?.[groupName] ?? "false",
+            strategy: "cva",
+          })
+        } else {
+          out.push({
+            name: groupName,
+            type: "variant",
+            options: valueNames,
+            defaultValue:
+              cva.defaultVariants?.[groupName] ?? valueNames[0] ?? "",
+            strategy: "cva",
+          })
+        }
+      }
     }
   }
+
+  // data-attr variants
+  if (sub.variantStrategy.kind === "data-attr") {
+    for (const dav of sub.variantStrategy.variants) {
+      const isBooleanShape =
+        dav.values.length === 2 &&
+        dav.values.includes("true") &&
+        dav.values.includes("false")
+      if (isBooleanShape) {
+        out.push({
+          name: dav.propName,
+          type: "boolean",
+          options: [],
+          defaultValue: dav.defaultValue,
+          strategy: "data-attr",
+        })
+      } else {
+        out.push({
+          name: dav.propName,
+          type: "variant",
+          options: dav.values.slice(),
+          defaultValue: dav.defaultValue,
+          strategy: "data-attr",
+        })
+      }
+    }
+  }
+
   return out
 }
 
@@ -112,11 +163,37 @@ export function setPropsOnSub(
 }
 
 /**
- * Update a sub-component's variants by mutating the corresponding cva export.
- * If the sub-component has no cva export yet (variantStrategy.kind === "none"),
- * a new one is created and the strategy is updated.
+ * Update a sub-component's variants from a flat `CustomVariantDef[]`.
  *
- * Returns `{ tree, sub }` so the caller can update both at once.
+ * Partitions incoming variants by `strategy`:
+ *
+ * - **cva-strategy variants** are written into a cva export
+ *   (`<subName>Variants` by convention, reusing an existing export if
+ *   one is already attached). Existing class strings are preserved when
+ *   the user adds/removes other values within the same group.
+ *
+ * - **data-attr-strategy variants** become inline prop properties on
+ *   the sub-component's `propsDecl` and `data-<prop>={<prop>}` attribute
+ *   bindings on the root element. They live entirely on the
+ *   sub-component itself; no cva export is created.
+ *
+ * The sub-component's `variantStrategy` is set as follows:
+ *
+ *   - any cva variants present → `{ kind: "cva", cvaRef }` (cva claims
+ *     the strategy field; data-attr inline props/attributes still flow
+ *     through but the strategy field reflects the cva-as-source-of-
+ *     styling fact, matching parsed Button-style components)
+ *   - else any data-attr variants present → `{ kind: "data-attr", variants }`
+ *   - else `{ kind: "none" }`
+ *
+ * Strategy-aware cleanup also runs: previously-data-attr inline props
+ * and root attributes that no longer correspond to a current variant
+ * are removed, so flipping a variant from data-attr to cva (or back) or
+ * deleting a variant entirely cleans up the orphaned declarations.
+ *
+ * Absent `strategy` on an incoming variant defaults to `"cva"` for
+ * backwards compatibility with pre-strategy localStorage entries (the
+ * same rule applied by `translateVariantsToV2Cva`).
  */
 export function setVariantsOnSub(
   tree: ComponentTreeV2,
@@ -126,89 +203,277 @@ export function setVariantsOnSub(
   const sub = tree.subComponents[subIndex]
   if (!sub) return tree
 
-  // No variants → remove the cva export entirely if it was the only one
-  // and reset the strategy.
-  if (variants.length === 0) {
-    if (sub.variantStrategy.kind !== "cva") return tree
-    const cvaRef = sub.variantStrategy.cvaRef
-    const newCvaExports = tree.cvaExports.filter((c) => c.name !== cvaRef)
-    const newSubs = [...tree.subComponents]
-    newSubs[subIndex] = {
-      ...sub,
-      variantStrategy: { kind: "none" },
-      // Strip the variant-props part from propsDecl too
-      propsDecl: stripVariantPropsPart(sub.propsDecl, cvaRef),
-    }
-    return { ...tree, subComponents: newSubs, cvaExports: newCvaExports }
-  }
-
-  const cvaRef =
+  const cvaRefForSub =
     sub.variantStrategy.kind === "cva"
       ? sub.variantStrategy.cvaRef
       : `${sub.name.charAt(0).toLowerCase()}${sub.name.slice(1)}Variants`
 
-  // Build the new cva.variants map from the flat list
-  const variantsMap: Record<string, Record<string, string>> = {}
-  const defaultVariants: Record<string, string> = {}
-  for (const v of variants) {
-    if (v.type === "boolean") {
-      variantsMap[v.name] = { true: "", false: "" }
-    } else {
-      variantsMap[v.name] = {}
-      for (const opt of v.options) {
-        variantsMap[v.name][opt] = ""
+  // Partition incoming variants by strategy. Absent strategy = cva
+  // (backwards compat with pre-this-PR localStorage entries).
+  const cvaVariants = variants.filter(
+    (v) => v.strategy === "cva" || v.strategy === undefined,
+  )
+  const dataAttrVariants = variants.filter((v) => v.strategy === "data-attr")
+
+  /* ── 1. cva exports — rebuild or strip ─────────────────────── */
+
+  let newCvaExports = tree.cvaExports
+  const hadCvaExport = sub.variantStrategy.kind === "cva"
+
+  if (cvaVariants.length === 0 && hadCvaExport) {
+    // Remove the cva export entirely
+    newCvaExports = tree.cvaExports.filter((c) => c.name !== cvaRefForSub)
+  } else if (cvaVariants.length > 0) {
+    const variantsMap: Record<string, Record<string, string>> = {}
+    const defaultVariants: Record<string, string> = {}
+    for (const v of cvaVariants) {
+      if (v.type === "boolean") {
+        variantsMap[v.name] = { true: "", false: "" }
+      } else {
+        variantsMap[v.name] = {}
+        for (const opt of v.options) {
+          variantsMap[v.name][opt] = ""
+        }
+      }
+      if (v.defaultValue) {
+        defaultVariants[v.name] = v.defaultValue
       }
     }
-    if (v.defaultValue) {
-      defaultVariants[v.name] = v.defaultValue
-    }
-  }
 
-  // Find or create the cva export
-  const existingCvaIdx = tree.cvaExports.findIndex((c) => c.name === cvaRef)
-  let newCvaExports: CvaExport[]
-  if (existingCvaIdx === -1) {
-    newCvaExports = [
-      ...tree.cvaExports,
-      {
-        name: cvaRef,
-        baseClasses: "",
-        variants: variantsMap,
+    const existingCvaIdx = tree.cvaExports.findIndex(
+      (c) => c.name === cvaRefForSub,
+    )
+    if (existingCvaIdx === -1) {
+      newCvaExports = [
+        ...tree.cvaExports,
+        {
+          name: cvaRefForSub,
+          baseClasses: "",
+          variants: variantsMap,
+          defaultVariants:
+            Object.keys(defaultVariants).length > 0
+              ? defaultVariants
+              : undefined,
+          exported: true,
+        } satisfies CvaExport,
+      ]
+    } else {
+      newCvaExports = [...tree.cvaExports]
+      // Preserve existing class strings where the variant value still
+      // exists, so the user doesn't lose work when adding/removing other
+      // values in the same group.
+      const oldVariants = newCvaExports[existingCvaIdx].variants
+      const mergedVariants: Record<string, Record<string, string>> = {}
+      for (const [groupName, valueMap] of Object.entries(variantsMap)) {
+        mergedVariants[groupName] = {}
+        for (const valueName of Object.keys(valueMap)) {
+          mergedVariants[groupName][valueName] =
+            oldVariants[groupName]?.[valueName] ?? ""
+        }
+      }
+      newCvaExports[existingCvaIdx] = {
+        ...newCvaExports[existingCvaIdx],
+        variants: mergedVariants,
         defaultVariants:
           Object.keys(defaultVariants).length > 0 ? defaultVariants : undefined,
-        exported: true,
-      } satisfies CvaExport,
-    ]
-  } else {
-    newCvaExports = [...tree.cvaExports]
-    // Preserve existing class strings where the variant value still exists,
-    // so the user doesn't lose work when adding/removing other variant values.
-    const oldVariants = newCvaExports[existingCvaIdx].variants
-    const mergedVariants: Record<string, Record<string, string>> = {}
-    for (const [groupName, valueMap] of Object.entries(variantsMap)) {
-      mergedVariants[groupName] = {}
-      for (const valueName of Object.keys(valueMap)) {
-        mergedVariants[groupName][valueName] =
-          oldVariants[groupName]?.[valueName] ?? ""
       }
-    }
-    newCvaExports[existingCvaIdx] = {
-      ...newCvaExports[existingCvaIdx],
-      variants: mergedVariants,
-      defaultVariants:
-        Object.keys(defaultVariants).length > 0 ? defaultVariants : undefined,
     }
   }
 
-  // Update the sub-component's variantStrategy and propsDecl
+  /* ── 2. Build the data-attr variant list for the strategy field ── */
+
+  const dataAttrVariantList = dataAttrVariants.map((v) => {
+    const propName = v.name
+    const attrName = `data-${propName.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`
+    if (v.type === "boolean") {
+      return {
+        propName,
+        values: ["true", "false"],
+        defaultValue: v.defaultValue || "false",
+        attrName,
+      }
+    }
+    return {
+      propName,
+      values: v.options.slice(),
+      defaultValue: v.defaultValue || v.options[0] || "",
+      attrName,
+    }
+  })
+
+  /* ── 3. Compute the new variant strategy ───────────────────── */
+
+  const newStrategy: SubComponentV2["variantStrategy"] =
+    cvaVariants.length > 0
+      ? { kind: "cva", cvaRef: cvaRefForSub }
+      : dataAttrVariantList.length > 0
+        ? { kind: "data-attr", variants: dataAttrVariantList }
+        : { kind: "none" }
+
+  /* ── 4. Update propsDecl ───────────────────────────────────── */
+
+  // a) variant-props part for cva (added when cva variants exist, stripped otherwise)
+  let nextDecl = sub.propsDecl
+  if (cvaVariants.length > 0) {
+    nextDecl = ensureVariantPropsPart(nextDecl, cvaRefForSub)
+  } else if (hadCvaExport) {
+    nextDecl = stripVariantPropsPart(nextDecl, cvaRefForSub)
+  }
+
+  // b) Inline prop properties for data-attr variants. Replace ALL inline
+  //    properties whose names match a CURRENT or PREVIOUS data-attr
+  //    variant, leaving any unrelated inline properties (e.g. `asChild`)
+  //    alone.
+  const previousDataAttrPropNames = new Set<string>()
+  if (sub.variantStrategy.kind === "data-attr") {
+    for (const v of sub.variantStrategy.variants) {
+      previousDataAttrPropNames.add(v.propName)
+    }
+  }
+  const currentDataAttrPropNames = new Set(dataAttrVariantList.map((v) => v.propName))
+  // Anything that was a data-attr prop before OR is one now should be
+  // managed by this function. Other inline props (set by `setPropsOnSub`)
+  // pass through untouched.
+  const managedNames = new Set([
+    ...previousDataAttrPropNames,
+    ...currentDataAttrPropNames,
+  ])
+
+  const newDataAttrInlineProps: InlineProperty[] = dataAttrVariantList.map(
+    (v) => {
+      // Look up the source CustomVariantDef to recover the user-facing
+      // type (variant vs boolean) for the inline prop type string.
+      const source = dataAttrVariants.find((src) => src.name === v.propName)!
+      if (source.type === "boolean") {
+        return {
+          name: v.propName,
+          type: "boolean",
+          optional: true,
+          defaultValue: v.defaultValue,
+        }
+      }
+      return {
+        name: v.propName,
+        type: v.values.map((val) => `"${val}"`).join(" | "),
+        optional: true,
+        defaultValue: `"${v.defaultValue}"`,
+      }
+    },
+  )
+
+  nextDecl = replaceManagedInlineProps(
+    nextDecl,
+    managedNames,
+    newDataAttrInlineProps,
+  )
+
+  /* ── 5. Update root element attributes ──────────────────────── */
+
+  const newRootAttributes = { ...sub.parts.root.attributes }
+  // Remove previous data-attr bindings that no longer apply
+  for (const propName of previousDataAttrPropNames) {
+    if (currentDataAttrPropNames.has(propName)) continue
+    const attrName = `data-${propName.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`
+    delete newRootAttributes[attrName]
+  }
+  // Add bindings for current data-attr variants
+  for (const v of dataAttrVariantList) {
+    newRootAttributes[v.attrName] = `{${v.propName}}`
+  }
+
+  /* ── 6. Compose the new sub-component ───────────────────────── */
+
   const newSubs = [...tree.subComponents]
   newSubs[subIndex] = {
     ...sub,
-    variantStrategy: { kind: "cva", cvaRef },
-    propsDecl: ensureVariantPropsPart(sub.propsDecl, cvaRef),
+    variantStrategy: newStrategy,
+    propsDecl: nextDecl,
+    parts: {
+      root: {
+        ...sub.parts.root,
+        attributes: newRootAttributes,
+      },
+    },
   }
 
   return { ...tree, subComponents: newSubs, cvaExports: newCvaExports }
+}
+
+/**
+ * Replace inline properties whose names are in `managed` with the new
+ * `replacements` list. Inline properties NOT in `managed` are preserved
+ * verbatim. The replacements are appended after the surviving managed
+ * names' positions are removed; if no inline part exists, one is
+ * created with just the replacements.
+ *
+ * This is the surgical edit `setVariantsOnSub` needs so it can rewrite
+ * data-attr variant props without disturbing user-defined props that
+ * came in via `setPropsOnSub`.
+ */
+function replaceManagedInlineProps(
+  decl: PropsDecl,
+  managed: Set<string>,
+  replacements: InlineProperty[],
+): PropsDecl {
+  const filterAndAppend = (props: InlineProperty[]): InlineProperty[] => {
+    const surviving = props.filter((p) => !managed.has(p.name))
+    return [...surviving, ...replacements]
+  }
+
+  if (decl.kind === "single") {
+    if (decl.part.kind === "inline") {
+      const next = filterAndAppend(decl.part.properties)
+      if (next.length === 0) return { kind: "none" }
+      return {
+        kind: "single",
+        part: { kind: "inline", properties: next } satisfies PropsPart,
+      }
+    }
+    if (replacements.length === 0) return decl
+    return {
+      kind: "intersection",
+      parts: [
+        decl.part,
+        { kind: "inline", properties: replacements } satisfies PropsPart,
+      ],
+    }
+  }
+
+  if (decl.kind === "intersection") {
+    const inlineIdx = decl.parts.findIndex((p) => p.kind === "inline")
+    if (inlineIdx !== -1) {
+      const inlinePart = decl.parts[inlineIdx]
+      if (inlinePart.kind !== "inline") return decl
+      const next = filterAndAppend(inlinePart.properties)
+      const newParts = [...decl.parts]
+      if (next.length === 0) {
+        newParts.splice(inlineIdx, 1)
+      } else {
+        newParts[inlineIdx] = {
+          kind: "inline",
+          properties: next,
+        } satisfies PropsPart
+      }
+      if (newParts.length === 0) return { kind: "none" }
+      if (newParts.length === 1) return { kind: "single", part: newParts[0] }
+      return { kind: "intersection", parts: newParts }
+    }
+    if (replacements.length === 0) return decl
+    return {
+      kind: "intersection",
+      parts: [
+        ...decl.parts,
+        { kind: "inline", properties: replacements } satisfies PropsPart,
+      ],
+    }
+  }
+
+  // none
+  if (replacements.length === 0) return decl
+  return {
+    kind: "single",
+    part: { kind: "inline", properties: replacements } satisfies PropsPart,
+  }
 }
 
 /* ── Sub-component CRUD helpers ─────────────────────────────────── */

@@ -64,6 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { VariantStrategyPicker } from "@/components/playground/prop-variant-controls"
 
 import type { ComponentTreeV2, SubComponentV2 } from "@/lib/component-tree-v2"
 import type { ComponentProp, CustomVariantDef } from "@/lib/component-state"
@@ -890,6 +891,12 @@ function AddVariantPopover({
   const [options, setOptions] = React.useState<string[]>([])
   const [optionInput, setOptionInput] = React.useState("")
   const [defaultValue, setDefaultValue] = React.useState("")
+  // New variants default to data-attr — matches the newer shadcn
+  // authoring pattern. Mirrors AddVariantPopover in
+  // prop-variant-controls.tsx (the two files share the same Define-view
+  // surface for variants but are separate components for historical
+  // reasons; the strategy default must agree).
+  const [strategy, setStrategy] = React.useState<"data-attr" | "cva">("data-attr")
 
   function reset() {
     setName("")
@@ -897,6 +904,7 @@ function AddVariantPopover({
     setOptions([])
     setOptionInput("")
     setDefaultValue("")
+    setStrategy("data-attr")
   }
 
   function handleAddOptions() {
@@ -922,6 +930,7 @@ function AddVariantPopover({
         type === "boolean"
           ? defaultValue || "false"
           : defaultValue || options[0] || "",
+      strategy,
     })
     reset()
     setOpen(false)
@@ -961,6 +970,7 @@ function AddVariantPopover({
             </SelectContent>
           </Select>
         </div>
+        <VariantStrategyPicker value={strategy} onChange={setStrategy} />
         <div className="space-y-1.5">
           <Label className="text-xs">Name</Label>
           <Input
@@ -1024,6 +1034,11 @@ function EditVariantPopover({
   const [options, setOptions] = React.useState<string[]>(variant.options)
   const [optionInput, setOptionInput] = React.useState("")
   const [defaultValue, setDefaultValue] = React.useState(variant.defaultValue)
+  // Edit preserves the existing strategy. Absent (pre-this-PR localStorage)
+  // defaults to "cva" — matches the translator's backwards-compat rule.
+  const [strategy, setStrategy] = React.useState<"data-attr" | "cva">(
+    variant.strategy ?? "cva",
+  )
 
   React.useEffect(() => {
     if (open) {
@@ -1032,8 +1047,16 @@ function EditVariantPopover({
       setOptions(variant.options)
       setOptionInput("")
       setDefaultValue(variant.defaultValue)
+      setStrategy(variant.strategy ?? "cva")
     }
-  }, [open, variant.name, variant.type, variant.options, variant.defaultValue])
+  }, [
+    open,
+    variant.name,
+    variant.type,
+    variant.options,
+    variant.defaultValue,
+    variant.strategy,
+  ])
 
   function handleAddOptions() {
     const newOpts = optionInput
@@ -1058,6 +1081,7 @@ function EditVariantPopover({
         type === "boolean"
           ? defaultValue || "false"
           : defaultValue || options[0] || "",
+      strategy,
     })
     setOpen(false)
   }
@@ -1092,6 +1116,7 @@ function EditVariantPopover({
             </SelectContent>
           </Select>
         </div>
+        <VariantStrategyPicker value={strategy} onChange={setStrategy} />
         <div className="space-y-1.5">
           <Label className="text-xs">Name</Label>
           <Input
