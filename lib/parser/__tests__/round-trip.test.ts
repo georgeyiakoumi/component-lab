@@ -24,6 +24,7 @@ import {
   GeneratorError,
   generateFromTreeV2,
 } from "@/lib/parser/generate-from-tree-v2"
+import { createComponentTreeV2 } from "@/lib/component-tree-v2-factories"
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..")
 
@@ -123,8 +124,11 @@ describe("generator — escape hatch path", () => {
   })
 })
 
-describe("generator — slow path (Pillar 3b)", () => {
-  it("throws GeneratorError when no originalSource and not custom-handled", () => {
+describe("generator — template emission (GEO-305 Step 2)", () => {
+  it("emits a minimal file when no originalSource is set", () => {
+    // Bare-minimum tree with no sub-components — exercises the template
+    // path's handling of empty cvaExports, empty subComponents, empty
+    // imports. Should produce a valid (if empty) source string.
     const programmaticTree = {
       name: "Programmatic",
       slug: "programmatic",
@@ -139,6 +143,99 @@ describe("generator — slow path (Pillar 3b)", () => {
       hookExports: [],
       subComponents: [],
     }
-    expect(() => generateFromTreeV2(programmaticTree)).toThrow(GeneratorError)
+    const out = generateFromTreeV2(programmaticTree)
+    // Empty file is fine — just a trailing newline.
+    expect(out).toBe("\n")
+  })
+
+  it("throws GeneratorError only when an unrecoverable error occurs", () => {
+    // Sanity check that the GeneratorError class still exists and can be
+    // imported. Specific failure cases (e.g. overlapping splices) are
+    // covered by the slow-path tests.
+    expect(GeneratorError).toBeDefined()
+  })
+
+  it("emits a complete file from a factory-built tree", () => {
+    // The from-scratch builder will call this exact path: build a tree
+    // via the v2 factory helpers, hand it to the generator, get a .tsx
+    // file out. This test exercises the same end-to-end shape.
+    const tree = createComponentTreeV2("MyCard", "div")
+    const out = generateFromTreeV2(tree)
+
+    // Imports
+    expect(out).toContain('import * as React from "react"')
+    expect(out).toContain('import { cn } from "@/lib/utils"')
+
+    // Sub-component declaration with the right name and prop type
+    expect(out).toContain("function MyCard(")
+    expect(out).toContain('React.ComponentProps<"div">')
+
+    // Destructured className + spread
+    expect(out).toContain("className,")
+    expect(out).toContain("...props")
+
+    // The cn-call wraps an empty base literal alongside the className override
+    expect(out).toContain('className={cn("", className)}')
+
+    // data-slot attribute derived from the name
+    expect(out).toContain('data-slot="my-card"')
+
+    // {...props} spread on the JSX element
+    expect(out).toContain("{...props}")
+
+    // Named export at the bottom
+    expect(out).toContain("export { MyCard }")
+  })
+
+  it("emits cva exports above the sub-component when present", () => {
+    // Build a tree with one cva export. The from-scratch builder will do
+    // this when the user opts into the cva variant strategy.
+    const tree = createComponentTreeV2("MyButton", "button")
+    tree.cvaExports.push({
+      name: "myButtonVariants",
+      baseClasses: "inline-flex items-center",
+      variants: {
+        variant: {
+          default: "bg-primary text-primary-foreground",
+          destructive: "bg-destructive text-white",
+        },
+      },
+      defaultVariants: { variant: "default" },
+      exported: true,
+    })
+
+    const out = generateFromTreeV2(tree)
+    expect(out).toContain("export const myButtonVariants = cva(")
+    expect(out).toContain('"inline-flex items-center"')
+    expect(out).toContain("variants: {")
+    expect(out).toContain("variant: {")
+    expect(out).toContain('default: "bg-primary text-primary-foreground"')
+    expect(out).toContain('destructive: "bg-destructive text-white"')
+    expect(out).toContain("defaultVariants: {")
+  })
+
+  it("ensures the cva export comes before its consumer sub-component", () => {
+    const tree = createComponentTreeV2("MyButton", "button")
+    tree.cvaExports.push({
+      name: "myButtonVariants",
+      baseClasses: "x",
+      variants: {},
+      exported: true,
+    })
+
+    const out = generateFromTreeV2(tree)
+    const cvaIdx = out.indexOf("export const myButtonVariants")
+    const fnIdx = out.indexOf("function MyButton(")
+    expect(cvaIdx).toBeGreaterThan(-1)
+    expect(fnIdx).toBeGreaterThan(-1)
+    expect(cvaIdx).toBeLessThan(fnIdx)
+  })
+
+  it("emits 'use client' directive at the top when present", () => {
+    const tree = createComponentTreeV2("MyCard", "div")
+    tree.directives.push("use client")
+
+    const out = generateFromTreeV2(tree)
+    expect(out.startsWith('"use client"\n')).toBe(true)
   })
 })

@@ -91,6 +91,25 @@ describe("createSubComponentV2", () => {
     expect(sub.parts.root.children).toEqual([])
   })
 
+  test("parts.root carries the same dataSlot as the sub-component", () => {
+    const sub = createSubComponentV2("MyCard", "div", 0)
+    expect(sub.parts.root.dataSlot).toBe("my-card")
+  })
+
+  test("parts.root spreads {...props} so the JSX forwards everything", () => {
+    const sub = createSubComponentV2("MyCard", "div", 0)
+    expect(sub.parts.root.propsSpread).toBe(true)
+  })
+
+  test("parts.root className is a cn-call so the visual editor can splice", () => {
+    const sub = createSubComponentV2("MyCard", "div", 0)
+    expect(sub.parts.root.className.kind).toBe("cn-call")
+    if (sub.parts.root.className.kind === "cn-call") {
+      // Empty base literal + className override is the canonical shadcn shape
+      expect(sub.parts.root.className.args).toEqual(['""', "className"])
+    }
+  })
+
   test("exportOrder is preserved as supplied", () => {
     const sub = createSubComponentV2("MyCardHeader", "div", 3)
     expect(sub.exportOrder).toBe(3)

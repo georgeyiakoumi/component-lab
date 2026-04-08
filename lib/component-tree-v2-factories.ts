@@ -68,9 +68,22 @@ export function createSubComponentV2(
   baseTag: string,
   exportOrder: number,
 ): SubComponentV2 {
+  const dataSlot = toDataSlot(name)
+  // The root PartNode carries the dataSlot attribute and spreads props.
+  // Wrapping it in a cn() call gives the visual editor a string-literal
+  // baseRange to splice into when the user edits classes (Pillar 3b).
+  const root: PartNode = {
+    base: { kind: "html", tag: baseTag } satisfies Base,
+    dataSlot,
+    className: { kind: "cn-call", args: ['""', "className"] } satisfies ClassNameExpr,
+    propsSpread: true,
+    attributes: {},
+    asChild: false,
+    children: [],
+  }
   return {
     name,
-    dataSlot: toDataSlot(name),
+    dataSlot,
     exportOrder,
     isDefaultExport: false,
     jsdoc: null,
@@ -80,9 +93,7 @@ export function createSubComponentV2(
     } satisfies PropsDecl,
     variantStrategy: { kind: "none" },
     passthrough: [],
-    parts: {
-      root: createPartNode(baseTag),
-    },
+    parts: { root },
   }
 }
 
