@@ -13,6 +13,7 @@
 
 import type { CompositionRule } from "./index"
 import { accordionRule } from "./rules/accordion"
+import { alertRule } from "./rules/alert"
 import { alertDialogRule } from "./rules/alert-dialog"
 import { aspectRatioRule } from "./rules/aspect-ratio"
 import { breadcrumbRule } from "./rules/breadcrumb"
@@ -25,16 +26,21 @@ import { dialogRule } from "./rules/dialog"
 import { drawerRule } from "./rules/drawer"
 import { dropdownMenuRule } from "./rules/dropdown-menu"
 import { hoverCardRule } from "./rules/hover-card"
+import { itemRule } from "./rules/item"
 import { menubarRule } from "./rules/menubar"
 import { navigationMenuRule } from "./rules/navigation-menu"
+import { paginationRule } from "./rules/pagination"
 import { popoverRule } from "./rules/popover"
 import { selectRule } from "./rules/select"
 import { sheetRule } from "./rules/sheet"
+import { tableRule } from "./rules/table"
 import { tabsRule } from "./rules/tabs"
+import { toggleGroupRule } from "./rules/toggle-group"
 import { tooltipRule } from "./rules/tooltip"
 
 export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   accordion: accordionRule,
+  alert: alertRule,
   "alert-dialog": alertDialogRule,
   "aspect-ratio": aspectRatioRule,
   breadcrumb: breadcrumbRule,
@@ -47,11 +53,15 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   drawer: drawerRule,
   "dropdown-menu": dropdownMenuRule,
   "hover-card": hoverCardRule,
+  item: itemRule,
   menubar: menubarRule,
   "navigation-menu": navigationMenuRule,
+  pagination: paginationRule,
   popover: popoverRule,
   select: selectRule,
   sheet: sheetRule,
+  table: tableRule,
   tabs: tabsRule,
+  "toggle-group": toggleGroupRule,
   tooltip: tooltipRule,
 }
