@@ -127,13 +127,23 @@ const VOID_HTML_ELEMENTS = new Set([
  * its natural styling without the word "Skeleton" / "Separator" /
  * etc. floating in the middle.
  *
+ * The optional `canvasStyle` is merged into the rendered element's
+ * inline style so that visual primitives whose source uses `w-full` /
+ * `h-full` (which collapses on the canvas's auto-sized wrapper) get
+ * sensible demo dimensions. The user can still override via the
+ * Style panel — these are just sample defaults for the preview.
+ *
  * Discovered 2026-04-09 during the Batch 3 flat-renderer smoke-test —
  * George flagged that Skeleton + Separator both render with their
- * name as text inside, which is noise.
+ * name as text inside (noise), AND that without explicit dimensions
+ * the styled box is invisible.
  */
-const VISUAL_PLACEHOLDER_SUBS = new Set([
-  "Skeleton",
-  "Separator",
+const VISUAL_PLACEHOLDER_SUBS = new Map<
+  string,
+  { canvasStyle?: React.CSSProperties }
+>([
+  ["Skeleton", { canvasStyle: { width: "16rem", height: "6rem" } }],
+  ["Separator", { canvasStyle: { width: "16rem" } }],
 ])
 
 /* ── Radix primitive → runtime HTML tag map ─────────────────────── */
@@ -999,6 +1009,17 @@ function renderShell(
         radixDefaultDataAttrs = mapping.defaultDataAttrs
       }
     }
+  } else if (part.base.kind === "component-ref") {
+    // React Context.Provider sub-components have no DOM of their own —
+    // they just inject a context value and render children. The parser
+    // captures these as `component-ref` bases (e.g.
+    // `ToggleGroupContext.Provider`). Treat them as transparent
+    // wrappers so the children come through to the canvas instead of
+    // a placeholder pill that hides the rest of the tree. Discovered
+    // 2026-04-09 during the ToggleGroup smoke-test.
+    if (part.base.name.endsWith(".Provider")) {
+      isTransparentRadix = true
+    }
   }
 
   // Transparent Radix wrappers: render children as a fragment, no
@@ -1130,13 +1151,36 @@ function renderShell(
   //   This is a builder authoring affordance, not a preview hint —
   //   only makes sense when the user is constructing components from
   //   nothing.
+  const visualPlaceholder = VISUAL_PLACEHOLDER_SUBS.get(sub.name)
+  if (visualPlaceholder?.canvasStyle) {
+    // Merge sample canvas dimensions into the element's inline style
+    // so visual primitives are visible on the auto-sized canvas wrapper.
+    baseProps.style = {
+      ...(baseProps.style as React.CSSProperties | undefined),
+      ...visualPlaceholder.canvasStyle,
+    }
+  }
+
   if (children.length === 0) {
     const isParsed = ctx.tree.originalSource !== undefined
-    const isVisualPlaceholder = VISUAL_PLACEHOLDER_SUBS.has(sub.name)
-    if (isVisualPlaceholder) {
-      // Visual primitives (Skeleton, Separator, etc.) render as bare
-      // styled boxes with no text — the box's intrinsic dimensions
-      // come from its source classes (h-4 w-full / h-px w-full / etc.).
+    const isVisualPlaceholder = visualPlaceholder !== undefined
+    // For parsed components, "had source children but they all
+    // resolved to null" is distinct from "genuinely empty source".
+    // The former happens when the body holds suppressed JSX expressions
+    // (e.g. BreadcrumbSeparator's `{children ?? <ChevronRight />}`,
+    // ToggleGroup's `<ToggleGroupContext.Provider>{children}</...>`,
+    // Slider's thumb generator). Falling back to the sub-component
+    // name as a text label leaks the parser-internal placeholder text
+    // ("BreadcrumbSeparator", "ToggleGroupItem", etc.) onto the canvas.
+    // If the source HAD any body children at all, leave the element
+    // empty rather than injecting a name fallback.
+    const hadSuppressedChildren =
+      isParsed && (nestedSubs.length > 0 || part.children.length > 0)
+    if (isVisualPlaceholder || hadSuppressedChildren) {
+      // Render as a bare element. Visual primitives (Skeleton, Separator,
+      // etc.) carry their dimensions from source classes; suppressed-
+      // children components carry whatever the user originally authored
+      // and we don't want to mask that with a placeholder label.
     } else if (isParsed) {
       children.push(sub.name)
     } else {
