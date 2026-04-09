@@ -15,6 +15,7 @@ import type { CompositionRule } from "./index"
 import { accordionRule } from "./rules/accordion"
 import { alertDialogRule } from "./rules/alert-dialog"
 import { aspectRatioRule } from "./rules/aspect-ratio"
+import { breadcrumbRule } from "./rules/breadcrumb"
 import { cardRule } from "./rules/card"
 import { carouselRule } from "./rules/carousel"
 import { collapsibleRule } from "./rules/collapsible"
@@ -36,6 +37,7 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   accordion: accordionRule,
   "alert-dialog": alertDialogRule,
   "aspect-ratio": aspectRatioRule,
+  breadcrumb: breadcrumbRule,
   card: cardRule,
   carousel: carouselRule,
   collapsible: collapsibleRule,
