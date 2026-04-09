@@ -35,6 +35,7 @@ import { selectRule } from "./rules/select"
 import { sheetRule } from "./rules/sheet"
 import { tableRule } from "./rules/table"
 import { tabsRule } from "./rules/tabs"
+import { toggleGroupRule } from "./rules/toggle-group"
 import { tooltipRule } from "./rules/tooltip"
 
 export const COMPOSITION_RULES: Record<string, CompositionRule> = {
@@ -61,5 +62,6 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   sheet: sheetRule,
   table: tableRule,
   tabs: tabsRule,
+  "toggle-group": toggleGroupRule,
   tooltip: tooltipRule,
 }
