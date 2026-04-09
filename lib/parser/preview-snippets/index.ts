@@ -169,6 +169,31 @@ export interface CompositionRule {
 /* ── Shared helpers for rule authors ────────────────────────────── */
 
 /**
+ * Walk a composition tree to find the parent sub-component of the
+ * given child name. Used by the Style panel to compute parent
+ * context (parent classes + tag) for child-placement controls
+ * like `justify-self` / `align-self` / `grid-column`, which only
+ * make sense when the parent is a flex or grid container.
+ *
+ * Returns the parent `CompositionNode`, or `null` if the child
+ * isn't nested inside anything (it IS the root) or isn't in the
+ * rule at all.
+ */
+export function findParentInRule(
+  node: CompositionNode,
+  childName: string,
+): CompositionNode | null {
+  if (node.children) {
+    for (const child of node.children) {
+      if (child.name === childName) return node
+      const deeper = findParentInRule(child, childName)
+      if (deeper !== null) return deeper
+    }
+  }
+  return null
+}
+
+/**
  * Walk a composition tree to find the `stylePath` for a given
  * sub-component name. Returns an empty array if the node exists
  * but has no explicit stylePath, `null` if the node isn't in the

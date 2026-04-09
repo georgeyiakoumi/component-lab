@@ -12,8 +12,10 @@
  */
 
 import type { CompositionRule } from "./index"
+import { cardRule } from "./rules/card"
 import { dialogRule } from "./rules/dialog"
 
 export const COMPOSITION_RULES: Record<string, CompositionRule> = {
+  card: cardRule,
   dialog: dialogRule,
 }

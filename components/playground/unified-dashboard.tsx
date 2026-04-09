@@ -86,6 +86,10 @@ import {
   type Breakpoint,
   type PropSelector,
 } from "@/components/playground/toolbar"
+import {
+  findParentInRule,
+  lookupRule,
+} from "@/lib/parser/preview-snippets"
 import { ComponentCanvas } from "@/components/playground/component-canvas"
 import { CodePanel } from "@/components/playground/code-panel"
 import { StatusBar } from "@/components/playground/status-bar"
@@ -818,6 +822,45 @@ export function UnifiedDashboard({
                 }
               }
 
+              // Parent discovery for child-placement controls
+              // (justify-self / align-self / grid-column etc.).
+              // Only the selected sub-component's *composition
+              // parent* matters — we walk the active rule if the
+              // tree is ruled, else the from-scratch `nestInside`
+              // field.
+              //
+              // When the parent is a flex or grid container, the
+              // VisualEditor's ChildPlacementSection renders its
+              // controls. Without these props, the section never
+              // shows — the regression George caught while styling
+              // Card's CardHeader (a grid) children.
+              let parentClasses: string[] | undefined
+              let parentTag: string | undefined
+              if (isRoot && selectedSub) {
+                const rule = lookupRule(tree)
+                let parentName: string | null = null
+                if (rule) {
+                  const parentNode = findParentInRule(
+                    rule.composition,
+                    selectedSub.name,
+                  )
+                  parentName = parentNode?.name ?? null
+                } else if (selectedSub.nestInside) {
+                  parentName = selectedSub.nestInside
+                }
+                if (parentName) {
+                  const parentSub = tree.subComponents.find(
+                    (sc) => sc.name === parentName,
+                  )
+                  if (parentSub) {
+                    parentClasses = getPartClasses(parentSub.parts.root)
+                    if (parentSub.parts.root.base.kind === "html") {
+                      parentTag = parentSub.parts.root.base.tag
+                    }
+                  }
+                }
+              }
+
               return (
                 <VisualEditor
                   key={selectedPath}
@@ -829,6 +872,8 @@ export function UnifiedDashboard({
                     rect: new DOMRect(),
                     domElement: document.createElement("div"),
                   }}
+                  parentClasses={parentClasses}
+                  parentTag={parentTag}
                   onClassChange={(classes) => {
                     handlePartClassChange(selectedPath, classes)
                   }}
