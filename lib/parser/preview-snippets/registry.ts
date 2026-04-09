@@ -29,6 +29,7 @@ import { hoverCardRule } from "./rules/hover-card"
 import { itemRule } from "./rules/item"
 import { menubarRule } from "./rules/menubar"
 import { navigationMenuRule } from "./rules/navigation-menu"
+import { paginationRule } from "./rules/pagination"
 import { popoverRule } from "./rules/popover"
 import { selectRule } from "./rules/select"
 import { sheetRule } from "./rules/sheet"
@@ -53,6 +54,7 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   item: itemRule,
   menubar: menubarRule,
   "navigation-menu": navigationMenuRule,
+  pagination: paginationRule,
   popover: popoverRule,
   select: selectRule,
   sheet: sheetRule,
