@@ -96,6 +96,29 @@ import {
 export type CompositionNode = {
   /** Sub-component name matching a parsed tree entry (e.g. "DialogContent"). */
   name: string
+  /**
+   * For Portal-wrapped sub-components like `DialogContent`, the source
+   * function's root JSX is an empty wrapper (DialogPortal) and the real
+   * styleable classes live on a nested Radix primitive inside. This
+   * field records the child-index path from `sub.parts.root` to reach
+   * the "styleable part" the user actually wants to edit.
+   *
+   * Example: DialogContent's source is
+   *   `<DialogPortal>         ← parts.root (empty classes)
+   *      <DialogOverlay />    ← children[0]
+   *      <DialogPrimitive.Content className={cn("...", className)}>  ← children[1] (real classes)
+   *   </DialogPortal>`
+   *
+   * So `stylePath: [1]` tells the Assembly panel + canvas rule to
+   * target that nested part for both selection and class
+   * read/write. The Style panel's existing `setPartClasses` helper
+   * already handles indexed paths — it's the same mechanism
+   * from-scratch builders use to edit nested elements.
+   *
+   * Defaults to `[]` (no descent) which means the root part IS the
+   * styleable part — correct for 95% of sub-components.
+   */
+  stylePath?: number[]
   /** Nested composition children, if any. */
   children?: CompositionNode[]
 }
@@ -146,15 +169,79 @@ export interface CompositionRule {
 /* ── Shared helpers for rule authors ────────────────────────────── */
 
 /**
+ * Walk a composition tree to find the `stylePath` for a given
+ * sub-component name. Returns an empty array if the node exists
+ * but has no explicit stylePath, `null` if the node isn't in the
+ * tree at all.
+ */
+export function findStylePathInRule(
+  node: CompositionNode,
+  targetName: string,
+): number[] | null {
+  if (node.name === targetName) {
+    return node.stylePath ?? []
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      const found = findStylePathInRule(child, targetName)
+      if (found !== null) return found
+    }
+  }
+  return null
+}
+
+/**
+ * Resolve the `stylePath` for a sub-component, consulting the active
+ * composition rule if the tree has one. Returns `[]` (the root part)
+ * if the tree has no rule or the sub-component isn't mentioned.
+ */
+export function resolveStylePath(
+  tree: ComponentTreeV2,
+  subName: string,
+): number[] {
+  const rule = lookupRule(tree)
+  if (!rule) return []
+  const found = findStylePathInRule(rule.composition, subName)
+  return found ?? []
+}
+
+/**
+ * Walk a part tree by child indices and return the part at that path.
+ * Used to descend from `sub.parts.root` to a nested styleable part
+ * (e.g. DialogContent's real content is at indices [1]).
+ */
+function walkToStylePart(
+  rootPart: import("@/lib/component-tree-v2").PartNode,
+  stylePath: number[],
+): import("@/lib/component-tree-v2").PartNode | null {
+  let part = rootPart
+  for (const idx of stylePath) {
+    if (idx < 0 || idx >= part.children.length) return null
+    const child = part.children[idx]
+    if (child.kind !== "part") return null
+    part = child.part
+  }
+  return part
+}
+
+/**
  * Look up a sub-component by name and return its resolved className
  * string (after variant resolution + prefix stripping). Returns the
  * empty string if the sub-component doesn't exist, so rules are
  * tolerant of tree drift.
+ *
+ * If the active composition rule has a `stylePath` for this
+ * sub-component (e.g. DialogContent → `[1]`), walk to that nested
+ * part and read from there instead of the root. This handles
+ * Portal-wrapped sub-components where the root is an empty wrapper
+ * and the real classes live on a nested primitive.
  */
 export function classesFor(ctx: SnippetContext, subName: string): string {
   const sub = ctx.tree.subComponents.find((sc) => sc.name === subName)
   if (!sub) return ""
-  const rawClasses = getPartClasses(sub.parts.root)
+  const stylePath = resolveStylePath(ctx.tree, subName)
+  const part = walkToStylePart(sub.parts.root, stylePath) ?? sub.parts.root
+  const rawClasses = getPartClasses(part)
   const resolved = ctx.resolveVariantClasses(rawClasses)
   return resolved.join(" ")
 }
@@ -223,12 +310,31 @@ export function classesForDescended(
 }
 
 /**
- * Build the click-to-select path for a sub-component's root element.
+ * Build the click-to-select path for a sub-component's styleable
+ * element. Consults the active composition rule's `stylePath` if
+ * present, so Portal-wrapped sub-components target the nested
+ * styleable primitive (e.g. `sub:DialogContent/1`) instead of the
+ * empty root wrapper.
+ *
  * Matches the path format used by the flat renderer + AssemblyPanel
- * so the dashboard's existing click handler picks up the selection.
+ * so the dashboard's existing click-to-select handler routes edits
+ * to the right part in the tree.
+ *
+ * Takes a SnippetContext so it can look up the tree's rule. The
+ * old single-argument form (`pathFor("DialogContent")`) is kept as
+ * a fallback overload for simple cases without a rule.
  */
-export function pathFor(subName: string): PartPath {
-  return makePartPath(subName, [])
+export function pathFor(
+  ctxOrName: SnippetContext | string,
+  subName?: string,
+): PartPath {
+  if (typeof ctxOrName === "string") {
+    return makePartPath(ctxOrName, [])
+  }
+  const ctx = ctxOrName
+  const name = subName as string
+  const stylePath = resolveStylePath(ctx.tree, name)
+  return makePartPath(name, stylePath)
 }
 
 /**

@@ -50,6 +50,7 @@ import type {
 import { createPartNode } from "@/lib/component-tree-v2-factories"
 import {
   findStragglers,
+  findStylePathInRule,
   lookupRule,
   type CompositionNode,
   type CompositionRule,
@@ -416,7 +417,15 @@ function SubComponentNode({
   onAddChild,
 }: SubComponentNodeProps) {
   const [expanded, setExpanded] = React.useState(true)
-  const path = makePartPath(sub.name, [])
+  // Use the rule's stylePath for this sub-component if one is
+  // defined, so Portal-wrapped sub-components like DialogContent
+  // target the nested Radix primitive at the same path the canvas
+  // rule uses. Both reads and writes flow through this path via
+  // the dashboard's existing `selectedPath` state + findPartByPath.
+  const stylePath = rule
+    ? findStylePathInRule(rule.composition, sub.name) ?? []
+    : []
+  const path = makePartPath(sub.name, stylePath)
   const isHidden = hiddenPaths.has(path)
   const isSelected = selectedPath === path
 

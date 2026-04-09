@@ -58,7 +58,6 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   classesFor,
-  classesForDescended,
   pathFor,
   stripPositioningAndWidth,
   withSelectionRing,
@@ -73,28 +72,27 @@ function DialogRender(ctx: SnippetContext): React.ReactNode {
 function DialogRenderImpl({ ctx }: { ctx: SnippetContext }): React.ReactNode {
   const [open, setOpen] = React.useState(true)
 
+  // `classesFor` and `pathFor` both consult the rule's `stylePath`
+  // for each sub-component, so DialogContent (Portal-wrapped) routes
+  // to its nested Dialog.Content primitive. Every other
+  // sub-component here has its classes on parts.root directly.
   const triggerCls = classesFor(ctx, "DialogTrigger")
-  // DialogOverlay + DialogContent in source are Portal-wrapped —
-  // their root JSX is DialogPortal (empty classes) with the real
-  // styleable classes on the nested Radix primitive. Use the
-  // descended helper to walk into the parts tree and pull the
-  // actual classes.
-  const overlayCls = classesForDescended(ctx, "DialogOverlay")
-  const contentCls = classesForDescended(ctx, "DialogContent")
+  const overlayCls = classesFor(ctx, "DialogOverlay")
+  const contentCls = classesFor(ctx, "DialogContent")
   const headerCls = classesFor(ctx, "DialogHeader")
   const footerCls = classesFor(ctx, "DialogFooter")
   const titleCls = classesFor(ctx, "DialogTitle")
   const descriptionCls = classesFor(ctx, "DialogDescription")
   const closeCls = classesFor(ctx, "DialogClose")
 
-  const triggerPath = pathFor("DialogTrigger")
-  const overlayPath = pathFor("DialogOverlay")
-  const contentPath = pathFor("DialogContent")
-  const headerPath = pathFor("DialogHeader")
-  const footerPath = pathFor("DialogFooter")
-  const titlePath = pathFor("DialogTitle")
-  const descriptionPath = pathFor("DialogDescription")
-  const closePath = pathFor("DialogClose")
+  const triggerPath = pathFor(ctx, "DialogTrigger")
+  const overlayPath = pathFor(ctx, "DialogOverlay")
+  const contentPath = pathFor(ctx, "DialogContent")
+  const headerPath = pathFor(ctx, "DialogHeader")
+  const footerPath = pathFor(ctx, "DialogFooter")
+  const titlePath = pathFor(ctx, "DialogTitle")
+  const descriptionPath = pathFor(ctx, "DialogDescription")
+  const closePath = pathFor(ctx, "DialogClose")
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen} modal={false}>
@@ -230,6 +228,11 @@ export const dialogRule: CompositionRule = {
       { name: "DialogTrigger" },
       {
         name: "DialogContent",
+        // DialogContent's source root is DialogPortal (empty wrapper).
+        // The real styleable Radix.Content primitive lives at
+        // parts.root.children[1]. Both the canvas rule and the Style
+        // panel use this stylePath to read + write the right part.
+        stylePath: [1],
         children: [
           {
             name: "DialogHeader",
