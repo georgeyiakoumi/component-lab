@@ -2,26 +2,34 @@
  * Sonner (Toaster) composition rule.
  *
  * Source: https://ui.shadcn.com/docs/components/sonner
- * Fetched: 2026-04-09
+ * Fetched: 2026-04-10
+ *
+ * Docs canonical example:
+ *
+ *     import { toast } from "sonner"
+ *
+ *     <Button onClick={() => toast("Event has been created.")}>
+ *       Show Toast
+ *     </Button>
  *
  * ## Implementation notes
  *
- * Sonner is a runtime-only toast component. The `<Toaster />` export
- * is a provider that mounts at the app root and only renders visible
- * toasts when `toast()` is called at runtime. There's no static
- * preview — the component has no visible DOM output on its own.
+ * The `<Toaster />` export is a provider that mounts at the app root.
+ * Toasts appear when `toast()` is called at runtime. The rule renders
+ * a "Show Toast" button + a scoped `<Toaster />` instance so the
+ * user can click the button and see a real toast appear on the canvas.
  *
- * The rule renders an informational placeholder card explaining this,
- * matching the style of the component's code panel so the user
- * understands why the canvas is intentionally empty. This is
- * preferable to a broken/empty canvas with no explanation.
+ * The Toaster is imported from the real shadcn component (same trick
+ * as Calendar / Carousel) so it renders with the correct styles.
  */
 
 "use client"
 
 import * as React from "react"
-import { InfoIcon } from "lucide-react"
+import { toast } from "sonner"
 
+import { Button } from "@/components/ui/button"
+import { Toaster } from "@/components/ui/sonner"
 import {
   pathFor,
   withSelectionRing,
@@ -33,31 +41,25 @@ function SonnerRender(ctx: SnippetContext): React.ReactNode {
   const toasterPath = pathFor(ctx, "Toaster")
 
   return (
-    <div className="absolute top-1/2 left-1/2 w-[24rem] -translate-x-1/2 -translate-y-1/2">
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
       <div
         data-node-id={toasterPath}
         className={withSelectionRing(
-          "rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
+          "flex flex-col items-center gap-4",
           ctx.selectedPath === toasterPath,
         )}
       >
-        <div className="flex items-start gap-3">
-          <InfoIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <div className="flex flex-col gap-1.5">
-            <p className="text-sm font-medium">Runtime component</p>
-            <p className="text-sm text-muted-foreground">
-              Toaster is a provider component that renders toasts when{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                toast()
-              </code>{" "}
-              is called. Add{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                {"<Toaster />"}
-              </code>{" "}
-              to your app layout to use it.
-            </p>
-          </div>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast("Event has been created.", {
+              description: "Sunday, April 10, 2026 at 9:00 AM",
+            })
+          }
+        >
+          Show Toast
+        </Button>
+        <Toaster />
       </div>
     </div>
   )
@@ -65,7 +67,7 @@ function SonnerRender(ctx: SnippetContext): React.ReactNode {
 
 export const sonnerRule: CompositionRule = {
   slug: "sonner",
-  source: "https://ui.shadcn.com/docs/components/sonner (fetched 2026-04-09)",
+  source: "https://ui.shadcn.com/docs/components/sonner (fetched 2026-04-10)",
   composition: {
     name: "Toaster",
   },
