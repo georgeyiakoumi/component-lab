@@ -54,6 +54,8 @@ interface CompositionCanvasProps {
     sub: SubComponentV2,
     rawClasses: string[],
   ) => string[]
+  /** Active data-attr variant values from the Variants popover. */
+  variantDataAttrs: Record<string, string>
 }
 
 /**
@@ -71,6 +73,7 @@ export function CompositionCanvas({
   selectedPath,
   resolveVariantClasses,
   resolveClassesForSub,
+  variantDataAttrs,
 }: CompositionCanvasProps): React.ReactNode {
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null)
 
@@ -80,6 +83,7 @@ export function CompositionCanvas({
     resolveVariantClasses,
     resolveClassesForSub,
     container,
+    variantDataAttrs,
   }
 
   return (
