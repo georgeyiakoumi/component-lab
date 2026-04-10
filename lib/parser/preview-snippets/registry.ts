@@ -16,7 +16,9 @@ import { accordionRule } from "./rules/accordion"
 import { alertRule } from "./rules/alert"
 import { alertDialogRule } from "./rules/alert-dialog"
 import { aspectRatioRule } from "./rules/aspect-ratio"
+import { avatarRule } from "./rules/avatar"
 import { breadcrumbRule } from "./rules/breadcrumb"
+import { calendarRule } from "./rules/calendar"
 import { cardRule } from "./rules/card"
 import { carouselRule } from "./rules/carousel"
 import { collapsibleRule } from "./rules/collapsible"
@@ -31,8 +33,10 @@ import { menubarRule } from "./rules/menubar"
 import { navigationMenuRule } from "./rules/navigation-menu"
 import { paginationRule } from "./rules/pagination"
 import { popoverRule } from "./rules/popover"
+import { resizableRule } from "./rules/resizable"
 import { selectRule } from "./rules/select"
 import { sheetRule } from "./rules/sheet"
+import { sonnerRule } from "./rules/sonner"
 import { tableRule } from "./rules/table"
 import { tabsRule } from "./rules/tabs"
 import { toggleGroupRule } from "./rules/toggle-group"
@@ -43,7 +47,9 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   alert: alertRule,
   "alert-dialog": alertDialogRule,
   "aspect-ratio": aspectRatioRule,
+  avatar: avatarRule,
   breadcrumb: breadcrumbRule,
+  calendar: calendarRule,
   card: cardRule,
   carousel: carouselRule,
   collapsible: collapsibleRule,
@@ -58,8 +64,10 @@ export const COMPOSITION_RULES: Record<string, CompositionRule> = {
   "navigation-menu": navigationMenuRule,
   pagination: paginationRule,
   popover: popoverRule,
+  resizable: resizableRule,
   select: selectRule,
   sheet: sheetRule,
+  sonner: sonnerRule,
   table: tableRule,
   tabs: tabsRule,
   "toggle-group": toggleGroupRule,
