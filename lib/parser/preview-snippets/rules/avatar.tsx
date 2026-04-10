@@ -86,30 +86,20 @@ function AvatarRender(ctx: SnippetContext): React.ReactNode {
           data-size="default"
           data-node-id={avatarPath}
           className={withSelectionRing(
-            // Override the source's `overflow-hidden` so the AvatarBadge
-            // (positioned absolute at the bottom-right corner) is fully
-            // visible. The source uses overflow-hidden to clip
-            // AvatarImage to the circle, but we don't render a real
-            // image in this demo so it's safe to lift the clipping.
-            cn(avatarCls, "overflow-visible"),
+            avatarCls,
             ctx.selectedPath === avatarPath,
           )}
         >
-          {/*
-            AvatarImage placeholder div — the source uses Radix's
-            AvatarPrimitive.Image which would auto-hide on load
-            failure. We render a styled div instead so the user
-            can still select + style "AvatarImage" via the
-            AssemblyPanel without making a network request.
-          */}
-          <div
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             data-slot="avatar-image"
             data-node-id={imagePath}
+            src="https://github.com/shadcn.png"
+            alt="@shadcn"
             className={withSelectionRing(
               imageCls,
               ctx.selectedPath === imagePath,
             )}
-            style={{ display: "none" }}
           />
           <span
             data-slot="avatar-fallback"
