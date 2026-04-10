@@ -1,4 +1,4 @@
-# Project: shadcn-component-playground
+# Project: Component Lab
 **Type:** Web app
 **Created:** 2026-03-25
 

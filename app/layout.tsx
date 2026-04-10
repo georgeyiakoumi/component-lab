@@ -5,9 +5,9 @@ import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'shadcn Playground',
+  title: 'Component Lab',
   description:
-    'Browse, inspect, edit, and build shadcn/ui components. Export production-ready, type-safe .tsx files.',
+    'Browse, inspect, edit, and build UI components visually. Export production-ready, type-safe .tsx files. Built with shadcn/ui.',
 }
 
 export default function RootLayout({

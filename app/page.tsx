@@ -34,12 +34,12 @@ export default function Home() {
         {/* ── Heading ──────────────────────────────────────────── */}
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">
-            shadcn Playground
+            Component Lab
           </h1>
           <p className="text-sm text-muted-foreground">
-            Browse, inspect, and build with shadcn/ui components.
+            Browse, inspect, edit, and build UI components visually.
             <br />
-            Built with shadcn, for shadcn.
+            Built with shadcn/ui.
           </p>
         </div>
 

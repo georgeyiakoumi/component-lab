@@ -1,13 +1,15 @@
-# shadcn-component-playground
+# Component Lab
 
-**Type:** Web app
-**Stack:** Next.js · shadcn/ui · Tailwind CSS · Supabase · Netlify
+Browse, inspect, edit, and build UI components visually. Export production-ready, type-safe `.tsx` files.
+
+Built with [shadcn/ui](https://ui.shadcn.com).
 
 ---
 
 ## Getting started
 
 ```bash
+npm install
 npm run dev
 ```
 
@@ -15,17 +17,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Environment variables
+## Stack
 
-After the script runs, open `.env.local` and fill in your Supabase credentials:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-Find these in your Supabase project under **Settings → API**.
+| Layer | Tool |
+|---|---|
+| Framework | Next.js (App Router) |
+| Styling | Tailwind CSS v4 |
+| Components | shadcn/ui (new-york-v4) |
+| Icons | Lucide React |
 
 ---
 
@@ -41,52 +40,6 @@ Configured for Netlify via `netlify.toml`. To connect:
 
 ---
 
-## Repo structure
+## License
 
-```
-├── CLAUDE.md
-├── .claude/
-│   ├── project-setup.md
-│   ├── design-psychology.md
-│   ├── ui-standards.md
-│   └── ux-process.md
-├── app/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/ui/
-├── lib/
-│   ├── utils.ts
-│   └── supabase/
-│       ├── client.ts
-│       └── server.ts
-├── supabase/
-│   └── config.toml
-├── public/
-├── .env.example
-├── netlify.toml
-├── package.json
-├── tailwind.config.ts
-└── tsconfig.json
-```
-
----
-
-## Adding shadcn components
-
-```bash
-npx shadcn add button
-npx shadcn add card dialog select table tabs
-```
-
-Components land in `components/ui/` and inherit your brand tokens automatically.
-
----
-
-## Applying your brand
-
-**`app/globals.css`** — update the HSL values for `--primary`, `--accent`, `--radius`, and any other shadcn tokens.
-
-**`tailwind.config.ts`** — update `fontFamily.sans` to your chosen typeface. Add the font import to `layout.tsx` using `next/font`.
-
-Both light (`:root`) and dark (`.dark`) variants are pre-wired. Update both when changing colours.
+MIT

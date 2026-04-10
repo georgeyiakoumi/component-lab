@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test"
 test.describe("Homepage", () => {
   test("loads with heading and command palette", async ({ page }) => {
     await page.goto("/")
-    await expect(page.getByRole("heading", { name: /shadcn playground/i })).toBeVisible()
+    await expect(page.getByRole("heading", { name: /component lab/i })).toBeVisible()
     await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
   })
 
