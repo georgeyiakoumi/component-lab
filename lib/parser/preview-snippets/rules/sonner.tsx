@@ -14,19 +14,23 @@
  *
  * ## Implementation notes
  *
- * The `<Toaster />` export is a provider that mounts at the app root.
- * Toasts appear when `toast()` is called at runtime. The rule renders
- * a "Show Toast" button + a scoped `<Toaster />` instance so the
- * user can click the button and see a real toast appear on the canvas.
+ * Sonner's real `toast()` function broadcasts to ALL mounted
+ * `<Toaster />` instances, and the app layout already has one at
+ * the root. Using the real API would fire duplicate toasts (one in
+ * the canvas, one at the bottom-right of the viewport).
  *
- * The Toaster is imported from the real shadcn component (same trick
- * as Calendar / Carousel) so it renders with the correct styles.
+ * Instead, this rule renders a **static fake toast** inside the
+ * canvas that toggles on button click. The visual matches sonner's
+ * output (the same CSS custom properties the real Toaster uses:
+ * `--normal-bg`, `--normal-text`, `--normal-border`, etc.) so the
+ * user sees exactly what a toast looks like without leaving the
+ * canvas. Clicking the button again hides it.
  */
 
 "use client"
 
 import * as React from "react"
-import { toast } from "sonner"
+import { CircleCheckIcon, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,26 +42,48 @@ import {
 
 function SonnerRender(ctx: SnippetContext): React.ReactNode {
   const toasterPath = pathFor(ctx, "Toaster")
+  const [visible, setVisible] = React.useState(true)
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
       <div
         data-node-id={toasterPath}
         className={withSelectionRing(
-          "flex flex-col items-center gap-4",
+          "flex flex-col items-center gap-6",
           ctx.selectedPath === toasterPath,
         )}
       >
-        <Button
-          variant="outline"
-          onClick={() =>
-            toast("Event has been created.", {
-              description: "Sunday, April 10, 2026 at 9:00 AM",
-            })
-          }
-        >
-          Show Toast
+        <Button variant="outline" onClick={() => setVisible((v) => !v)}>
+          {visible ? "Hide Toast" : "Show Toast"}
         </Button>
+
+        {visible && (
+          <div
+            className="w-[22rem] rounded-lg border bg-background p-4 shadow-lg"
+            style={{
+              borderColor: "var(--border)",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <CircleCheckIcon className="mt-0.5 size-4 shrink-0 text-green-600" />
+              <div className="flex flex-1 flex-col gap-1">
+                <p className="text-sm font-semibold">
+                  Event has been created
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Sunday, April 10, 2026 at 9:00 AM
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVisible(false)}
+                className="shrink-0 rounded-md p-0.5 text-muted-foreground/50 hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
