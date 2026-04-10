@@ -33,7 +33,9 @@ import * as React from "react"
 import { CircleCheckIcon, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
+  classesFor,
   pathFor,
   withSelectionRing,
   type CompositionRule,
@@ -41,10 +43,11 @@ import {
 } from "../index"
 
 function SonnerRender(ctx: SnippetContext): React.ReactNode {
+  const toasterCls = classesFor(ctx, "Toaster")
   const toasterPath = pathFor(ctx, "Toaster")
-  const [visible, setVisible] = React.useState(false)
+  const [visible, setVisible] = React.useState(true)
   // Track whether the toast is mounted (for exit animation)
-  const [mounted, setMounted] = React.useState(false)
+  const [mounted, setMounted] = React.useState(true)
 
   const handleToggle = React.useCallback(() => {
     if (visible) {
@@ -67,21 +70,21 @@ function SonnerRender(ctx: SnippetContext): React.ReactNode {
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-      <div
-        data-node-id={toasterPath}
-        className={withSelectionRing(
-          "relative inline-flex flex-col items-center",
-          ctx.selectedPath === toasterPath,
-        )}
-      >
+      <div className="relative inline-flex flex-col items-center">
         <Button variant="outline" onClick={handleToggle}>
           Show Toast
         </Button>
 
         {mounted && (
           <div
-
-            className="absolute top-[calc(100%+1rem)] w-[22rem] rounded-lg border bg-background p-4 shadow-lg transition-all duration-300 ease-out"
+            data-node-id={toasterPath}
+            className={withSelectionRing(
+              cn(
+                "absolute top-[calc(100%+1rem)] w-[22rem] rounded-lg border bg-background p-4 shadow-lg transition-all duration-300 ease-out",
+                toasterCls,
+              ),
+              ctx.selectedPath === toasterPath,
+            )}
             style={{
               borderColor: "var(--border)",
               left: "50%",
