@@ -191,6 +191,13 @@ export interface SnippetContext {
    * second render after the wrapper div mounts its ref.
    */
   container: HTMLElement | null
+  /**
+   * Active data-attr variant values from the Variants popover.
+   * Keyed by attribute name (e.g. `"data-variant"`, `"data-size"`).
+   * Composition rules should spread these onto the relevant DOM
+   * elements so `data-[variant=outline]:` class selectors activate.
+   */
+  variantDataAttrs: Record<string, string>
 }
 
 /**

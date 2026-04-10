@@ -880,6 +880,7 @@ export function renderTreePreviewV2(ctx: RenderContextV2): React.ReactNode {
       selectedPath: ctx.selectedPath,
       resolveVariantClasses: ctx.resolveVariantClasses,
       resolveClassesForSub: ctx.resolveClassesForSub,
+      variantDataAttrs: ctx.variantDataAttrs,
     })
   }
 
