@@ -47,13 +47,17 @@ function ProgressRender(ctx: SnippetContext): React.ReactNode {
           ctx.selectedPath === progressPath,
         )}
       >
+        {/*
+          No withSelectionRing on the Indicator — it's only h-2 tall
+          so the ring renders as a confusing thin blue line. Selection
+          is indicated via the AssemblyPanel row highlight + Style
+          panel populating. The user clicks "Indicator" in the panel,
+          not on the thin bar itself.
+        */}
         <ProgressPrimitive.Indicator
           data-slot="progress-indicator"
           data-node-id={indicatorPath}
-          className={withSelectionRing(
-            indicatorCls,
-            ctx.selectedPath === indicatorPath,
-          )}
+          className={indicatorCls}
           style={{ transform: "translateX(-50%)" }}
         />
       </ProgressPrimitive.Root>

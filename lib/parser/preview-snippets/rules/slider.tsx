@@ -58,21 +58,21 @@ function SliderRender(ctx: SnippetContext): React.ReactNode {
           ctx.selectedPath === sliderPath,
         )}
       >
+        {/*
+          No withSelectionRing on Track or Range — they're only h-1.5
+          tall so the ring renders as a confusing thin blue line.
+          Selection is indicated via the AssemblyPanel row highlight +
+          Style panel populating.
+        */}
         <SliderPrimitive.Track
           data-slot="slider-track"
           data-node-id={trackPath}
-          className={withSelectionRing(
-            trackCls,
-            ctx.selectedPath === trackPath,
-          )}
+          className={trackCls}
         >
           <SliderPrimitive.Range
             data-slot="slider-range"
             data-node-id={rangePath}
-            className={withSelectionRing(
-              rangeCls,
-              ctx.selectedPath === rangePath,
-            )}
+            className={rangeCls}
           />
         </SliderPrimitive.Track>
         {/*
