@@ -70,7 +70,7 @@ function SonnerRender(ctx: SnippetContext): React.ReactNode {
       <div
         data-node-id={toasterPath}
         className={withSelectionRing(
-          "flex flex-col items-center gap-6",
+          "relative inline-flex flex-col items-center",
           ctx.selectedPath === toasterPath,
         )}
       >
@@ -80,13 +80,13 @@ function SonnerRender(ctx: SnippetContext): React.ReactNode {
 
         {mounted && (
           <div
-            className="w-[22rem] rounded-lg border bg-background p-4 shadow-lg transition-all duration-300 ease-out"
+            className="absolute top-[calc(100%+1rem)] left-1/2 w-[22rem] -translate-x-1/2 rounded-lg border bg-background p-4 shadow-lg transition-all duration-300 ease-out"
             style={{
               borderColor: "var(--border)",
               opacity: visible ? 1 : 0,
               transform: visible
-                ? "translateY(0)"
-                : "translateY(0.5rem)",
+                ? "translateX(-50%) translateY(0)"
+                : "translateX(-50%) translateY(0.5rem)",
             }}
           >
             <div className="flex items-start gap-3">
