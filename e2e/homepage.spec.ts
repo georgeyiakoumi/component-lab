@@ -36,6 +36,6 @@ test.describe("Homepage", () => {
 
   test("Create from scratch button is visible", async ({ page }) => {
     await page.goto("/")
-    await expect(page.getByRole("link", { name: /create from scratch/i })).toBeVisible()
+    await expect(page.getByRole("button", { name: /create from scratch/i })).toBeVisible()
   })
 })
