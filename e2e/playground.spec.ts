@@ -9,48 +9,50 @@ test.describe("Playground - Component Loading", () => {
   test("sidebar shows component categories on index page", async ({ page }) => {
     // Sidebar is open on the /playground index (no component selected)
     await page.goto("/playground")
-    await expect(page.getByText("Inputs")).toBeVisible()
-    await expect(page.getByText("Layout")).toBeVisible()
+    const sidebar = page.locator("[data-sidebar='sidebar']")
+    await expect(sidebar.getByText("Inputs")).toBeVisible()
+    await expect(sidebar.getByText("Layout")).toBeVisible()
   })
 
   test("sidebar search filters components on index page", async ({ page }) => {
     await page.goto("/playground")
-    const search = page.getByPlaceholder(/search shadcn/i)
+    const sidebar = page.locator("[data-sidebar='sidebar']")
+    const search = sidebar.getByPlaceholder(/search shadcn/i)
     await search.fill("card")
-    await expect(page.getByText("Card", { exact: true })).toBeVisible()
+    await expect(sidebar.getByText("Card", { exact: true })).toBeVisible()
   })
 
   test("sidebar auto-collapses when navigating to a component", async ({ page }) => {
     await page.goto("/playground")
-    // Sidebar should be open initially
-    const sidebar = page.locator("[data-state]").first()
-    await expect(sidebar).toHaveAttribute("data-state", "expanded")
-    // Click a component to navigate
-    await page.getByText("Inputs").click()
-    await page.getByText("Button", { exact: true }).first().click()
+    const sidebarWrapper = page.locator("[data-state]").first()
+    await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded")
+    // Click a category in the sidebar, then a component
+    const sidebar = page.locator("[data-sidebar='sidebar']")
+    await sidebar.getByText("Inputs").click()
+    await sidebar.getByText("Button", { exact: true }).first().click()
     await page.waitForURL(/\/playground\/button/)
     // Sidebar should have collapsed
-    await expect(sidebar).toHaveAttribute("data-state", "collapsed", { timeout: 5000 })
+    await expect(sidebarWrapper).toHaveAttribute("data-state", "collapsed", { timeout: 5000 })
   })
 
   test("collapsed sidebar can be reopened with trigger button", async ({ page }) => {
     await page.goto("/playground/button")
     // Sidebar is collapsed — click the trigger to expand
     await page.getByRole("button", { name: /toggle sidebar/i }).click()
-    // Sidebar should now be expanded
-    const sidebar = page.locator("[data-state]").first()
-    await expect(sidebar).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
+    const sidebarWrapper = page.locator("[data-state]").first()
+    await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
   })
 
   test("clicking sidebar component navigates", async ({ page }) => {
     await page.goto("/playground/button")
     // Reopen sidebar first
     await page.getByRole("button", { name: /toggle sidebar/i }).click()
-    const sidebar = page.locator("[data-state]").first()
-    await expect(sidebar).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
+    const sidebarWrapper = page.locator("[data-state]").first()
+    await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
     // Expand Inputs category and click Checkbox
-    await page.getByText("Inputs").click()
-    await page.getByText("Checkbox").click()
+    const sidebar = page.locator("[data-sidebar='sidebar']")
+    await sidebar.getByText("Inputs").click()
+    await sidebar.getByText("Checkbox").click()
     await expect(page).toHaveURL(/\/playground\/checkbox/)
   })
 
