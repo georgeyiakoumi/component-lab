@@ -23,28 +23,31 @@ test.describe("Playground - Component Loading", () => {
   test("sidebar auto-collapses when navigating to a component", async ({ page }) => {
     await page.goto("/playground")
     // Sidebar should be open initially
-    await expect(page.getByPlaceholder(/search shadcn/i)).toBeVisible()
+    const sidebar = page.locator("[data-state]").first()
+    await expect(sidebar).toHaveAttribute("data-state", "expanded")
     // Click a component to navigate
     await page.getByText("Inputs").click()
     await page.getByText("Button", { exact: true }).first().click()
     await page.waitForURL(/\/playground\/button/)
-    // Sidebar should have collapsed — search input no longer visible
-    await expect(page.getByPlaceholder(/search shadcn/i)).not.toBeVisible()
+    // Sidebar should have collapsed
+    await expect(sidebar).toHaveAttribute("data-state", "collapsed", { timeout: 5000 })
   })
 
   test("collapsed sidebar can be reopened with trigger button", async ({ page }) => {
     await page.goto("/playground/button")
-    // Sidebar is collapsed to icon mode — click the trigger to expand
+    // Sidebar is collapsed — click the trigger to expand
     await page.getByRole("button", { name: /toggle sidebar/i }).click()
-    // Sidebar should now show search and categories
-    await expect(page.getByPlaceholder(/search shadcn/i)).toBeVisible()
+    // Sidebar should now be expanded
+    const sidebar = page.locator("[data-state]").first()
+    await expect(sidebar).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
   })
 
   test("clicking sidebar component navigates", async ({ page }) => {
     await page.goto("/playground/button")
     // Reopen sidebar first
     await page.getByRole("button", { name: /toggle sidebar/i }).click()
-    await expect(page.getByPlaceholder(/search shadcn/i)).toBeVisible()
+    const sidebar = page.locator("[data-state]").first()
+    await expect(sidebar).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
     // Expand Inputs category and click Checkbox
     await page.getByText("Inputs").click()
     await page.getByText("Checkbox").click()
