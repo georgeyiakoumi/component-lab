@@ -32,11 +32,10 @@ test.describe("Playground - Component Loading", () => {
     await expect(page.getByPlaceholder(/search components/i)).not.toBeVisible()
   })
 
-  test("collapsed sidebar can be reopened with PanelLeft button", async ({ page }) => {
+  test("collapsed sidebar can be reopened with sidebar rail", async ({ page }) => {
     await page.goto("/playground/button")
-    // Sidebar is collapsed — click the PanelLeft toggle button to reopen
-    const toggleButton = page.getByRole("button").filter({ has: page.locator("svg.lucide-panel-left") })
-    await toggleButton.click()
+    // Sidebar is collapsed — click the rail to reopen
+    await page.getByLabel("Toggle Sidebar").click()
     // Sidebar should now show search and categories
     await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
   })
@@ -44,8 +43,7 @@ test.describe("Playground - Component Loading", () => {
   test("clicking sidebar component navigates", async ({ page }) => {
     await page.goto("/playground/button")
     // Reopen sidebar first
-    const toggleButton = page.getByRole("button").filter({ has: page.locator("svg.lucide-panel-left") })
-    await toggleButton.click()
+    await page.getByLabel("Toggle Sidebar").click()
     await expect(page.getByPlaceholder(/search components/i)).toBeVisible()
     // Expand Inputs category and click Checkbox
     await page.getByText("Inputs").click()
