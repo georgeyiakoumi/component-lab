@@ -38,7 +38,7 @@ test.describe("Playground - Component Loading", () => {
   test("collapsed sidebar can be reopened with trigger button", async ({ page }) => {
     await page.goto("/playground/button")
     // Sidebar is collapsed — click the trigger to expand
-    await page.getByRole("button", { name: /toggle sidebar/i }).first().click()
+    await page.getByRole("button", { name: /toggle sidebar/i }).last().click()
     const sidebarWrapper = page.locator("[data-state]").first()
     await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
   })
@@ -46,7 +46,7 @@ test.describe("Playground - Component Loading", () => {
   test("clicking sidebar component navigates", async ({ page }) => {
     await page.goto("/playground/button")
     // Reopen sidebar first
-    await page.getByRole("button", { name: /toggle sidebar/i }).first().click()
+    await page.getByRole("button", { name: /toggle sidebar/i }).last().click()
     const sidebarWrapper = page.locator("[data-state]").first()
     await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
     // Expand Inputs category and click Checkbox
