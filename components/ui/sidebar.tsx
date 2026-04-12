@@ -232,6 +232,7 @@ const Sidebar = React.forwardRef<
           state === "collapsed" && collapsible === "icon" && "w-[--sidebar-width-icon]",
           className
         )}
+        data-sidebar="sidebar"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
