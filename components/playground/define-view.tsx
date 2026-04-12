@@ -13,10 +13,18 @@ import {
   Hash,
   Blocks,
   Diamond,
+  Layers,
 } from "lucide-react"
 import { deleteUserComponent, toSlug } from "@/lib/component-store"
 
 import { cn } from "@/lib/utils"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -322,6 +330,9 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
   // Sub-components other than the root (indices 1+)
   const childSubs = tree.subComponents.slice(1)
 
+  // Lifted dialog state so it survives the empty→populated transition
+  const [addSubOpen, setAddSubOpen] = React.useState(false)
+
   return (
     <ScrollArea className="flex-1">
       <div className="w-full max-w-2xl space-y-8 p-8">
@@ -405,43 +416,71 @@ export function DefineView({ tree, onTreeChange }: DefineViewProps) {
 
         {/* ── Sub-components ───────────────────────────────── */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Sub-components</h2>
-              {childSubs.length > 0 && (
+          {childSubs.length > 0 ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold">Sub-components</h2>
                 <Badge variant="secondary" className="text-xs">
                   {childSubs.length}
                 </Badge>
-              )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                {childSubs.length > 1 && (
+                  <ReorderDialog
+                    subComponents={childSubs}
+                    onReorder={handleReorderSubComponents}
+                  />
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs text-muted-foreground"
+                  onClick={() => setAddSubOpen(true)}
+                >
+                  <Plus className="size-3.5" />
+                  Add
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              {childSubs.length > 1 && (
-                <ReorderDialog
-                  subComponents={childSubs}
-                  onReorder={handleReorderSubComponents}
-                />
-              )}
-              <AddSubComponentDialog
-                parentName={tree.name}
-                existingNames={childSubs.map((sc) => sc.name)}
-                onAdd={(name, baseTag, nestInside, namedGroup, headingFont) =>
-                  handleAddSubComponent(
-                    name,
-                    baseTag,
-                    nestInside,
-                    namedGroup,
-                    headingFont,
-                  )
-                }
-              />
-            </div>
-          </div>
-
-          {childSubs.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No sub-components yet. Add one to create a compound component.
-            </p>
+          ) : (
+            <Empty className="py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Layers />
+                </EmptyMedia>
+                <EmptyTitle className="text-sm">No sub-components yet</EmptyTitle>
+                <EmptyDescription>
+                  Add one to create a compound component.
+                </EmptyDescription>
+              </EmptyHeader>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={() => setAddSubOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Add your first sub-component
+              </Button>
+            </Empty>
           )}
+
+          {/* Single dialog instance — never unmounts */}
+          <AddSubComponentDialog
+            parentName={tree.name}
+            existingNames={childSubs.map((sc) => sc.name)}
+            onAdd={(name, baseTag, nestInside, namedGroup, headingFont) =>
+              handleAddSubComponent(
+                name,
+                baseTag,
+                nestInside,
+                namedGroup,
+                headingFont,
+              )
+            }
+            open={addSubOpen}
+            onOpenChange={setAddSubOpen}
+          />
 
           {childSubs.map((sc, childIndex) => {
             const scIndex = childIndex + 1 // index in tree.subComponents
@@ -1474,8 +1513,8 @@ function ReorderDialog({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ArrowUpDown />
+        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground">
+          <ArrowUpDown className="size-3.5" />
           Reorder
         </Button>
       </AlertDialogTrigger>
@@ -1535,6 +1574,8 @@ function AddSubComponentDialog({
   parentName,
   existingNames,
   onAdd,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
   parentName: string
   existingNames: string[]
@@ -1545,8 +1586,12 @@ function AddSubComponentDialog({
     namedGroup?: boolean,
     headingFont?: boolean,
   ) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = React.useState(false)
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = controlledOnOpenChange ?? setInternalOpen
   const [name, setName] = React.useState("")
   const [baseElement, setBaseElement] = React.useState("div")
   const [nestInside, setNestInside] = React.useState("")
@@ -1620,12 +1665,6 @@ function AddSubComponentDialog({
         if (!v) resetForm()
       }}
     >
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus />
-          Add
-        </Button>
-      </AlertDialogTrigger>
       <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>Add sub-component</AlertDialogTitle>
