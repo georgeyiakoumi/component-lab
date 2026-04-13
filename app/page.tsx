@@ -6,6 +6,12 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel"
 
 /* ── Feature data ──────────────────────────────────────────────── */
 
@@ -137,27 +143,62 @@ function Footer({ className }: { className?: string }) {
 
 export default function Home() {
   const [featureIndex, setFeatureIndex] = React.useState(0)
+  const [carouselApi, setCarouselApi] = React.useState<CarouselApi>()
   const current = features[featureIndex]
+
+  // Sync tabs when carousel is swiped
+  React.useEffect(() => {
+    if (!carouselApi) return
+    const onSelect = () => setFeatureIndex(carouselApi.selectedScrollSnap())
+    carouselApi.on("select", onSelect)
+    return () => { carouselApi.off("select", onSelect) }
+  }, [carouselApi])
 
   return (
     <>
       {/* ── Mobile / Tablet layout ────────────────────────────── */}
-      <main className="flex min-h-screen flex-col p-8 sm:p-10 lg:hidden">
-        <Hero />
-
-        <div className="mt-8 flex-1">
-          <Screenshot features={features} featureIndex={featureIndex} />
+      <main className="flex min-h-screen flex-col items-center lg:hidden">
+        {/* Footer bar at top */}
+        <div className="w-full bg-muted px-8 py-3 sm:px-10">
+          <Footer className="text-center" />
         </div>
 
+        {/* Hero — center aligned, half viewport */}
+        <div className="flex h-[50svh] items-center justify-center px-8 text-center sm:px-10">
+          <Hero />
+        </div>
+
+        {/* Tabs + description above carousel */}
         <FeatureTabs
           features={features}
           featureIndex={featureIndex}
-          onSelect={setFeatureIndex}
+          onSelect={(i) => {
+            setFeatureIndex(i)
+            carouselApi?.scrollTo(i)
+          }}
           heading={current.heading}
-          className="mt-4"
+          className="w-full items-center px-8 text-center sm:px-10"
         />
 
-        <Footer className="mt-8" />
+        {/* Screenshot carousel */}
+        <div className="mt-4 w-full px-8 pb-8 sm:px-10 sm:pb-10">
+          <Carousel setApi={setCarouselApi} opts={{ align: "center" }}>
+            <CarouselContent>
+              {features.map((feature) => (
+                <CarouselItem key={feature.id}>
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-sm border border-border shadow-2xl">
+                    <Image
+                      src={feature.image}
+                      alt={`${feature.label} screenshot`}
+                      fill
+                      className="object-cover object-left-top"
+                    />
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+        </div>
       </main>
 
       {/* ── Desktop layout ────────────────────────────────────── */}
