@@ -378,10 +378,22 @@ export const SHADCN_BORDER_TOKENS = [
 
 export const SHADCN_RING_TOKENS = [
   { label: "Ring", value: "ring-ring" },
+  { label: "Foreground", value: "ring-foreground" },
   { label: "Primary", value: "ring-primary" },
+  { label: "Primary foreground", value: "ring-primary-foreground" },
   { label: "Secondary", value: "ring-secondary" },
+  { label: "Secondary foreground", value: "ring-secondary-foreground" },
+  { label: "Muted", value: "ring-muted" },
+  { label: "Muted foreground", value: "ring-muted-foreground" },
   { label: "Accent", value: "ring-accent" },
+  { label: "Accent foreground", value: "ring-accent-foreground" },
   { label: "Destructive", value: "ring-destructive" },
+  { label: "Destructive foreground", value: "ring-destructive-foreground" },
+  { label: "Border", value: "ring-border" },
+  { label: "Input", value: "ring-input" },
+  { label: "Background", value: "ring-background" },
+  { label: "Card", value: "ring-card" },
+  { label: "Card foreground", value: "ring-card-foreground" },
   { label: "Sidebar Ring", value: "ring-sidebar-ring" },
 ]
 
