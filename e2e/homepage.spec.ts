@@ -8,7 +8,7 @@ test.describe("Homepage", () => {
 
   test("launch button navigates to playground", async ({ page }) => {
     await page.goto("/")
-    await page.getByRole("link", { name: /launch component lab/i }).click()
+    await page.getByRole("link", { name: /launch/i }).click()
     await expect(page).toHaveURL(/\/playground/)
   })
 })
