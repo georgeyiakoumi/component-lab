@@ -13,9 +13,9 @@ These are the activities that happen before pixels — and the ones that make pi
 | UX strategy, experience principles, opportunity maps | **Notion** | Stored in the master plan document under Goals / Design principles |
 | User personas | **Notion** | One page per persona, linked from the master plan |
 | User stories | **Notion → Linear** | Written in Notion first; each story then mirrored as a Linear issue |
-| Information architecture (site maps) | **Excalidraw** | Generated via MCP; link embedded in the relevant Notion page |
-| User flows | **Excalidraw** | Generated via MCP; one board per flow, link embedded in Notion |
-| Brand identity (tone, colour, type, icons) | **Notion** | One page in the master plan; decisions flow into `globals.css`, `tailwind.config.ts`, and `ui-standards.md` |
+| Information architecture (site maps) | **Notion** | One page per site map, using structured hierarchy format; linked from the master plan |
+| User flows | **Notion** | One page per flow, using flow notation format; linked from the master plan and the relevant Linear issue |
+| Brand identity (tone, colour, type, icons) | **Notion** | One page in the master plan; decisions flow into `globals.css` (`@theme inline` block) and `ui-standards.md` |
 | Usability test plans + findings | **Notion** | One page per test round, findings logged with severity ratings |
 
 ---
@@ -226,9 +226,8 @@ Long-form (if needed): [Font name — for articles, blog posts]
 ```
 
 **Where it lands in code:**
-1. `app/layout.tsx` — import fonts via `next/font/google`, assign CSS variables
-2. `tailwind.config.ts` — map CSS variables to `fontFamily.sans`, `fontFamily.serif`, `fontFamily.mono`
-3. `app/globals.css` — apply the font variable to `body` (already wired by shadcn)
+1. `app/layout.tsx` — import fonts via `next/font/google`, assign CSS variables to `<html>`
+2. `app/globals.css` — map CSS variables in the `@theme inline` block under `--font-sans`, `--font-mono` etc.
 
 **Implementation pattern:**
 ```tsx
@@ -254,12 +253,11 @@ export default function RootLayout({ children }) {
 }
 ```
 
-```ts
-// tailwind.config.ts
-fontFamily: {
-  sans: ['var(--font-sans)', ...fontFamily.sans],
-  heading: ['var(--font-heading)', ...fontFamily.sans],
-}
+```css
+/* app/globals.css — @theme inline block */
+--font-sans: var(--font-sans);
+--font-heading: var(--font-heading);
+--font-mono: var(--font-mono);
 ```
 
 ### Icon style
@@ -312,6 +310,17 @@ Radius:     [Sharp / Default / Rounded + rationale]
 - Do all four decisions tell the same story about the brand?
 - If you showed someone just the colour palette, font pairing, and icon style — with no copy — would they guess the product's personality correctly?
 - Does the tone of voice feel natural coming from a product that looks like this?
+
+### Applying brand to the codebase
+
+Once the brand decisions are finalised, apply them using the shadcn theme creator:
+
+1. Go to **[ui.shadcn.com/create](https://ui.shadcn.com/create)** and configure the palette, radius, fonts, and icon library to match the brand decisions above.
+2. Copy the generated CSS and replace the `:root` and `.dark` blocks in `app/globals.css`.
+3. Update `components.json` with the chosen `baseColor` and `iconLibrary`.
+4. Update `app/layout.tsx` with the font variable on `<html>` if a Google Font was chosen.
+
+The theme creator output is a direct translation of brand decisions into code. Do this once, at the end of the Brand Identity phase, before any UI components are built.
 
 ---
 
@@ -386,7 +395,7 @@ Level 3: Detail pages (Features → Analytics / Reporting / Alerts)
 - Are navigation labels based on user language or internal company language?
 - If the product doubled in size, would this structure still hold?
 
-**Where it lives:** Excalidraw — generated via MCP using the site map format above. Use one board per product area if the IA is large. Once generated, embed the Excalidraw link in the relevant Notion page (typically under the master plan's Scope section). When updating the IA, update the Excalidraw board and note the change as a comment on the relevant Linear issue.
+**Where it lives:** Notion — one page per site map using the structured hierarchy format above. Link from the master plan's Scope section. Use indented lists or tables to represent the hierarchy. When updating the IA, update the Notion page and note the change as a comment on the relevant Linear issue.
 
 ---
 
@@ -415,13 +424,45 @@ Level 3: Detail pages (Features → Analytics / Reporting / Alerts)
 - [ ] All decision points accounted for
 - [ ] Error states designed (not just happy path)
 - [ ] Success state defined (what does the user see when done?)
+- [ ] Every UI affordance matches the user's **cognitive mode** at that point — not just the topology of the feature. "Looking at how a thing is structured" and "declaring how a thing should be structured" are different mental states even if they use the same panel. If the same affordance is being reused for two conceptually different activities, question it.
 
 **Questions to ask:**
 - How many steps does this task take? Could any be removed or combined?
 - What happens if the user makes a mistake at each step?
 - Is there a way for the user to get irreversibly stuck?
 
-**Where it lives:** Excalidraw — generated via MCP, one board per distinct user flow. Name boards clearly: `[Project] — [Flow name] flow` (e.g. `Acme — Onboarding flow`). Embed the link in the corresponding Notion user story page and in the relevant Linear issue description. If a flow changes materially after being drawn, redraw it — do not annotate over a stale version.
+**Where it lives:** Notion — one page per distinct user flow, titled `[Project] — [Flow name] flow` (e.g. `Acme — Onboarding flow`). Use the flow notation format with indented steps, decision branches, and clearly marked error/edge cases. Link from the corresponding user story page and the relevant Linear issue description. If a flow changes materially, update the Notion page — do not annotate over a stale version.
+
+---
+
+## Onboarding flows
+
+**The principle:** Onboarding is the user's first impression of whether the product is intelligent. Steps that visibly build on each other create momentum; independent data-collection steps feel like a government form.
+
+### Step chaining — each step should visibly use the previous step's output
+
+When onboarding collects data across multiple screens, wire the outputs forward. If step N collects information, step N+1 should show what that information produces — pre-filled recommendations, calculated values, personalised defaults. This demonstrates that the data is already working for the user before they've even finished onboarding.
+
+**The signal a flow is wrong:** A user completes step N and step N+1 asks for more data with no visible connection to what came before. The app feels like a form, not a product.
+
+**The signal a flow is right:** A user completes step N and step N+1 says "Based on what you told us, we recommend X" — and X is pre-filled. The user can override it, but they don't have to. The product has already started working.
+
+### Every data collection field must justify its existence at the point of collection
+
+Every field should tell the user why it's needed — what it unlocks, what it improves, what it enables. A short "Used for: [feature]" indicator next to the question turns a suspicious form into a visible value exchange.
+
+**Why this matters:** Users abandon forms when they don't understand why personal data is being asked for. The explanation reduces abandonment and builds anticipation — the user can see that their data will do something, not just sit in a database.
+
+**Format:**
+```
+Question: "What's your country?"
+Explanation: "Used for: Supplement recommendations"
+
+Question: "Date of birth"
+Explanation: "Used for: Nutrition calculations, Insights"
+```
+
+The explanation doesn't need to be long. One short phrase telling the user which feature uses that data is enough. If you can't explain why a field exists at the point of collection, reconsider whether it belongs in onboarding at all.
 
 ---
 
@@ -470,3 +511,22 @@ Recommendation: [Specific design change to address it]
 - What surprised us?
 
 **Where it lives:** Notion — one page per test round, structured as: test plan → participants → tasks → findings (using the analysis format above with severity ratings) → recommendations. Link findings to the relevant Linear issues so fixes are tracked. If a finding results in a scope change, update the master plan first.
+
+---
+
+## Design patterns: emerge first, enforce second
+
+**The principle:** Design systems work better as *observed patterns* crystallised partway through the work than as *upfront rules* imposed before the work starts.
+
+The first 2–3 components or screens teach you what the pattern wants to be. The next 7 benefit from that knowledge. Early inconsistency is not failure — it is data about what the right pattern is.
+
+**The discipline:**
+1. Build the first 2–3 instances without enforcing uniformity
+2. After they exist, identify what the pattern naturally became — structure, naming, nesting, control placement
+3. Run an explicit normalisation pass to enforce that pattern retroactively across everything built so far
+4. Document it and hold it from that point forward
+
+Plan for the normalisation pass — it will happen regardless. Budget it explicitly. Once enforced, per-case decisions evaporate and work accelerates.
+
+**When testing reveals a foundational model is wrong:**
+If usability testing shows that a core data model or interaction model doesn't fit how users think, rework it immediately — even if it means revisiting a milestone already marked done. Every feature built on top of a broken model has to be rebuilt when the rework eventually happens. The sooner it happens, the cheaper it is. Deferring foundational rework to "polish later" is not a deferral — it is compounding interest.
