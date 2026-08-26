@@ -67,20 +67,21 @@ export async function GET(
     return NextResponse.json(tree)
   } catch (err) {
     if (err instanceof ParserError) {
+      console.error("[parse] ParserError:", {
+        filePath: err.filePath,
+        line: err.line,
+        column: err.column,
+        reason: err.reason,
+        nodeKind: err.nodeKind,
+      })
       return NextResponse.json(
-        {
-          error: "ParserError",
-          filePath: err.filePath,
-          line: err.line,
-          column: err.column,
-          reason: err.reason,
-          nodeKind: err.nodeKind,
-        },
+        { error: "ParserError", reason: err.reason },
         { status: 422 },
       )
     }
+    console.error("[parse] Unexpected error:", err)
     return NextResponse.json(
-      { error: (err as Error).message ?? "Unknown parser failure" },
+      { error: "Internal parser failure" },
       { status: 500 },
     )
   }

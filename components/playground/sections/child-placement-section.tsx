@@ -17,7 +17,7 @@ import {
 
 import { IconToggle, TextToggle, GridNumberPicker } from "@/components/playground/style-controls"
 import { EditPanelRow } from "@/components/playground/edit-panel-row"
-import { EditPanelSection } from "@/components/playground/edit-panel-section"
+import { EditSection } from "@/components/playground/edit-panel-section"
 
 import type { SectionProps, SectionCallbacks } from "./types"
 
@@ -39,7 +39,7 @@ export function ChildPlacementSection({
   if (!parentIsFlex && !parentIsGrid) return null
 
   return (
-    <EditPanelSection
+    <EditSection
       icon={AlignCenterVertical}
       title={`Child — ${parentEffectiveDisplay}`}
       defaultOpen
@@ -138,6 +138,6 @@ export function ChildPlacementSection({
           </EditPanelRow>
         </>
       )}
-    </EditPanelSection>
+    </EditSection>
   )
 }
