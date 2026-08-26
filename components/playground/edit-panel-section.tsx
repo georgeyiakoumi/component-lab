@@ -131,33 +131,6 @@ function EditNestedGroup({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ── Backwards-compatible wrapper ────────────────────────────────── */
-// TODO: migrate all usages to compound pattern, then remove this
-
-interface EditPanelSectionProps {
-  icon: React.ElementType
-  title: string
-  children: React.ReactNode
-  defaultOpen?: boolean
-  hasValues?: boolean
-  onClear?: () => void
-}
-
-function EditPanelSection({
-  icon,
-  title,
-  children,
-  defaultOpen,
-  hasValues,
-  onClear,
-}: EditPanelSectionProps) {
-  return (
-    <EditSection icon={icon} title={title} defaultOpen={defaultOpen} hasValues={hasValues} onClear={onClear}>
-      {children}
-    </EditSection>
-  )
-}
-
 export {
   EditSection,
   EditSectionTitle,
@@ -167,6 +140,5 @@ export {
   EditSubSectionTitle,
   EditSubSectionContent,
   EditNestedGroup,
-  EditPanelSection,
 }
-export type { EditSectionProps, EditPanelSectionProps }
+export type { EditSectionProps }

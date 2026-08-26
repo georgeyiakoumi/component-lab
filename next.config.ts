@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
 }
 
 export default nextConfig

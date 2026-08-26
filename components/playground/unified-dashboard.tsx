@@ -159,7 +159,7 @@ export function UnifiedDashboard({
       codePanelInitialised.current = true
       setCodePanelWidth(Math.round(contentRef.current.offsetWidth * 0.35))
     }
-  })
+  }, [])
 
   /* ── Source (derived from tree) ────────────────────────────── */
 

@@ -63,6 +63,12 @@ export default function CustomComponentPage() {
   const [codePanelWidth, setCodePanelWidth] = React.useState(350)
   const [isDirty, setIsDirty] = React.useState(false)
 
+  const userComponentRef = React.useRef(userComponent)
+  React.useEffect(() => { userComponentRef.current = userComponent }, [userComponent])
+
+  const isDirtyRef = React.useRef(isDirty)
+  React.useEffect(() => { isDirtyRef.current = isDirty }, [isDirty])
+
   const hasTree = tree !== null
 
   /* ── Load from localStorage on mount (client only) ─────────── */
@@ -78,16 +84,12 @@ export default function CustomComponentPage() {
 
   React.useEffect(() => {
     loadFromStore(slug)
-    const uc = getUserComponent(slug)
-    setMode(uc?.treeV2 ? "define" : "inspect")
-    setMounted(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug])
-
-  // Reload from store when slug changes after mount
-  React.useEffect(() => {
-    if (!mounted) return
-    loadFromStore(slug)
+    if (!mounted) {
+      const uc = getUserComponent(slug)
+      setMode(uc?.treeV2 ? "define" : "inspect")
+      setMounted(true)
+    }
+    // loadFromStore and getUserComponent are stable module-level functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
@@ -110,11 +112,13 @@ export default function CustomComponentPage() {
   /* ── Silent autosave to localStorage ───────────────────────── */
 
   React.useEffect(() => {
-    if (!userComponent || !isDirty) return
+    if (!userComponentRef.current || !isDirtyRef.current) return
     const timer = setTimeout(() => {
+      const uc = userComponentRef.current
+      if (!uc || !isDirtyRef.current) return
       const updated = {
-        ...userComponent,
-        name: tree?.name ?? userComponent.name,
+        ...uc,
+        name: tree?.name ?? uc.name,
         source,
         treeV2: tree ?? undefined,
         updatedAt: new Date().toISOString(),
@@ -124,7 +128,6 @@ export default function CustomComponentPage() {
       setIsDirty(false)
     }, 1000)
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, tree])
 
   /* ── Tree change → regenerate source ───────────────────────── */
