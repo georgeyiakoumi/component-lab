@@ -85,10 +85,12 @@ function ToastList({ cm }: { cm: ClassMap }) {
       {manager.toasts.map((toast) => (
         <Toast.Root key={toast.id} toast={toast} className={cls(cm, "Root")}>
           <Toast.Content className={cls(cm, "Content")}>
-            <Toast.Title className={cls(cm, "Title")} />
-            <Toast.Description className={cls(cm, "Description")} />
+            <div className="flex-1">
+              <Toast.Title className={cls(cm, "Title")} />
+              <Toast.Description className={cls(cm, "Description")} />
+            </div>
+            <Toast.Close className={cls(cm, "Close")}>&times;</Toast.Close>
           </Toast.Content>
-          <Toast.Close className={cls(cm, "Close")}>&times;</Toast.Close>
         </Toast.Root>
       ))}
     </>
@@ -124,23 +126,23 @@ const previews: Record<string, PreviewRenderer> = {
   checkbox: (cm) => (
     <label className="flex items-center gap-2">
       <Checkbox.Root className={cls(cm, "Root")} defaultChecked>
-        <Checkbox.Indicator className={cls(cm, "Indicator")}>&#10003;</Checkbox.Indicator>
+        <Checkbox.Indicator className={cls(cm, "Indicator")}><svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6l3 3 5-5" /></svg></Checkbox.Indicator>
       </Checkbox.Root>
       <span className="text-sm">Accept terms</span>
     </label>
   ),
 
   "checkbox-group": (cm) => (
-    <CheckboxGroup className={cls(cm, "Root")} defaultValue={["option-a"]}>
+    <CheckboxGroup className={cls(cm, "GroupRoot")} defaultValue={["option-a"]}>
       {["Option A", "Option B", "Option C"].map((label) => {
         const value = `option-${label.toLowerCase().replace(" ", "-")}`
         return (
           <label key={value} className="flex items-center gap-2">
             <Checkbox.Root
-              className={cls(cm, "Root") || "flex h-5 w-5 items-center justify-center rounded border border-border bg-background data-[checked]:border-primary data-[checked]:bg-primary"}
+              className={cls(cm, "Root")}
               value={value}
             >
-              <Checkbox.Indicator className={cls(cm, "Indicator") || "text-white text-xs"}>&#10003;</Checkbox.Indicator>
+              <Checkbox.Indicator className={cls(cm, "Indicator")}><svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6l3 3 5-5" /></svg></Checkbox.Indicator>
             </Checkbox.Root>
             <span className="text-sm">{label}</span>
           </label>
@@ -342,7 +344,7 @@ const previews: Record<string, PreviewRenderer> = {
         Right-click here
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Positioner>
+        <ContextMenu.Positioner className={cls(cm, "Positioner")}>
           <ContextMenu.Popup className={cls(cm, "Popup")}>
             <ContextMenu.Item className={cls(cm, "Item")}>Cut</ContextMenu.Item>
             <ContextMenu.Item className={cls(cm, "Item")}>Copy</ContextMenu.Item>
@@ -376,7 +378,7 @@ const previews: Record<string, PreviewRenderer> = {
       <Drawer.Trigger className={cls(cm, "Trigger")}>Open drawer</Drawer.Trigger>
       <Drawer.Portal>
         <Drawer.Backdrop className={cls(cm, "Backdrop")} />
-        <Drawer.Viewport className="fixed inset-0 flex items-end justify-center">
+        <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
           <Drawer.Popup className={cls(cm, "Popup")}>
             <Drawer.Content>
               <Drawer.Title className={cls(cm, "Title")}>Drawer title</Drawer.Title>
@@ -395,7 +397,7 @@ const previews: Record<string, PreviewRenderer> = {
     <Menu.Root>
       <Menu.Trigger className={cls(cm, "Trigger")}>Open menu</Menu.Trigger>
       <Menu.Portal>
-        <Menu.Positioner>
+        <Menu.Positioner className={cls(cm, "Positioner")}>
           <Menu.Popup className={cls(cm, "Popup")}>
             <Menu.Item className={cls(cm, "Item")}>Edit</Menu.Item>
             <Menu.Item className={cls(cm, "Item")}>Duplicate</Menu.Item>
@@ -464,24 +466,24 @@ const previews: Record<string, PreviewRenderer> = {
   menubar: (cm) => (
     <Menubar className={cls(cm, "Root")}>
       <Menu.Root>
-        <Menu.Trigger className={cls(cm, "Trigger") || "px-3 py-1.5 text-sm hover:bg-accent rounded"}>File</Menu.Trigger>
+        <Menu.Trigger className={cls(cm, "Trigger")}>File</Menu.Trigger>
         <Menu.Portal>
-          <Menu.Positioner>
-            <Menu.Popup className={cls(cm, "Popup") || "min-w-[160px] rounded-md border border-border bg-background p-1 shadow-lg"}>
-              <Menu.Item className={cls(cm, "Item") || "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent"}>New File</Menu.Item>
-              <Menu.Item className={cls(cm, "Item") || "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent"}>Open</Menu.Item>
-              <Menu.Item className={cls(cm, "Item") || "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent"}>Save</Menu.Item>
+          <Menu.Positioner className={cls(cm, "Positioner")} sideOffset={4}>
+            <Menu.Popup className={cls(cm, "Popup")}>
+              <Menu.Item className={cls(cm, "Item")}>New File</Menu.Item>
+              <Menu.Item className={cls(cm, "Item")}>Open</Menu.Item>
+              <Menu.Item className={cls(cm, "Item")}>Save</Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
       <Menu.Root>
-        <Menu.Trigger className={cls(cm, "Trigger") || "px-3 py-1.5 text-sm hover:bg-accent rounded"}>Edit</Menu.Trigger>
+        <Menu.Trigger className={cls(cm, "Trigger")}>Edit</Menu.Trigger>
         <Menu.Portal>
-          <Menu.Positioner>
-            <Menu.Popup className={cls(cm, "Popup") || "min-w-[160px] rounded-md border border-border bg-background p-1 shadow-lg"}>
-              <Menu.Item className={cls(cm, "Item") || "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent"}>Undo</Menu.Item>
-              <Menu.Item className={cls(cm, "Item") || "flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm data-[highlighted]:bg-accent"}>Redo</Menu.Item>
+          <Menu.Positioner className={cls(cm, "Positioner")} sideOffset={4}>
+            <Menu.Popup className={cls(cm, "Popup")}>
+              <Menu.Item className={cls(cm, "Item")}>Undo</Menu.Item>
+              <Menu.Item className={cls(cm, "Item")}>Redo</Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
@@ -510,8 +512,8 @@ const previews: Record<string, PreviewRenderer> = {
         </NavigationMenu.Item>
       </NavigationMenu.List>
       <NavigationMenu.Portal>
-        <NavigationMenu.Positioner>
-          <NavigationMenu.Popup className={cls(cm, "Popup") || "rounded-md border border-border bg-background shadow-lg"}>
+        <NavigationMenu.Positioner className={cls(cm, "Positioner")}>
+          <NavigationMenu.Popup className={cls(cm, "Popup")}>
             <NavigationMenu.Viewport className={cls(cm, "Viewport")} />
           </NavigationMenu.Popup>
         </NavigationMenu.Positioner>
@@ -543,7 +545,7 @@ const previews: Record<string, PreviewRenderer> = {
             <Accordion.Trigger className={cls(cm, "Trigger")}>{q}</Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Panel className={cls(cm, "Panel")}>
-            Answer to &quot;{q}&quot; goes here.
+            <div className={cls(cm, "PanelContent")}>Answer to &quot;{q}&quot; goes here.</div>
           </Accordion.Panel>
         </Accordion.Item>
       ))}
@@ -554,7 +556,7 @@ const previews: Record<string, PreviewRenderer> = {
     <Collapsible.Root className={cls(cm, "Root")}>
       <Collapsible.Trigger className={cls(cm, "Trigger")}>Toggle content</Collapsible.Trigger>
       <Collapsible.Panel className={cls(cm, "Panel")}>
-        This content can be expanded or collapsed.
+        <div className={cls(cm, "PanelContent")}>This content can be expanded or collapsed.</div>
       </Collapsible.Panel>
     </Collapsible.Root>
   ),
@@ -562,9 +564,11 @@ const previews: Record<string, PreviewRenderer> = {
   "scroll-area": (cm) => (
     <ScrollArea.Root className={cls(cm, "Root")}>
       <ScrollArea.Viewport className={cls(cm, "Viewport")}>
-        {Array.from({ length: 20 }, (_, i) => (
-          <div key={i} className="py-1 text-sm">Item {i + 1}</div>
-        ))}
+        <ScrollArea.Content className={cls(cm, "Content")}>
+          {Array.from({ length: 20 }, (_, i) => (
+            <div key={i} className="py-1 text-sm">Item {i + 1}</div>
+          ))}
+        </ScrollArea.Content>
       </ScrollArea.Viewport>
       <ScrollArea.Scrollbar className={cls(cm, "Scrollbar")} orientation="vertical">
         <ScrollArea.Thumb className={cls(cm, "Thumb")} />
@@ -618,7 +622,7 @@ const previews: Record<string, PreviewRenderer> = {
     <Toast.Provider>
       <ToastTrigger />
       <Toast.Portal>
-        <Toast.Viewport className={cls(cm, "Viewport") || "fixed bottom-4 right-4 z-50 flex flex-col gap-2"}>
+        <Toast.Viewport className={cls(cm, "Viewport")}>
           <ToastList cm={cm} />
         </Toast.Viewport>
       </Toast.Portal>
