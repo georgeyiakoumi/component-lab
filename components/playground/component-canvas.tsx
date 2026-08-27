@@ -1,7 +1,6 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { renderComponent } from "@/lib/component-renderer"
 import { breakpoints, type Breakpoint } from "@/components/playground/toolbar"
 import {
   ElementSelector,
@@ -65,7 +64,7 @@ export function ComponentCanvas({
           onSelect={handleSelect}
           onHover={handleHover}
         >
-          {customPreview ?? renderComponent(slug, previewProps ?? {})}
+          {customPreview}
         </ElementSelector>
       </div>
     </div>

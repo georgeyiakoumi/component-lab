@@ -58,6 +58,8 @@ interface VisualEditorProps {
   onContextsChange?: (contexts: string[]) => void
   /** Base display value from the full (unprefixed) class list, computed by parent */
   baseDisplay?: string
+  /** Override context groups in the ContextPicker (e.g. for Base UI data attributes) */
+  contextGroupsOverride?: import("@/lib/style-context").ContextGroup[]
 }
 
 /* ── Raw class input for unmanaged modifiers ────────────────────── */
@@ -185,6 +187,7 @@ export function VisualEditor({
   parentTag,
   onContextsChange,
   baseDisplay = "",
+  contextGroupsOverride,
 }: VisualEditorProps) {
   const [contexts, setContexts] = React.useState<string[]>([])
 
@@ -394,7 +397,7 @@ export function VisualEditor({
             )}
           </p>
         </div>
-        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} parentVariants={parentVariants} subComponentNames={subComponentNames} />
+        <ContextPicker contexts={contexts} onContextsChange={setContexts} variants={variants} props={props} parentVariants={parentVariants} subComponentNames={subComponentNames} contextGroupsOverride={contextGroupsOverride} />
         <Button
           variant="ghost"
           size="icon"

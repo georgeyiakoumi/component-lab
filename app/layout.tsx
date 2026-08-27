@@ -7,7 +7,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Component Lab',
   description:
-    'Browse, inspect, edit, and build UI components visually. Export production-ready, type-safe .tsx files. Built with shadcn/ui.',
+    'Style Base UI components with Tailwind CSS and export production-ready .tsx files.',
 }
 
 export default function RootLayout({

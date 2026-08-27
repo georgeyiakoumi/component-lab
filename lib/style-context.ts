@@ -241,6 +241,104 @@ export function buildContextGroups(
   return groups
 }
 
+/**
+ * Build context groups for a Base UI component part.
+ * Instead of hardcoded Radix attributes, dynamically builds groups
+ * from the part's data attributes declared in the registry.
+ */
+export function buildBaseUIContextGroups(
+  dataAttributes: string[],
+): ContextGroup[] {
+  const groups: ContextGroup[] = []
+
+  // Component-specific data attributes from registry
+  if (dataAttributes.length > 0) {
+    // Bare attributes (no =value): data-checked, data-disabled, etc.
+    const bareAttrs = dataAttributes.filter((a) => !a.includes("="))
+    // Value attributes: data-side=top, etc. (unlikely in Base UI but handle it)
+    const valueAttrs = dataAttributes.filter((a) => a.includes("="))
+
+    if (bareAttrs.length > 0) {
+      groups.push({
+        section: "Base UI states",
+        label: "Component state",
+        options: bareAttrs.map((attr) => {
+          // "data-checked" → "data-[checked]" for Tailwind selector
+          const name = attr.replace("data-", "")
+          return { value: `data-[${name}]`, label: name }
+        }),
+      })
+    }
+
+    if (valueAttrs.length > 0) {
+      groups.push({
+        label: "Component state (valued)",
+        options: valueAttrs.map((attr) => {
+          const name = attr.replace("data-", "")
+          // "data-orientation=horizontal" → "data-[orientation=horizontal]"
+          return { value: `data-[${name}]`, label: name }
+        }),
+      })
+    }
+  }
+
+  // Animation states — always included for Base UI (enter/exit transitions)
+  groups.push({
+    section: "Animation",
+    label: "Transition states",
+    options: [
+      { value: "data-[starting-style]", label: "starting-style" },
+      { value: "data-[ending-style]", label: "ending-style" },
+    ],
+  })
+
+  // Responsive
+  groups.push({
+    section: "Responsive",
+    label: "Breakpoints",
+    options: [
+      { value: "bp-none", label: "None" },
+      { value: "sm", label: "sm" },
+      { value: "md", label: "md" },
+      { value: "lg", label: "lg" },
+      { value: "xl", label: "xl" },
+      { value: "2xl", label: "2xl" },
+    ],
+  })
+
+  // States — pseudo-classes
+  groups.push({
+    section: "States",
+    label: "Pseudo-classes",
+    options: [
+      { value: "hover", label: "hover" },
+      { value: "focus", label: "focus" },
+      { value: "focus-visible", label: "focus-visible" },
+      { value: "focus-within", label: "focus-within" },
+      { value: "active", label: "active" },
+      { value: "disabled", label: "disabled" },
+      { value: "first", label: "first" },
+      { value: "last", label: "last" },
+      { value: "odd", label: "odd" },
+      { value: "even", label: "even" },
+      { value: "dark", label: "dark" },
+    ],
+  })
+
+  // Pseudo-elements
+  groups.push({
+    section: "Pseudo-elements",
+    label: "Before / After",
+    options: [
+      { value: "before", label: "before" },
+      { value: "after", label: "after" },
+      { value: "placeholder", label: "placeholder" },
+    ],
+  })
+
+  return groups
+}
+
 /** Get the CSS prefix for a context. Variant contexts become data-attribute selectors. */
 export function getCssPrefix(context: string): string {
   if (context === "default") return "default"

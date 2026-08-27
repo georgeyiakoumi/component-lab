@@ -4,7 +4,7 @@ import * as React from "react"
 import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { buildContextGroups } from "@/lib/style-context"
+import { buildContextGroups, type ContextGroup } from "@/lib/style-context"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -27,6 +27,8 @@ interface ContextPickerProps {
   props?: Array<{ name: string; type: string }>
   parentVariants?: Array<{ name: string; options: string[]; parentName: string }>
   subComponentNames?: string[]
+  /** Override the default context groups (e.g. for Base UI data attributes) */
+  contextGroupsOverride?: ContextGroup[]
 }
 
 function ContextPicker({
@@ -36,9 +38,11 @@ function ContextPicker({
   props,
   parentVariants,
   subComponentNames,
+  contextGroupsOverride,
 }: ContextPickerProps) {
   const [open, setOpen] = React.useState(false)
-  const groups = React.useMemo(() => buildContextGroups(variants, props, parentVariants, subComponentNames), [variants, props, parentVariants, subComponentNames])
+  const defaultGroups = React.useMemo(() => buildContextGroups(variants, props, parentVariants, subComponentNames), [variants, props, parentVariants, subComponentNames])
+  const groups = contextGroupsOverride ?? defaultGroups
 
   const isDefault = contexts.length === 0
 
