@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Check, Clipboard } from "lucide-react"
+import { Check, Clipboard, WrapText } from "lucide-react"
+import { ScrollArea } from "@base-ui/react/scroll-area"
 
 import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -26,12 +26,20 @@ interface CodePanelProps {
   className?: string
 }
 
+/* ── Scrollbar classes (Base UI data attrs use bare Tailwind v4 syntax) */
+
+const SCROLLBAR =
+  "relative m-px flex opacity-0 transition-opacity pointer-events-none data-[orientation=vertical]:w-2 data-[orientation=horizontal]:h-2 data-[hovering]:pointer-events-auto data-[hovering]:opacity-100 data-[scrolling]:pointer-events-auto data-[scrolling]:opacity-100 data-[scrolling]:duration-0"
+
+const THUMB = "w-full rounded-full bg-white/30"
+
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function CodePanel({ code, language = "tsx", highlightLine, focusRange, className }: CodePanelProps) {
   const [highlightedHtml, setHighlightedHtml] = React.useState<string>("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [copied, setCopied] = React.useState(false)
+  const [wordWrap, setWordWrap] = React.useState(false)
   const codeBodyRef = React.useRef<HTMLDivElement>(null)
 
   // Scroll to and highlight the target line
@@ -42,10 +50,8 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
     const targetLine = lines[highlightLine - 1] as HTMLElement | undefined
     if (!targetLine) return
 
-    // Scroll into view
     targetLine.scrollIntoView({ behavior: "smooth", block: "center" })
 
-    // Flash highlight
     targetLine.style.backgroundColor = "rgba(59, 130, 246, 0.2)"
     targetLine.style.transition = "background-color 0.3s"
     const timer = setTimeout(() => {
@@ -55,12 +61,9 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
     return () => clearTimeout(timer)
   }, [highlightLine])
 
-  // Build a CSS style string for focus range dimming
-  // Using a <style> tag approach instead of inline styles so it survives re-renders
   const focusStyle = React.useMemo(() => {
     if (!focusRange) return ""
     const { start, end } = focusRange
-    // CSS nth-child selectors to dim lines outside the range
     return `.code-panel-shiki .line { opacity: 0.2; transition: opacity 0.3s; }
 .code-panel-shiki .line:nth-child(n+${start}):nth-child(-n+${end}) { opacity: 1; }`
   }, [focusRange])
@@ -96,7 +99,6 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      {/* Focus range dimming via CSS (survives re-renders) */}
       {focusStyle && <style dangerouslySetInnerHTML={{ __html: focusStyle }} />}
 
       {/* ── Header ────────────────────────────────────────────── */}
@@ -104,50 +106,93 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Code
         </span>
-        <TooltipProvider delayDuration={300}>
-          <Tooltip open={copied ? true : undefined}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground"
-                onClick={handleCopy}
-              >
-                {copied ? (
-                  <Check className="size-3.5 text-green-500" />
-                ) : (
-                  <Clipboard className="size-3.5" />
-                )}
-                <span className="sr-only">Copy code</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="text-xs">
-              {copied ? "Copied!" : "Copy to clipboard"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-0.5">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-7 w-7",
+                    wordWrap ? "text-blue-500" : "text-muted-foreground",
+                  )}
+                  onClick={() => setWordWrap((w) => !w)}
+                >
+                  <WrapText className="size-3.5" />
+                  <span className="sr-only">Toggle word wrap</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {wordWrap ? "Disable word wrap" : "Enable word wrap"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip open={copied ? true : undefined}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground"
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="size-3.5 text-green-500" />
+                  ) : (
+                    <Clipboard className="size-3.5" />
+                  )}
+                  <span className="sr-only">Copy code</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {copied ? "Copied!" : "Copy to clipboard"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* ── Code body ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto bg-[#0d1117]">
-        {isLoading ? (
-          <div className="space-y-2 p-4">
-            <Skeleton className="h-4 w-3/4 bg-white/5" />
-            <Skeleton className="h-4 w-1/2 bg-white/5" />
-            <Skeleton className="h-4 w-5/6 bg-white/5" />
-            <Skeleton className="h-4 w-2/3 bg-white/5" />
-            <Skeleton className="h-4 w-3/5 bg-white/5" />
-            <Skeleton className="h-4 w-4/5 bg-white/5" />
-            <Skeleton className="h-4 w-1/3 bg-white/5" />
-          </div>
-        ) : (
-          <div
-            ref={codeBodyRef}
-            className="code-panel-shiki min-w-max text-sm font-mono p-4 [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_code]:[counter-reset:line] [&_.line]:table-row [&_.line]:[counter-increment:line] [&_.line::before]:table-cell [&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]"
-            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-          />
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex-1 bg-[#0d1117] p-4 space-y-2">
+          <Skeleton className="h-4 w-3/4 bg-white/5" />
+          <Skeleton className="h-4 w-1/2 bg-white/5" />
+          <Skeleton className="h-4 w-5/6 bg-white/5" />
+          <Skeleton className="h-4 w-2/3 bg-white/5" />
+          <Skeleton className="h-4 w-3/5 bg-white/5" />
+          <Skeleton className="h-4 w-4/5 bg-white/5" />
+          <Skeleton className="h-4 w-1/3 bg-white/5" />
+        </div>
+      ) : (
+        <ScrollArea.Root className="min-h-0 flex-1 bg-[#0d1117]">
+          <ScrollArea.Viewport className="h-full">
+            <ScrollArea.Content>
+              <div
+                ref={codeBodyRef}
+                className={cn(
+                  "code-panel-shiki text-sm font-mono p-4 pb-6 pr-6",
+                  "[&_pre]:!bg-transparent [&_code]:!bg-transparent",
+                  "[&_code]:[counter-reset:line]",
+                  "[&_.line]:[counter-increment:line]",
+                  "[&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]",
+                  wordWrap
+                    ? "[&_.line]:block [&_.line::before]:inline-block [&_pre]:whitespace-pre-wrap [&_pre]:break-all"
+                    : "w-max [&_.line]:table-row [&_.line::before]:table-cell",
+                )}
+                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              />
+            </ScrollArea.Content>
+          </ScrollArea.Viewport>
+          <ScrollArea.Scrollbar className={SCROLLBAR}>
+            <ScrollArea.Thumb className={THUMB} />
+          </ScrollArea.Scrollbar>
+          {!wordWrap && (
+            <ScrollArea.Scrollbar className={SCROLLBAR} orientation="horizontal">
+              <ScrollArea.Thumb className={THUMB} />
+            </ScrollArea.Scrollbar>
+          )}
+          <ScrollArea.Corner />
+        </ScrollArea.Root>
+      )}
     </div>
   )
 }
