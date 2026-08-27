@@ -48,6 +48,9 @@ export function BaseUIDashboard({
   /* ── State ──────────────────────────────────────────────────── */
 
   const [classMap, setClassMapRaw] = React.useState<ClassMap>(initialClassMap)
+  // boolean states: { "checked": true, "disabled": true }
+  // enum states: { "orientation": "vertical" }
+  const [forcedStates, setForcedStates] = React.useState<Record<string, boolean | string>>({})
 
   // Wrap setClassMap to notify parent of changes
   const setClassMap = React.useCallback(
@@ -102,6 +105,84 @@ export function BaseUIDashboard({
     if (!selectedPart) return null
     return component.parts.find((p) => p.name === selectedPart) ?? null
   }, [component.parts, selectedPart])
+
+  // Extract toggleable attributes for the SELECTED part (or all parts if none selected)
+  const availableAttributes = React.useMemo(() => {
+    const skipAttrs = new Set([
+      "data-starting-style", "data-ending-style", // animation
+      "data-multiple", "data-side", "data-align", // structural
+      "data-has-overflow-x", "data-has-overflow-y", // scroll
+      "data-overflow-x-start", "data-overflow-x-end",
+      "data-overflow-y-start", "data-overflow-y-end",
+      "data-index", "data-activation-direction", // numeric/directional
+      "data-behind", "data-anchor-hidden", "data-uncentered", // positional
+      "data-swiping", "data-nested-dialog-open", "data-nested-drawer-open", // contextual
+      "data-nested-drawer-swiping", "data-trigger-disabled", "data-modal",
+      "data-has-submenu-open", "data-scrubbing", "data-type", "data-swipe-direction",
+      "data-empty", "data-instant", "data-direction", "data-focusable",
+      // Field-level attrs — only relevant when wrapped in Field.Root
+      "data-valid", "data-invalid", "data-dirty", "data-touched",
+      "data-filled", "data-focused", "data-readonly", "data-required",
+    ])
+    // Pairs: only show the "positive" state
+    const negatives = new Set(["unchecked", "closed"])
+
+    // Use selected part's attrs, or union of all parts if none selected
+    const parts = selectedPartMeta ? [selectedPartMeta] : component.parts
+    const attrs = new Set<string>()
+    for (const part of parts) {
+      for (const attr of part.dataAttributes) {
+        if (!skipAttrs.has(attr)) {
+          const name = attr.replace(/^data-/, "")
+          if (!negatives.has(name)) attrs.add(name)
+        }
+      }
+    }
+    return Array.from(attrs).sort()
+  }, [component.parts, selectedPartMeta])
+
+  // Apply forced data attributes to canvas descendants
+  React.useEffect(() => {
+    if (!canvasEl) return
+    const entries = Object.entries(forcedStates)
+    if (entries.length === 0) return
+
+    const pairs: Record<string, string> = {
+      checked: "unchecked",
+      unchecked: "checked",
+      open: "closed",
+      closed: "open",
+      pressed: "unpressed",
+    }
+
+    const allElements = canvasEl.querySelectorAll("*")
+    const appliedAttrs: string[] = []
+
+    for (const el of allElements) {
+      for (const [state, value] of entries) {
+        if (typeof value === "string") {
+          // Enum state: data-orientation="vertical"
+          el.setAttribute(`data-${state}`, value)
+          appliedAttrs.push(`data-${state}`)
+        } else if (value === true) {
+          // Boolean state: data-checked (present = on)
+          el.setAttribute(`data-${state}`, "")
+          appliedAttrs.push(`data-${state}`)
+          const opposite = pairs[state]
+          if (opposite) el.removeAttribute(`data-${opposite}`)
+        }
+      }
+    }
+
+    return () => {
+      const allEls = canvasEl.querySelectorAll("*")
+      for (const el of allEls) {
+        for (const attr of appliedAttrs) {
+          el.removeAttribute(attr)
+        }
+      }
+    }
+  }, [forcedStates, canvasEl, preview]) // re-run when preview re-renders
 
   const selectedElement: ElementInfo | null = React.useMemo(() => {
     if (!selectedPart) return null
@@ -198,6 +279,77 @@ export function BaseUIDashboard({
             mode="inspect"
           />
         </div>
+
+        {/* State force-toggles */}
+        {availableAttributes.length > 0 && (
+          <div className="flex items-center gap-1 border-t px-3 py-1">
+            <span className="mr-1 text-xs text-muted-foreground">Attributes</span>
+            {availableAttributes.map((state) => {
+              // Orientation is an enum toggle: off → horizontal → vertical → off
+              if (state === "orientation") {
+                const isVertical = forcedStates[state] === "vertical"
+                return (
+                  <button
+                    key={state}
+                    type="button"
+                    onClick={() =>
+                      setForcedStates((prev) => {
+                        const next = { ...prev }
+                        if (isVertical) delete next[state]
+                        else next[state] = "vertical"
+                        return next
+                      })
+                    }
+                    className={cn(
+                      "rounded px-1.5 py-0.5 text-xs font-mono transition-colors",
+                      isVertical
+                        ? "bg-blue-500/15 text-blue-500"
+                        : "text-muted-foreground hover:bg-muted/50",
+                    )}
+                  >
+                    vertical
+                  </button>
+                )
+              }
+
+              const isForced = forcedStates[state] === true
+              return (
+                <button
+                  key={state}
+                  type="button"
+                  onClick={() =>
+                    setForcedStates((prev) => {
+                      const next = { ...prev }
+                      if (next[state]) {
+                        delete next[state]
+                      } else {
+                        next[state] = true
+                      }
+                      return next
+                    })
+                  }
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-xs font-mono transition-colors",
+                    isForced
+                      ? "bg-blue-500/15 text-blue-500"
+                      : "text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  {state}
+                </button>
+              )
+            })}
+            {Object.keys(forcedStates).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setForcedStates({})}
+                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        )}
 
         <StatusBar
           source={source}

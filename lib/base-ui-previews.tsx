@@ -106,10 +106,7 @@ const previews: Record<string, PreviewRenderer> = {
   /* ── Inputs ──────────────────────────────────────────────────── */
 
   button: (cm) => (
-    <div className="flex gap-2">
-      <Button className={cls(cm, "Button")}>Default</Button>
-      <Button className={cls(cm, "Button")} disabled>Disabled</Button>
-    </div>
+    <Button className={cls(cm, "Button")}>Button</Button>
   ),
 
   toggle: (cm) => (
