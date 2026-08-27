@@ -39,6 +39,7 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
   const deferredCode = React.useDeferredValue(code)
   const [highlightedHtml, setHighlightedHtml] = React.useState<string>("")
   const [isLoading, setIsLoading] = React.useState(true)
+  const [hasError, setHasError] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
   const [wordWrap, setWordWrap] = React.useState(false)
   const codeBodyRef = React.useRef<HTMLDivElement>(null)
@@ -71,6 +72,7 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
 
   React.useEffect(() => {
     let cancelled = false
+    setHasError(false)
     setIsLoading(true)
 
     async function highlight() {
@@ -103,8 +105,12 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
       }
     }
 
-    highlight().catch(() => {
-      if (!cancelled) setIsLoading(false)
+    highlight().catch((err) => {
+      if (!cancelled) {
+        console.error("[CodePanel] Syntax highlighting failed:", err)
+        setHasError(true)
+        setIsLoading(false)
+      }
     })
     return () => {
       cancelled = true
@@ -193,6 +199,11 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
           <Skeleton className="h-4 w-3/5 bg-white/5" />
           <Skeleton className="h-4 w-4/5 bg-white/5" />
           <Skeleton className="h-4 w-1/3 bg-white/5" />
+        </div>
+      ) : hasError ? (
+        <div className="flex-1 bg-[#0d1117] p-4">
+          <p className="mb-2 text-xs text-white/40">Highlighting unavailable</p>
+          <pre className="whitespace-pre-wrap font-mono text-sm text-white/70">{code}</pre>
         </div>
       ) : (
         <ScrollArea.Root className="min-h-0 flex-1 bg-[#0d1117]">
