@@ -19,13 +19,44 @@ export default function PlaygroundLayout({
     ? pathname.split("/").pop() ?? null
     : null
 
-  // Tab state
-  const [tabs, setTabs] = React.useState<Tab[]>(() => {
-    // Default: open the component from the URL, or Button
+  const TABS_STORAGE_KEY = "component-lab:open-tabs"
+
+  // Tab state — always start with a server-safe default
+  const defaultTab = React.useMemo(() => {
     const slug = activeSlug ?? "button"
     const comp = getBaseUIComponent(slug)
-    return comp ? [{ slug: comp.slug, name: comp.name }] : [{ slug: "button", name: "Button" }]
-  })
+    return comp ? { slug: comp.slug, name: comp.name } : { slug: "button", name: "Button" }
+  }, [activeSlug])
+
+  const [tabs, setTabs] = React.useState<Tab[]>([defaultTab])
+  const [hydrated, setHydrated] = React.useState(false)
+
+  // Restore tabs from localStorage after hydration (avoids SSR mismatch)
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TABS_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as Tab[]
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const valid = parsed.filter((t) => getBaseUIComponent(t.slug))
+          if (valid.length > 0) setTabs(valid)
+        }
+      }
+    } catch {
+      // Ignore corrupted localStorage
+    }
+    setHydrated(true)
+  }, [])
+
+  // Persist tabs to localStorage on change (only after hydration)
+  React.useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs))
+    } catch {
+      // Ignore quota errors
+    }
+  }, [tabs, hydrated])
 
   // Track slugs we're navigating to after closing — don't re-add these
   const closingRef = React.useRef<string | null>(null)
