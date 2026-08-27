@@ -6,34 +6,38 @@ test.describe("Playground - Component Loading", () => {
     await expect(page.locator('text=@base-ui/react/button')).toBeVisible({ timeout: 10000 })
   })
 
-  test("sidebar shows Base UI component categories", async ({ page }) => {
-    await page.goto("/playground")
-    const sidebar = page.locator("[data-sidebar='sidebar']")
-    await expect(sidebar.getByText("Inputs")).toBeVisible()
-    await expect(sidebar.getByText("Layout")).toBeVisible()
+  test("tab bar shows open component tabs", async ({ page }) => {
+    await page.goto("/playground/base/button")
+    await expect(page.locator('text=@base-ui/react/button')).toBeVisible({ timeout: 10000 })
+    // The active tab should show "Button"
+    await expect(page.getByRole("button", { name: "Button", exact: true })).toBeVisible()
   })
 
-  test("clicking sidebar component navigates to Base UI route", async ({ page }) => {
+  test("+ button opens component picker and adds a new tab", async ({ page }) => {
     await page.goto("/playground/base/button")
-    // Reopen sidebar
-    await page.getByRole("button", { name: /toggle sidebar/i }).last().click()
-    const sidebarWrapper = page.locator("[data-state]").first()
-    await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
-    // Sidebar items are buttons inside collapsible category groups
-    const sidebar = page.locator("[data-sidebar='sidebar']")
-    // Expand Inputs category and click Toggle
-    await sidebar.getByRole("button", { name: "Inputs" }).click()
-    const switchBtn = sidebar.getByRole("button", { name: "Toggle" })
-    await expect(switchBtn).toBeVisible({ timeout: 5000 })
-    await switchBtn.click()
+    await expect(page.locator('text=@base-ui/react/button')).toBeVisible({ timeout: 10000 })
+    // Click the + button to open picker
+    await page.getByRole("button", { name: "Open component" }).click()
+    // Hover "Inputs" category to see components
+    await page.getByText("Inputs", { exact: true }).hover()
+    // Click "Toggle" to open it in a new tab
+    await page.getByRole("button", { name: "Toggle", exact: true }).click()
     await expect(page).toHaveURL(/\/playground\/base\/toggle/)
   })
 
-  test("collapsed sidebar can be reopened with trigger button", async ({ page }) => {
+  test("closing a tab switches to the previous tab", async ({ page }) => {
     await page.goto("/playground/base/button")
-    await page.getByRole("button", { name: /toggle sidebar/i }).last().click()
-    const sidebarWrapper = page.locator("[data-state]").first()
-    await expect(sidebarWrapper).toHaveAttribute("data-state", "expanded", { timeout: 5000 })
+    await expect(page.locator('text=@base-ui/react/button')).toBeVisible({ timeout: 10000 })
+    // Open a second tab
+    await page.getByRole("button", { name: "Open component" }).click()
+    await page.getByText("Forms", { exact: true }).hover()
+    await page.getByRole("button", { name: "Field", exact: true }).click()
+    await expect(page).toHaveURL(/\/playground\/base\/field/)
+    // Close the Field tab — should switch back to Button
+    const closeBtn = page.locator("[aria-label='Close Field']")
+    // Force click since the close button may need hover to appear
+    await closeBtn.click({ force: true })
+    await expect(page).toHaveURL(/\/playground\/base\/button/)
   })
 })
 
