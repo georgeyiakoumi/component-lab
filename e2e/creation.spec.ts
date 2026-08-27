@@ -22,8 +22,8 @@ test.describe("Component Creation", () => {
     await page.waitForURL(/\/playground\/custom\//, { timeout: 10000 })
   })
 
-  test("/playground/new redirects to homepage", async ({ page }) => {
+  test("/playground/new redirects to playground", async ({ page }) => {
     await page.goto("/playground/new")
-    await page.waitForURL("/", { timeout: 5000 })
+    await page.waitForURL(/\/playground/, { timeout: 5000 })
   })
 })
