@@ -690,9 +690,11 @@ export const BASE_UI_REGISTRY: BaseUIComponent[] = [
 
 /* ── Lookup helpers ─────────────────────────────────────────────── */
 
+const REGISTRY_BY_SLUG = new Map(BASE_UI_REGISTRY.map((c) => [c.slug, c]))
+
 /** Get a component by slug. */
 export function getBaseUIComponent(slug: string): BaseUIComponent | undefined {
-  return BASE_UI_REGISTRY.find((c) => c.slug === slug)
+  return REGISTRY_BY_SLUG.get(slug)
 }
 
 /** Get all components in a category. */

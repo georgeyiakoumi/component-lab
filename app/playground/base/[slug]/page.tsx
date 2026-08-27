@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useParams } from "next/navigation"
 
+import type { BaseUIComponent } from "@/lib/base-ui-registry"
 import { getBaseUIComponent } from "@/lib/base-ui-registry"
 import { DEFAULT_CLASSES } from "@/lib/base-ui-default-classes"
 import { BaseUIDashboard } from "@/components/playground/base-ui-dashboard"
@@ -31,23 +32,11 @@ function saveClassMap(slug: string, classMap: Record<string, string>) {
   }
 }
 
-export default function BaseComponentPage() {
-  const params = useParams<{ slug: string }>()
-  const slug = params.slug
+/* ── Inner component — all hooks are unconditional ──────────── */
 
-  const component = getBaseUIComponent(slug)
-
-  if (!component) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">Component not found</p>
-      </div>
-    )
-  }
-
+function BaseComponentPageInner({ component, slug }: { component: BaseUIComponent; slug: string }) {
   const defaults = DEFAULT_CLASSES[slug] ?? {}
 
-  // Merge saved classMap with defaults (so new parts from registry are included)
   const initialClassMap = React.useMemo(() => {
     const saved = loadSavedClassMap(slug)
     if (!saved) return defaults
@@ -55,7 +44,6 @@ export default function BaseComponentPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
-  // Debounced save on classMap change
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleClassMapChange = React.useCallback(
     (classMap: Record<string, string>) => {
@@ -65,7 +53,6 @@ export default function BaseComponentPage() {
     [slug],
   )
 
-  // Cleanup timeout on unmount
   React.useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
@@ -80,4 +67,22 @@ export default function BaseComponentPage() {
       onClassMapChange={handleClassMapChange}
     />
   )
+}
+
+/* ── Page component — guard then render ─────────────────────── */
+
+export default function BaseComponentPage() {
+  const params = useParams<{ slug: string }>()
+  const slug = params.slug
+  const component = getBaseUIComponent(slug)
+
+  if (!component) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Component not found</p>
+      </div>
+    )
+  }
+
+  return <BaseComponentPageInner component={component} slug={slug} />
 }

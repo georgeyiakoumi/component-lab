@@ -30,6 +30,15 @@ export function DragHandle({
 }: DragHandleProps) {
   const [isDragging, setIsDragging] = React.useState(false)
   const isVertical = orientation === "vertical"
+  // Track active listeners for cleanup on unmount
+  const cleanupRef = React.useRef<(() => void) | null>(null)
+
+  // Cleanup listeners if component unmounts while dragging
+  React.useEffect(() => {
+    return () => {
+      cleanupRef.current?.()
+    }
+  }, [])
 
   const handleMouseDown = React.useCallback(
     (e: React.MouseEvent) => {
@@ -55,10 +64,15 @@ export function DragHandle({
         setIsDragging(false)
         document.removeEventListener("mousemove", onMouseMove)
         document.removeEventListener("mouseup", onMouseUp)
+        cleanupRef.current = null
       }
 
       document.addEventListener("mousemove", onMouseMove)
       document.addEventListener("mouseup", onMouseUp)
+      cleanupRef.current = () => {
+        document.removeEventListener("mousemove", onMouseMove)
+        document.removeEventListener("mouseup", onMouseUp)
+      }
     },
     [width, minWidth, maxWidth, onWidthChange, side, isVertical],
   )

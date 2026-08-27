@@ -77,6 +77,7 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
 
     async function highlight() {
       const { codeToHtml } = await import("shiki/bundle/web")
+      const sourceLines = deferredCode.split("\n")
       const html = await codeToHtml(deferredCode, {
         lang: language,
         theme: "github-dark",
@@ -87,7 +88,7 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
             // by CSS only when word-wrap mode is on, so non-wrapped mode
             // is unaffected.
             line(node, line) {
-              const sourceLine = deferredCode.split("\n")[line - 1]
+              const sourceLine = sourceLines[line - 1]
               if (!sourceLine) return
               const spaces = sourceLine.match(/^(\s*)/)?.[1].length ?? 0
               if (spaces > 0) {

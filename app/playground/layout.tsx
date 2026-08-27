@@ -68,18 +68,14 @@ export default function PlaygroundLayout({
       closingRef.current = null
       return
     }
-    const exists = tabs.some((t) => t.slug === activeSlug)
-    if (!exists) {
-      const comp = getBaseUIComponent(activeSlug)
-      if (comp) {
-        setTabs((prev) => {
-          // Double-check inside updater to avoid race conditions
-          if (prev.some((t) => t.slug === comp.slug)) return prev
-          return [...prev, { slug: comp.slug, name: comp.name }]
-        })
-      }
+    const comp = getBaseUIComponent(activeSlug)
+    if (comp) {
+      setTabs((prev) => {
+        if (prev.some((t) => t.slug === comp.slug)) return prev
+        return [...prev, { slug: comp.slug, name: comp.name }]
+      })
     }
-  }, [activeSlug, tabs])
+  }, [activeSlug])
 
   function handleSelect(slug: string) {
     router.push(`/playground/base/${slug}`)
