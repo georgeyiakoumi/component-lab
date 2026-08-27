@@ -9,8 +9,8 @@ test.describe("Playground - Component Loading", () => {
   test("tab bar shows open component tabs", async ({ page }) => {
     await page.goto("/playground/base/button")
     await expect(page.locator('text=@base-ui/react/button')).toBeVisible({ timeout: 10000 })
-    // The active tab should show "Button"
-    await expect(page.getByRole("button", { name: "Button", exact: true })).toBeVisible()
+    // The active tab should show "Button" — find the tab's truncate span
+    await expect(page.locator("span.truncate", { hasText: "Button" })).toBeVisible()
   })
 
   test("+ button opens component picker and adds a new tab", async ({ page }) => {
