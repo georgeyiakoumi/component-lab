@@ -7,14 +7,14 @@
 
 | Layer | Tool |
 |---|---|
-| Framework | Next.js (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Styling | Tailwind CSS v4 |
-| Components | shadcn/ui (new-york style) |
+| Components | Base UI (`@base-ui/react`) |
+| Editor chrome | shadcn/ui (new-york style) — planned Base UI migration |
 | Icons | Lucide React |
 | Database | Supabase (planned for auth) |
 | Deployment | Netlify |
 | Syntax highlighting | Shiki |
-| Carousel | Embla |
 
 ## Active MCPs
 
@@ -30,15 +30,14 @@
 - If scope changes, update Notion first, then adjust Linear to match
 - Never create Linear issues without a corresponding Notion plan entry
 - For diagrams (IA, flows, architecture), use Mermaid code blocks in Notion — not Excalidraw
-- **Round-trip fidelity:** the parser must read every shadcn registry component and the generator must emit it byte-equivalently. shadcn source is the ground truth. If a component can't round-trip, the parser is broken — never reformat the component to fit the parser. Enforced by CI (55 round-trip tests). This rule applies to any code that touches `components/ui/` or the `ComponentTreeV2` model.
 - **Always run E2E tests locally before pushing.** Never use CI as a debugger.
 - **Never push code without George confirming it renders correctly in the browser.**
 
 ## Current milestone
 
-**M5 — Polish & Ship** (target 2026-05-30). The final milestone. Edge cases, performance, onboarding, user accounts, deployment polish.
+**M9 — Cleanup & Ship.** All old shadcn/Radix code removed. Base UI is the sole component system. Next: M8 (Compose & Build) for multi-primitive composition.
 
-Completed milestones: M1 (Inspect & Browse), M2 (Edit & Customize), M3 (Build from Scratch), M4 (Unified Editor). Full history in Notion master plan.
+Completed milestones: M1 (Inspect & Browse), M2 (Edit & Customize), M3 (Build from Scratch), M4 (Unified Editor), M5 (Polish & Ship), M6 (Base UI Foundation), M6.5 (Tab Bar UI), M7 (Style & Export), M9 (Cleanup & Ship). Full history in Notion master plan.
 
 ---
 
@@ -82,9 +81,10 @@ This project uses the following by default. Do not introduce alternatives unless
 
 | Layer | Tool |
 |---|---|
-| Framework | Next.js (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Styling | Tailwind CSS v4 |
-| Components | shadcn/ui (new-york style) |
+| Components | Base UI (`@base-ui/react`) |
+| Editor chrome | shadcn/ui (new-york style) |
 | Icons | Lucide React |
 | Database | Supabase (planned for auth) |
 | Deployment | Netlify |

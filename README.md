@@ -1,8 +1,8 @@
 # Component Lab
 
-Browse, inspect, edit, and build UI components visually. Export production-ready, type-safe `.tsx` files.
+A visual workspace for styling [Base UI](https://base-ui.com) components with Tailwind CSS. Browse all 37 Base UI primitives, apply styles per-part, preview interactive states, and export production-ready `.tsx` files.
 
-Built with [shadcn/ui](https://ui.shadcn.com).
+Live at [comp-lab.netlify.app](https://comp-lab.netlify.app)
 
 ---
 
@@ -21,22 +21,40 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Layer | Tool |
 |---|---|
-| Framework | Next.js (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Styling | Tailwind CSS v4 |
-| Components | shadcn/ui (new-york-v4) |
+| Components | Base UI (`@base-ui/react`) |
 | Icons | Lucide React |
+| Syntax highlighting | Shiki |
+| Deployment | Netlify |
+
+---
+
+## Features
+
+- **37 Base UI components** — full registry with parts, data attributes, and nesting hierarchy
+- **Per-part styling** — select any part of a compound component and apply Tailwind classes independently
+- **State preview** — toggle data attributes (checked, disabled, open, etc.) to see state-based styles
+- **Live code generation** — code panel updates in real-time as you style, with correct Base UI imports
+- **Tab-based navigation** — open multiple components as tabs, state persists across sessions
+- **Export dialog** — rename, copy, or download styled components as `.tsx` files
+- **Component outline** — tree view showing the component's part hierarchy with Figma-inspired icons
+
+---
+
+## Testing
+
+```bash
+npm run typecheck    # TypeScript strict check
+npm run test         # Vitest unit tests
+npm run test:e2e     # Playwright E2E tests
+```
 
 ---
 
 ## Deployment
 
-Configured for Netlify via `netlify.toml`. To connect:
-
-1. Push the repo to GitHub
-2. Go to [netlify.com](https://netlify.com) → Add new site → Import from GitHub
-3. Select the repo — build settings are pre-configured
-4. Add environment variables in **Site → Environment variables**
-5. Deploy
+Configured for Netlify via `netlify.toml`. Auto-deploys on merge to `main`.
 
 ---
 
