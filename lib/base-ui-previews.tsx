@@ -56,8 +56,11 @@ import { Tooltip } from "@base-ui/react/tooltip"
 /** Map of part name → Tailwind class string */
 export type ClassMap = Record<string, string>
 
+/** Optional ref to a DOM element that portals should mount into */
+export type PortalContainer = React.RefObject<HTMLElement | null> | undefined
+
 /** A preview renderer function */
-export type PreviewRenderer = (classMap: ClassMap) => React.ReactNode
+export type PreviewRenderer = (classMap: ClassMap, portalContainer?: PortalContainer) => React.ReactNode
 
 /** Get classes for a part, falling back to empty string */
 function cls(classMap: ClassMap, part: string): string {
@@ -230,13 +233,13 @@ const previews: Record<string, PreviewRenderer> = {
     </RadioGroup>
   ),
 
-  select: (cm) => (
+  select: (cm, pc) => (
     <Select.Root defaultValue="apple">
       <Select.Trigger className={cls(cm, "Trigger")}>
         <Select.Value className={cls(cm, "Value")} />
         <Select.Icon className={cls(cm, "Icon")}>&#9660;</Select.Icon>
       </Select.Trigger>
-      <Select.Portal>
+      <Select.Portal container={pc}>
         <Select.Positioner className={cls(cm, "Positioner")}>
           <Select.Popup className={cls(cm, "Popup")}>
             <Select.List>
@@ -269,12 +272,12 @@ const previews: Record<string, PreviewRenderer> = {
     </Switch.Root>
   ),
 
-  autocomplete: (cm) => {
+  autocomplete: (cm, pc) => {
     const fruits = ["Apple", "Banana", "Cherry", "Date", "Elderberry"]
     return (
       <Autocomplete.Root items={fruits}>
         <Autocomplete.Input className={cls(cm, "Input")} placeholder="Search fruits..." />
-        <Autocomplete.Portal>
+        <Autocomplete.Portal container={pc}>
           <Autocomplete.Positioner className={cls(cm, "Positioner")}>
             <Autocomplete.Popup className={cls(cm, "Popup")}>
               <Autocomplete.List>
@@ -291,7 +294,7 @@ const previews: Record<string, PreviewRenderer> = {
     )
   },
 
-  combobox: (cm) => {
+  combobox: (cm, pc) => {
     const fruits = ["Apple", "Banana", "Cherry"]
     return (
       <Combobox.Root items={fruits} defaultValue="">
@@ -299,7 +302,7 @@ const previews: Record<string, PreviewRenderer> = {
           <Combobox.Input className={cls(cm, "Input")} placeholder="Select a fruit..." />
           <Combobox.Trigger className={cls(cm, "Trigger")}>&#9660;</Combobox.Trigger>
         </Combobox.InputGroup>
-        <Combobox.Portal>
+        <Combobox.Portal container={pc}>
           <Combobox.Positioner className={cls(cm, "Positioner")}>
             <Combobox.Popup className={cls(cm, "Popup")}>
               <Combobox.List>
@@ -319,10 +322,10 @@ const previews: Record<string, PreviewRenderer> = {
 
   /* ── Overlays ────────────────────────────────────────────────── */
 
-  "alert-dialog": (cm) => (
+  "alert-dialog": (cm, pc) => (
     <AlertDialog.Root>
       <AlertDialog.Trigger className={cls(cm, "Trigger")}>Delete item</AlertDialog.Trigger>
-      <AlertDialog.Portal>
+      <AlertDialog.Portal container={pc}>
         <AlertDialog.Backdrop className={cls(cm, "Backdrop")} />
         <AlertDialog.Popup className={cls(cm, "Popup")}>
           <AlertDialog.Title className={cls(cm, "Title")}>Are you sure?</AlertDialog.Title>
@@ -338,12 +341,12 @@ const previews: Record<string, PreviewRenderer> = {
     </AlertDialog.Root>
   ),
 
-  "context-menu": (cm) => (
+  "context-menu": (cm, pc) => (
     <ContextMenu.Root>
       <ContextMenu.Trigger className={cls(cm, "Trigger")}>
         Right-click here
       </ContextMenu.Trigger>
-      <ContextMenu.Portal>
+      <ContextMenu.Portal container={pc}>
         <ContextMenu.Positioner className={cls(cm, "Positioner")}>
           <ContextMenu.Popup className={cls(cm, "Popup")}>
             <ContextMenu.Item className={cls(cm, "Item")}>Cut</ContextMenu.Item>
@@ -357,10 +360,10 @@ const previews: Record<string, PreviewRenderer> = {
     </ContextMenu.Root>
   ),
 
-  dialog: (cm) => (
+  dialog: (cm, pc) => (
     <Dialog.Root>
       <Dialog.Trigger className={cls(cm, "Trigger")}>Open dialog</Dialog.Trigger>
-      <Dialog.Portal>
+      <Dialog.Portal container={pc}>
         <Dialog.Backdrop className={cls(cm, "Backdrop")} />
         <Dialog.Popup className={cls(cm, "Popup")}>
           <Dialog.Title className={cls(cm, "Title")}>Dialog title</Dialog.Title>
@@ -373,10 +376,10 @@ const previews: Record<string, PreviewRenderer> = {
     </Dialog.Root>
   ),
 
-  drawer: (cm) => (
+  drawer: (cm, pc) => (
     <Drawer.Root>
       <Drawer.Trigger className={cls(cm, "Trigger")}>Open drawer</Drawer.Trigger>
-      <Drawer.Portal>
+      <Drawer.Portal container={pc}>
         <Drawer.Backdrop className={cls(cm, "Backdrop")} />
         <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
           <Drawer.Popup className={cls(cm, "Popup")}>
@@ -393,10 +396,10 @@ const previews: Record<string, PreviewRenderer> = {
     </Drawer.Root>
   ),
 
-  menu: (cm) => (
+  menu: (cm, pc) => (
     <Menu.Root>
       <Menu.Trigger className={cls(cm, "Trigger")}>Open menu</Menu.Trigger>
-      <Menu.Portal>
+      <Menu.Portal container={pc}>
         <Menu.Positioner className={cls(cm, "Positioner")}>
           <Menu.Popup className={cls(cm, "Popup")}>
             <Menu.Item className={cls(cm, "Item")}>Edit</Menu.Item>
@@ -409,10 +412,10 @@ const previews: Record<string, PreviewRenderer> = {
     </Menu.Root>
   ),
 
-  popover: (cm) => (
+  popover: (cm, pc) => (
     <Popover.Root>
       <Popover.Trigger className={cls(cm, "Trigger")}>Open popover</Popover.Trigger>
-      <Popover.Portal>
+      <Popover.Portal container={pc}>
         <Popover.Positioner className={cls(cm, "Positioner")}>
           <Popover.Popup className={cls(cm, "Popup")}>
             <Popover.Arrow className={cls(cm, "Arrow")} />
@@ -427,12 +430,12 @@ const previews: Record<string, PreviewRenderer> = {
     </Popover.Root>
   ),
 
-  "preview-card": (cm) => (
+  "preview-card": (cm, pc) => (
     <PreviewCard.Root>
       <PreviewCard.Trigger className={cls(cm, "Trigger")} href="https://base-ui.com">
         Hover this link
       </PreviewCard.Trigger>
-      <PreviewCard.Portal>
+      <PreviewCard.Portal container={pc}>
         <PreviewCard.Positioner className={cls(cm, "Positioner")}>
           <PreviewCard.Popup className={cls(cm, "Popup")}>
             <p className="text-sm font-semibold">Base UI</p>
@@ -443,13 +446,13 @@ const previews: Record<string, PreviewRenderer> = {
     </PreviewCard.Root>
   ),
 
-  tooltip: (cm) => (
+  tooltip: (cm, pc) => (
     <Tooltip.Provider>
       <Tooltip.Root>
         <Tooltip.Trigger className={cls(cm, "Trigger")} aria-label="Show tooltip">
           Hover me
         </Tooltip.Trigger>
-        <Tooltip.Portal>
+        <Tooltip.Portal container={pc}>
           <Tooltip.Positioner className={cls(cm, "Positioner")}>
             <Tooltip.Popup className={cls(cm, "Popup")}>
               <Tooltip.Arrow className={cls(cm, "Arrow")} />
@@ -463,11 +466,11 @@ const previews: Record<string, PreviewRenderer> = {
 
   /* ── Navigation ──────────────────────────────────────────────── */
 
-  menubar: (cm) => (
+  menubar: (cm, pc) => (
     <Menubar className={cls(cm, "Root")}>
       <Menu.Root>
         <Menu.Trigger className={cls(cm, "Trigger")}>File</Menu.Trigger>
-        <Menu.Portal>
+        <Menu.Portal container={pc}>
           <Menu.Positioner className={cls(cm, "Positioner")} sideOffset={4}>
             <Menu.Popup className={cls(cm, "Popup")}>
               <Menu.Item className={cls(cm, "Item")}>New File</Menu.Item>
@@ -479,7 +482,7 @@ const previews: Record<string, PreviewRenderer> = {
       </Menu.Root>
       <Menu.Root>
         <Menu.Trigger className={cls(cm, "Trigger")}>Edit</Menu.Trigger>
-        <Menu.Portal>
+        <Menu.Portal container={pc}>
           <Menu.Positioner className={cls(cm, "Positioner")} sideOffset={4}>
             <Menu.Popup className={cls(cm, "Popup")}>
               <Menu.Item className={cls(cm, "Item")}>Undo</Menu.Item>
@@ -491,7 +494,7 @@ const previews: Record<string, PreviewRenderer> = {
     </Menubar>
   ),
 
-  "navigation-menu": (cm) => (
+  "navigation-menu": (cm, pc) => (
     <NavigationMenu.Root className={cls(cm, "Root")}>
       <NavigationMenu.List className={cls(cm, "List")}>
         <NavigationMenu.Item>
@@ -511,7 +514,7 @@ const previews: Record<string, PreviewRenderer> = {
           <NavigationMenu.Link className={cls(cm, "Link")} href="#">About</NavigationMenu.Link>
         </NavigationMenu.Item>
       </NavigationMenu.List>
-      <NavigationMenu.Portal>
+      <NavigationMenu.Portal container={pc}>
         <NavigationMenu.Positioner className={cls(cm, "Positioner")}>
           <NavigationMenu.Popup className={cls(cm, "Popup")}>
             <NavigationMenu.Viewport className={cls(cm, "Viewport")} />
@@ -618,10 +621,10 @@ const previews: Record<string, PreviewRenderer> = {
     </Progress.Root>
   ),
 
-  toast: (cm) => (
+  toast: (cm, pc) => (
     <Toast.Provider>
       <ToastTrigger />
-      <Toast.Portal>
+      <Toast.Portal container={pc}>
         <Toast.Viewport className={cls(cm, "Viewport")}>
           <ToastList cm={cm} />
         </Toast.Viewport>
@@ -652,14 +655,19 @@ export function getPreviewRenderer(slug: string): PreviewRenderer | undefined {
 /**
  * Render a Base UI component preview with the given class map.
  * Falls back to a "no preview" message if the renderer doesn't exist.
+ *
+ * @param portalContainer - Optional ref to a DOM element that portals
+ *   should mount into (instead of document.body). Used by the dashboard
+ *   to constrain overlay components to the canvas area.
  */
 export function renderBaseUIPreview(
   slug: string,
   classMap: ClassMap = {},
+  portalContainer?: PortalContainer,
 ): React.ReactNode {
   const renderer = previews[slug]
   if (!renderer) {
     return <p className="text-sm text-muted-foreground">No preview available for &quot;{slug}&quot;.</p>
   }
-  return renderer(classMap)
+  return renderer(classMap, portalContainer)
 }
