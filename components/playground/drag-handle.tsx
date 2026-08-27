@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { GripVertical } from "lucide-react"
+import { EllipsisVertical } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -59,11 +59,11 @@ export function DragHandle({
       <div
         onMouseDown={handleMouseDown}
         className={cn(
-          "group relative z-10 flex w-4 bg-muted/50 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-blue-500/30",
+          "group relative z-10 flex w-2 bg-muted/50 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-blue-500/30",
           isDragging && "bg-blue-500/50",
         )}
       >
-        <GripVertical className={cn(
+        <EllipsisVertical className={cn(
           "absolute size-4 text-muted-foreground transition-colors group-hover:text-blue",
           isDragging && "text-blue-500",
         )} />
