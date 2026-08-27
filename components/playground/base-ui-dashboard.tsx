@@ -35,6 +35,7 @@ type ClassMap = Record<string, string>
 export interface BaseUIDashboardProps {
   component: BaseUIComponent
   initialClassMap: ClassMap
+  onClassMapChange?: (classMap: ClassMap) => void
 }
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -42,10 +43,23 @@ export interface BaseUIDashboardProps {
 export function BaseUIDashboard({
   component,
   initialClassMap,
+  onClassMapChange,
 }: BaseUIDashboardProps) {
   /* ── State ──────────────────────────────────────────────────── */
 
-  const [classMap, setClassMap] = React.useState<ClassMap>(initialClassMap)
+  const [classMap, setClassMapRaw] = React.useState<ClassMap>(initialClassMap)
+
+  // Wrap setClassMap to notify parent of changes
+  const setClassMap = React.useCallback(
+    (update: ClassMap | ((prev: ClassMap) => ClassMap)) => {
+      setClassMapRaw((prev) => {
+        const next = typeof update === "function" ? update(prev) : update
+        onClassMapChange?.(next)
+        return next
+      })
+    },
+    [onClassMapChange],
+  )
   const [selectedPart, setSelectedPart] = React.useState<string | null>(null)
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")

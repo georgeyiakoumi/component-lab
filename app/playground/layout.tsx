@@ -118,6 +118,11 @@ export default function PlaygroundLayout({
     }
   }
 
+  // Don't render until localStorage tabs are loaded (avoids hydration flash)
+  if (!hydrated) {
+    return <div className="flex h-screen flex-col bg-background" />
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <TabBar
