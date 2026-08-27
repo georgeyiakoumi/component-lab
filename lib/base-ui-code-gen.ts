@@ -23,9 +23,7 @@ function imports(component: BaseUIComponent): string {
   const lines = [`import { ${component.name} } from "${component.importPath}"`]
   if (component.additionalImports) {
     for (const imp of component.additionalImports) {
-      const name = imp
-        .split("/")
-        .pop()!
+      const name = (imp.split("/").pop() ?? imp)
         .split("-")
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
         .join("")
@@ -444,7 +442,7 @@ const templates: Record<string, CodeTemplate> = {
   menubar: (cm, c) =>
     wrap(
       c,
-      `    <div${cp(cm, "Root")} role="menubar">
+      `    <Menubar${cp(cm, "Root")}>
       <Menu.Root>
         <Menu.Trigger${cp(cm, "Trigger")}>File</Menu.Trigger>
         <Menu.Portal>
@@ -468,7 +466,7 @@ const templates: Record<string, CodeTemplate> = {
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
-    </div>`,
+    </Menubar>`,
       `import { Menu } from "@base-ui/react/menu"`,
     ),
 
@@ -611,18 +609,51 @@ const templates: Record<string, CodeTemplate> = {
     </Progress.Root>`,
     ),
 
-  toast: (cm, c) =>
-    wrap(
-      c,
-      `    <Toast.Provider>
+  toast: (cm, c) => {
+    const imp = imports(c)
+    return `${imp}
+
+function ToastTrigger() {
+  const manager = Toast.useToastManager()
+  return (
+    <button${cp(cm, "Trigger")} onClick={() => manager.add({ title: "Saved", description: "Your changes have been saved." })}>
+      Show toast
+    </button>
+  )
+}
+
+function ToastList() {
+  const manager = Toast.useToastManager()
+  return (
+    <>
+      {manager.toasts.map((toast) => (
+        <Toast.Root key={toast.id} toast={toast}${cp(cm, "Root")}>
+          <Toast.Content${cp(cm, "Content")}>
+            <div className="flex-1">
+              <Toast.Title${cp(cm, "Title")} />
+              <Toast.Description${cp(cm, "Description")} />
+            </div>
+            <Toast.Close${cp(cm, "Close")}>&times;</Toast.Close>
+          </Toast.Content>
+        </Toast.Root>
+      ))}
+    </>
+  )
+}
+
+export function My${c.name}() {
+  return (
+    <Toast.Provider>
       <ToastTrigger />
       <Toast.Portal>
         <Toast.Viewport${cp(cm, "Viewport")}>
           <ToastList />
         </Toast.Viewport>
       </Toast.Portal>
-    </Toast.Provider>`,
-    ),
+    </Toast.Provider>
+  )
+}`
+  },
 
   /* ── Data Display ────────────────────────────────────────────── */
 

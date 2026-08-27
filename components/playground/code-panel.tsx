@@ -36,6 +36,7 @@ const THUMB = "w-full rounded-full bg-white/30"
 /* ── Component ──────────────────────────────────────────────────── */
 
 export function CodePanel({ code, language = "tsx", highlightLine, focusRange, className }: CodePanelProps) {
+  const deferredCode = React.useDeferredValue(code)
   const [highlightedHtml, setHighlightedHtml] = React.useState<string>("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [copied, setCopied] = React.useState(false)
@@ -74,7 +75,7 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
 
     async function highlight() {
       const { codeToHtml } = await import("shiki/bundle/web")
-      const html = await codeToHtml(code, {
+      const html = await codeToHtml(deferredCode, {
         lang: language,
         theme: "github-dark",
         transformers: [
@@ -84,11 +85,11 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
             // by CSS only when word-wrap mode is on, so non-wrapped mode
             // is unaffected.
             line(node, line) {
-              const sourceLine = code.split("\n")[line - 1]
+              const sourceLine = deferredCode.split("\n")[line - 1]
               if (!sourceLine) return
               const spaces = sourceLine.match(/^(\s*)/)?.[1].length ?? 0
               if (spaces > 0) {
-                const existing = (node.properties.style as string) ?? ""
+                const existing = typeof node.properties.style === "string" ? node.properties.style : ""
                 node.properties.style = `${existing};--indent:${spaces}ch`
               }
             },
@@ -102,16 +103,22 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
       }
     }
 
-    highlight()
+    highlight().catch(() => {
+      if (!cancelled) setIsLoading(false)
+    })
     return () => {
       cancelled = true
     }
-  }, [code, language])
+  }, [deferredCode, language])
 
   const handleCopy = React.useCallback(async () => {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard API may fail in non-HTTPS or permission-denied contexts
+    }
   }, [code])
 
   return (
