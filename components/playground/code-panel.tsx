@@ -77,6 +77,23 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
       const html = await codeToHtml(code, {
         lang: language,
         theme: "github-dark",
+        transformers: [
+          {
+            // Store leading whitespace count as a CSS variable per line.
+            // The hanging indent (padding-left + text-indent) is activated
+            // by CSS only when word-wrap mode is on, so non-wrapped mode
+            // is unaffected.
+            line(node, line) {
+              const sourceLine = code.split("\n")[line - 1]
+              if (!sourceLine) return
+              const spaces = sourceLine.match(/^(\s*)/)?.[1].length ?? 0
+              if (spaces > 0) {
+                const existing = (node.properties.style as string) ?? ""
+                node.properties.style = `${existing};--indent:${spaces}ch`
+              }
+            },
+          },
+        ],
       })
 
       if (!cancelled) {
@@ -100,6 +117,14 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
   return (
     <div className={cn("flex h-full flex-col", className)}>
       {focusStyle && <style dangerouslySetInnerHTML={{ __html: focusStyle }} />}
+      {wordWrap && (
+        <style dangerouslySetInnerHTML={{ __html: [
+          `.code-panel-shiki .line { display: block; position: relative; margin: 0; padding-left: calc(3rem + var(--indent, 0ch)); text-indent: calc(var(--indent, 0ch) * -1); }`,
+          `.code-panel-shiki .line::before { display: inline-block; position: absolute; left: 0; width: 2rem; text-align: right; }`,
+          `.code-panel-shiki code { display: block; font-size: 0; }`,
+          `.code-panel-shiki .line { font-size: 0.875rem; }`,
+        ].join("\n") }} />
+      )}
 
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex h-10 shrink-0 items-center justify-between border-b px-3">
@@ -174,9 +199,10 @@ export function CodePanel({ code, language = "tsx", highlightLine, focusRange, c
                   "[&_code]:[counter-reset:line]",
                   "[&_.line]:[counter-increment:line]",
                   "[&_.line::before]:pr-4 [&_.line::before]:text-right [&_.line::before]:text-white/20 [&_.line::before]:select-none [&_.line::before]:[content:counter(line)] [&_.line::before]:min-w-[2rem]",
+                  "[&_.line]:table-row [&_.line::before]:table-cell",
                   wordWrap
-                    ? "[&_.line]:block [&_.line::before]:inline-block [&_pre]:whitespace-pre-wrap [&_pre]:break-all"
-                    : "w-max [&_.line]:table-row [&_.line::before]:table-cell",
+                    ? "[&_pre]:whitespace-pre-wrap"
+                    : "w-max",
                 )}
                 dangerouslySetInnerHTML={{ __html: highlightedHtml }}
               />
