@@ -14,7 +14,7 @@
 
 import * as React from "react"
 
-import { ChevronDown, ChevronRight, Component, Diamond } from "lucide-react"
+import { ChevronDown, ChevronRight, Component, Diamond, Download } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { BaseUIComponent } from "@/lib/base-ui-registry"
@@ -27,6 +27,7 @@ import { CodePanel } from "@/components/playground/code-panel"
 import { StatusBar } from "@/components/playground/status-bar"
 import { VisualEditor } from "@/components/playground/visual-editor"
 import { DragHandle } from "@/components/playground/drag-handle"
+import { ExportDialog } from "@/components/playground/export-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { Breakpoint } from "@/components/playground/toolbar"
 
@@ -249,6 +250,21 @@ export function BaseUIDashboard({
   /* ── Render ─────────────────────────────────────────────────── */
 
   return (
+    <>
+    {/* Export button — renders into the tab bar area via portal-like fixed positioning */}
+    <ExportDialog
+      slug={component.slug}
+      source={source}
+      defaultName={`My${component.name}`}
+    >
+      <button
+        type="button"
+        className="fixed top-1.5 right-3 z-20 flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        <Download className="size-3" />
+        Export
+      </button>
+    </ExportDialog>
     <div ref={contentRef} className="flex flex-1 overflow-hidden">
       {/* ── Code panel + outline (left) ─────────────────────── */}
       <div
@@ -496,5 +512,6 @@ export function BaseUIDashboard({
         </ScrollArea>
       </div>
     </div>
+    </>
   )
 }
