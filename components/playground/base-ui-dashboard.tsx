@@ -14,6 +14,8 @@
 
 import * as React from "react"
 
+import { ChevronDown, ChevronRight, Component, Diamond } from "lucide-react"
+
 import { cn } from "@/lib/utils"
 import type { BaseUIComponent } from "@/lib/base-ui-registry"
 import { renderBaseUIPreview } from "@/lib/base-ui-previews"
@@ -67,6 +69,7 @@ export function BaseUIDashboard({
   const [theme, setTheme] = React.useState<"light" | "dark">("light")
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint>("2xl")
   const [codePanelWidth, setCodePanelWidth] = React.useState(350)
+  const [outlineHeight, setOutlineHeight] = React.useState(180)
   const codePanelInitialised = React.useRef(false)
   const [editPanelWidth, setEditPanelWidth] = React.useState(384)
   const contentRef = React.useRef<HTMLDivElement>(null)
@@ -247,12 +250,71 @@ export function BaseUIDashboard({
 
   return (
     <div ref={contentRef} className="flex flex-1 overflow-hidden">
-      {/* ── Code panel (left) ──────────────────────────────── */}
+      {/* ── Code panel + outline (left) ─────────────────────── */}
       <div
         className="relative flex shrink-0 flex-col border-r"
         style={{ width: `${codePanelWidth}px` }}
       >
-        <CodePanel code={source} />
+        <div className="min-h-0 flex-1">
+          <CodePanel code={source} />
+        </div>
+
+        {/* ── Component outline ──────────────────────────── */}
+        <DragHandle
+          width={outlineHeight}
+          minWidth={80}
+          maxWidth={400}
+          onWidthChange={setOutlineHeight}
+          orientation="vertical"
+        />
+        <div className="flex flex-col" style={{ height: `${outlineHeight}px` }}>
+          <div className="flex items-center px-3 py-1.5">
+            <span className="text-xs font-medium text-muted-foreground">OUTLINE</span>
+          </div>
+          <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col pb-1.5">
+            {component.parts.map((part, i) => {
+              const isSelected = selectedPart === part.name
+              const hasCustomClasses = !!(classMap[part.name] ?? "").trim()
+              const depth = part.depth ?? 0
+              const isRoot = depth === 0
+              // Has children if the next part has a greater depth
+              const hasChildren = i < component.parts.length - 1 && (component.parts[i + 1].depth ?? 0) > depth
+              const ChevronIcon = hasChildren ? ChevronDown : ChevronRight
+              return (
+                <button
+                  key={part.name}
+                  type="button"
+                  onClick={() => setSelectedPart(isSelected ? null : part.name)}
+                  className={cn(
+                    "flex items-center gap-1 py-0.5 pr-3 text-left text-xs transition-colors",
+                    isSelected
+                      ? "bg-blue-500/10 text-blue-500"
+                      : hasCustomClasses
+                        ? "text-foreground hover:bg-muted/50"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                  style={{ paddingLeft: `${8 + depth * 16}px` }}
+                >
+                  {isRoot ? (
+                    <Component className="size-3.5 shrink-0" />
+                  ) : (
+                    <>
+                      {hasChildren ? (
+                        <ChevronIcon className="size-3 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <span className="size-3 shrink-0" />
+                      )}
+                      <Diamond className="size-3 shrink-0" />
+                    </>
+                  )}
+                  <span className="font-mono">{part.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          </ScrollArea>
+        </div>
       </div>
 
       <DragHandle
