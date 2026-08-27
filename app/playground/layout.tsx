@@ -3,13 +3,9 @@
 import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
 
-import { PlaygroundSidebar } from "@/components/playground/sidebar"
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-  Sidebar,
-} from "@/components/ui/sidebar"
+import { TabBar, type Tab } from "@/components/playground/tab-bar"
+import { getBaseUIComponent, BASE_UI_REGISTRY } from "@/lib/base-ui-registry"
+
 export default function PlaygroundLayout({
   children,
 }: {
@@ -17,45 +13,89 @@ export default function PlaygroundLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = React.useState(pathname === "/playground")
 
-  // Collapse sidebar when navigating to a component page
+  // Derive active slug from URL
+  const activeSlug = pathname.startsWith("/playground/base/")
+    ? pathname.split("/").pop() ?? null
+    : null
+
+  // Tab state
+  const [tabs, setTabs] = React.useState<Tab[]>(() => {
+    // Default: open the component from the URL, or Button
+    const slug = activeSlug ?? "button"
+    const comp = getBaseUIComponent(slug)
+    return comp ? [{ slug: comp.slug, name: comp.name }] : [{ slug: "button", name: "Button" }]
+  })
+
+  // Track slugs we're navigating to after closing — don't re-add these
+  const closingRef = React.useRef<string | null>(null)
+
+  // Ensure the active component is always in the tab list (for deep links)
   React.useEffect(() => {
-    if (pathname !== "/playground") {
-      setSidebarOpen(false)
+    if (!activeSlug) return
+    if (closingRef.current === activeSlug) {
+      closingRef.current = null
+      return
     }
-  }, [pathname])
+    const exists = tabs.some((t) => t.slug === activeSlug)
+    if (!exists) {
+      const comp = getBaseUIComponent(activeSlug)
+      if (comp) {
+        setTabs((prev) => {
+          // Double-check inside updater to avoid race conditions
+          if (prev.some((t) => t.slug === comp.slug)) return prev
+          return [...prev, { slug: comp.slug, name: comp.name }]
+        })
+      }
+    }
+  }, [activeSlug, tabs])
 
-  function handleSelectBaseComponent(slug: string) {
+  function handleSelect(slug: string) {
     router.push(`/playground/base/${slug}`)
   }
 
-  const selectedSlug = pathname.startsWith("/playground/base/")
-    ? `base/${pathname.split("/").pop()}`
-    : pathname.replace("/playground/", "")
+  function handleClose(slug: string) {
+    const next = tabs.filter((t) => t.slug !== slug)
+
+    if (next.length === 0) {
+      setTabs([{ slug: "button", name: "Button" }])
+      router.push("/playground/base/button")
+      return
+    }
+
+    setTabs(next)
+
+    if (slug === activeSlug) {
+      const newActive = next[next.length - 1]
+      // Mark this as a close-navigation so the effect doesn't re-add the closed tab
+      closingRef.current = slug
+      router.push(`/playground/base/${newActive.slug}`)
+    }
+  }
+
+  function handleAdd() {
+    // Placeholder — GEO-851 builds the real picker popover
+    // For now, open a component that isn't already in the tab list
+    const openSlugs = new Set(tabs.map((t) => t.slug))
+    const next = BASE_UI_REGISTRY.find((c) => !openSlugs.has(c.slug))
+    if (next) {
+      setTabs((prev) => [...prev, { slug: next.slug, name: next.name }])
+      router.push(`/playground/base/${next.slug}`)
+    }
+  }
 
   return (
-    <SidebarProvider
-      open={sidebarOpen}
-      onOpenChange={setSidebarOpen}
-      className="h-screen !min-h-0"
-    >
-      <Sidebar collapsible="offcanvas">
-        <PlaygroundSidebar
-          onSelectBaseComponent={handleSelectBaseComponent}
-          selectedSlug={selectedSlug}
-        />
-      </Sidebar>
-
-      {!sidebarOpen && (
-        <div className="flex shrink-0 flex-col border-r bg-sidebar px-1.5 pt-2">
-          <SidebarTrigger />
-        </div>
-      )}
-
-      <SidebarInset className="overflow-hidden">
+    <div className="flex h-screen flex-col">
+      <TabBar
+        tabs={tabs}
+        activeSlug={activeSlug}
+        onSelect={handleSelect}
+        onClose={handleClose}
+        onAdd={handleAdd}
+      />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {children}
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   )
 }
