@@ -10,8 +10,6 @@ import {
   SidebarTrigger,
   Sidebar,
 } from "@/components/ui/sidebar"
-import type { ComponentMeta } from "@/lib/registry"
-
 export default function PlaygroundLayout({
   children,
 }: {
@@ -28,13 +26,13 @@ export default function PlaygroundLayout({
     }
   }, [pathname])
 
-  function handleSelectComponent(component: ComponentMeta) {
-    router.push(`/playground/${component.slug}` as `/playground/${string}`)
+  function handleSelectBaseComponent(slug: string) {
+    router.push(`/playground/base/${slug}`)
   }
 
-  function handleSelectCustomComponent(slug: string) {
-    router.push(`/playground/custom/${slug}`)
-  }
+  const selectedSlug = pathname.startsWith("/playground/base/")
+    ? `base/${pathname.split("/").pop()}`
+    : pathname.replace("/playground/", "")
 
   return (
     <SidebarProvider
@@ -44,13 +42,8 @@ export default function PlaygroundLayout({
     >
       <Sidebar collapsible="offcanvas">
         <PlaygroundSidebar
-          onSelectComponent={handleSelectComponent}
-          onSelectCustomComponent={handleSelectCustomComponent}
-          selectedSlug={
-            pathname.startsWith("/playground/custom/")
-              ? `custom/${pathname.split("/").pop()}`
-              : pathname.replace("/playground/", "")
-          }
+          onSelectBaseComponent={handleSelectBaseComponent}
+          selectedSlug={selectedSlug}
         />
       </Sidebar>
 
