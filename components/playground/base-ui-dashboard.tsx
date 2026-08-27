@@ -168,19 +168,22 @@ export function BaseUIDashboard({
         side="left"
       />
 
-      {/* ── Canvas (centre) ────────────────────────────────── */}
-      {/* contain:paint creates a new containing block for fixed descendants,
-          so portalled overlays (backdrop, drawer viewport) fill this area
-          instead of the full browser viewport. */}
-      <div ref={canvasCallbackRef} className="relative flex min-w-0 flex-1 flex-col [contain:paint]">
-        <ComponentCanvas
-          slug={component.slug}
-          componentName={component.name}
-          theme={theme}
-          breakpoint={breakpoint}
-          customPreview={preview}
-          mode="inspect"
-        />
+      {/* ── Canvas + status bar (centre) ─────────────────── */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* contain:paint creates a new containing block for fixed descendants,
+            so portalled overlays (backdrop, drawer viewport) fill this area
+            instead of the full browser viewport. StatusBar is outside so
+            overlays don't cover it. */}
+        <div ref={canvasCallbackRef} className={cn("relative flex min-w-0 flex-1 flex-col bg-background text-foreground [contain:paint]", theme === "dark" && "dark")}>
+          <ComponentCanvas
+            slug={component.slug}
+            componentName={component.name}
+            theme={theme}
+            breakpoint={breakpoint}
+            customPreview={preview}
+            mode="inspect"
+          />
+        </div>
 
         <StatusBar
           source={source}
