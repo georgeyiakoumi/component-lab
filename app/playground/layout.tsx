@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter, usePathname } from "next/navigation"
 
 import { TabBar, type Tab } from "@/components/playground/tab-bar"
-import { getBaseUIComponent, BASE_UI_REGISTRY } from "@/lib/base-ui-registry"
+import { getBaseUIComponent } from "@/lib/base-ui-registry"
 
 export default function PlaygroundLayout({
   children,
@@ -73,14 +73,17 @@ export default function PlaygroundLayout({
     }
   }
 
-  function handleAdd() {
-    // Placeholder — GEO-851 builds the real picker popover
-    // For now, open a component that isn't already in the tab list
-    const openSlugs = new Set(tabs.map((t) => t.slug))
-    const next = BASE_UI_REGISTRY.find((c) => !openSlugs.has(c.slug))
-    if (next) {
-      setTabs((prev) => [...prev, { slug: next.slug, name: next.name }])
-      router.push(`/playground/base/${next.slug}`)
+  function handleAdd(slug: string) {
+    const existing = tabs.find((t) => t.slug === slug)
+    if (existing) {
+      // Already open — just switch to it
+      router.push(`/playground/base/${slug}`)
+      return
+    }
+    const comp = getBaseUIComponent(slug)
+    if (comp) {
+      setTabs((prev) => [...prev, { slug: comp.slug, name: comp.name }])
+      router.push(`/playground/base/${slug}`)
     }
   }
 

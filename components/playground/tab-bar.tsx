@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { X, Plus } from "lucide-react"
+import { X } from "lucide-react"
 import { ScrollArea } from "@base-ui/react/scroll-area"
 
 import { cn } from "@/lib/utils"
+import { ComponentPicker } from "@/components/playground/component-picker"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -18,7 +19,7 @@ interface TabBarProps {
   activeSlug: string | null
   onSelect: (slug: string) => void
   onClose: (slug: string) => void
-  onAdd: () => void
+  onAdd: (slug: string) => void
 }
 
 /* ── Scrollbar classes ──────────────────────────────────────────── */
@@ -79,14 +80,10 @@ export function TabBar({ tabs, activeSlug, onSelect, onClose, onAdd }: TabBarPro
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={onAdd}
-              className="flex shrink-0 items-center justify-center px-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              aria-label="Open component"
-            >
-              <Plus className="size-3.5" />
-            </button>
+            <ComponentPicker
+              openSlugs={new Set(tabs.map((t) => t.slug))}
+              onSelect={onAdd}
+            />
           </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar orientation="horizontal" className={SCROLLBAR_H}>
